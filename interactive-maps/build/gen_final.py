@@ -378,6 +378,6 @@ applyTheme('washi');
 """
 
 html = TPL.replace("__KANTO__", kanto).replace("__KU__", ku).replace("__OTHERS__", others)
-out = os.path.join(os.path.dirname(BASE), "tokyo-bousai-map.html")   # 寫到上一層 einfo-tokyo-map/
+out = os.path.join(os.path.dirname(BASE), "tokyo-bousai-map.html")   # 寫到上一層專案夾 tokyo-bousai-map/
 open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, "KB:", round(len(html.encode())/1024, 1))
