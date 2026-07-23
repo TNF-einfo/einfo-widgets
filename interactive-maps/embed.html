@@ -1,0 +1,16 @@
+<!-- 內嵌示範／外層包裝：用 iframe 把地圖包起來（等比 960x640、responsive）。
+     同資料夾要有 tokyo-bousai-map.html。實際貼到網站時把 src 換成地圖的網址即可。 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>東京・私房防災旅遊地圖（內嵌示範）</title>
+<style>
+  body{ margin:0; background:transparent; font-family:system-ui,"Noto Sans TC",sans-serif }
+  .embed-wrap{ position:relative; width:100%; max-width:720px; margin:0 auto; aspect-ratio:720/476 }
+  .embed-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px }
+</style>
+
+<div class="embed-wrap">
+  <iframe src="tokyo-bousai-map.html"
+          title="東京・私房防災旅遊地圖｜環境資訊中心"
+          loading="lazy" allowfullscreen></iframe>
+</div>
