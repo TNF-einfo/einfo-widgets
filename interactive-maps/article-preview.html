@@ -1,0 +1,58 @@
+<!-- 內嵌示意頁：仿 e-info 文章版面，把互動地圖嵌在文章中（暫時預覽用）。
+     內文為示意/摘述、非原文整段照登；地圖 iframe 指向同伺服器的 /tokyo-map。 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>地底50公尺防洪大作戰｜環境資訊中心（內嵌示意）</title>
+<style>
+  :root{ --green:#5a9c4f; --ink:#2b2b2b; --muted:#8a8a8a; --line:#e6e6e6 }
+  *{box-sizing:border-box}
+  body{ margin:0; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    color:var(--ink); line-height:1.9; background:#fafafa }
+  .topbar{ background:#fff; border-bottom:2px solid var(--green); padding:12px 20px }
+  .topbar b{ color:var(--green); font-size:17px; font-weight:900; letter-spacing:.02em }
+  .topbar span{ color:var(--muted); font-size:11px; letter-spacing:.12em; margin-left:8px }
+  .preview-tag{ background:#fff7e6; border:1px solid #f0d9a0; color:#a6791f; font-size:12px;
+    padding:6px 14px; text-align:center }
+  article{ max-width:720px; margin:0 auto; padding:26px 20px 60px; background:#fff }
+  .cat{ color:var(--green); font-weight:800; font-size:13px }
+  h1{ font-size:27px; line-height:1.4; margin:10px 0 14px; letter-spacing:.01em }
+  .byline{ color:var(--muted); font-size:13px; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:22px }
+  article p{ margin:0 0 20px; font-size:16.5px }
+  h2{ font-size:20px; margin:34px 0 14px; padding-left:11px; border-left:5px solid var(--green) }
+  .lead{ font-size:17.5px; color:#3a3a3a }
+  figure{ margin:30px 0 }
+  .embed-wrap{ position:relative; width:100%; max-width:720px; margin:0 auto; aspect-ratio:720/476 }
+  .embed-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px }
+  figcaption{ color:var(--muted); font-size:13px; text-align:center; margin-top:10px }
+  .note{ color:#b06a1f; font-size:12.5px }
+</style>
+
+<div class="topbar"><b>環境資訊中心</b><span>ENVIRONMENTAL INFORMATION CENTER</span></div>
+<div class="preview-tag">🔍 內嵌示意頁　—　展示互動地圖嵌入文章後的樣子（內文為示意，實際以原文為準）</div>
+
+<article>
+  <div class="cat">時事新聞 ｜ 國際新聞</div>
+  <h1>地底50公尺防洪大作戰　直擊東京近郊「地下神殿」與首都圈外圍排水道</h1>
+  <div class="byline">陳文姿（環境資訊中心 日本報導）　·　2026 年 06 月 25 日</div>
+
+  <p class="lead">在一個不起眼的足球場場邊、上鎖的小門後方，是通往地底 22 公尺「地下神殿」的入口——這座宛如神殿的巨大空間，其實是守護首都圈免於水患的排水設施。（本段為示意引言）</p>
+
+  <h2>地底的神祕空間</h2>
+  <p>（示意內文）巨大的樑柱撐起地底空間，未來感十足的氛圍讓這裡成為不少影劇作品的取景地。它的真實身分，是首都圈外圍排水道的「調壓水槽」。</p>
+
+  <h2>參訪「首都圈外圍排水道」的七種路線</h2>
+  <p>（示意內文）這裡兼具防災教育意義與獨特體驗，提供七種行程；除了神殿，還有機會走進工人維修通道，往下俯瞰約 70 公尺深的豎井。</p>
+
+  <figure>
+    <div class="embed-wrap">
+      <iframe src="tokyo-bousai-map.html" title="東京・私房防災旅遊地圖｜環境資訊中心"
+              loading="lazy" allowfullscreen></iframe>
+    </div>
+    <figcaption>▲〈環境資訊中心〉記者踩踏的東京近郊防災旅遊私房景點——互動地圖，點圖釘或地名看介紹（可切換配色）</figcaption>
+  </figure>
+
+  <h2>GO 出發吧～</h2>
+  <p>（示意內文）看完地下神殿，不妨照著上方地圖，把北本自然觀察公園、池袋防災館、臨海廣域防災公園、東京港野鳥公園與防災專門店 BOUSAI FARM 一起排進下趟東京行。</p>
+
+  <p class="note">※ 本頁為地圖內嵌預覽，非正式發布頁；文章文字僅為版面示意。</p>
+</article>
