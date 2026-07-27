@@ -25,10 +25,28 @@
   .embed-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:16px }
   figcaption{ color:var(--muted); font-size:13px; text-align:center; margin-top:10px }
   .note{ color:#b06a1f; font-size:12.5px }
+  /* 三檔位對照：依 e-info 文章實際響應式寬度 720 / 528 / 352.8 px 各貼一張同圖 */
+  .tier-demo{ width:100vw; position:relative; left:50%; transform:translateX(-50%); margin:34px 0; padding:0 10px }
+  .tier{ overflow-x:auto; margin:0 0 30px }              /* 固定寬度；視窗窄於該寬時本格內橫向捲動，不撐爆頁面 */
+  .tier .embed-wrap{ max-width:none }                    /* 用 inline 固定寬，別被 720 上限卡住 */
+  /* 複製嵌入碼 */
+  .copybar{ max-width:720px; margin:14px auto 0; padding:0 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+  #copyEmbed{ font:inherit; font-size:14px; font-weight:800; color:#fff; background:var(--green); border:0;
+    border-radius:8px; padding:9px 16px; cursor:pointer }
+  #copyEmbed:hover{ filter:brightness(1.06) }
+  #copyMsg{ font-size:13px; color:var(--green); font-weight:700 }
+  .copyout{ display:block; width:calc(100% - 40px); max-width:720px; margin:8px auto 0; padding:10px 14px;
+    background:#f3efe6; color:#5a4a2a; border:1px solid #e2d3b4; border-radius:8px; height:120px;
+    font:12px/1.5 ui-monospace,Menlo,Consolas,monospace; white-space:pre; resize:vertical }
 </style>
 
 <div class="topbar"><b>環境資訊中心</b><span>ENVIRONMENTAL INFORMATION CENTER</span></div>
 <div class="preview-tag">🔍 內嵌示意頁　—　展示互動地圖嵌入文章後的樣子（內文為示意，實際以原文為準）</div>
+<div class="copybar">
+  <button id="copyEmbed" type="button">📋 複製完整嵌入碼（自足，直接貼進文章，不需上傳檔案）</button>
+  <span id="copyMsg"></span>
+</div>
+<textarea id="copyOut" class="copyout" hidden readonly></textarea>
 
 <article>
   <div class="cat">時事新聞 ｜ 國際新聞</div>
@@ -43,16 +61,66 @@
   <h2>參訪「首都圈外圍排水道」的七種路線</h2>
   <p>（示意內文）這裡兼具防災教育意義與獨特體驗，提供七種行程；除了神殿，還有機會走進工人維修通道，往下俯瞰約 70 公尺深的豎井。</p>
 
-  <figure>
-    <div class="embed-wrap">
-      <iframe src="tokyo-bousai-map.html" title="東京・私房防災旅遊地圖｜環境資訊中心"
-              loading="lazy" allowfullscreen></iframe>
-    </div>
-    <figcaption>▲〈環境資訊中心〉記者踩踏的東京近郊防災旅遊私房景點——互動地圖，點圖釘或地名看介紹（可切換配色）</figcaption>
-  </figure>
+  <p>（下面依〈環境資訊中心〉文章的三個響應式檔位 <b>720 / 528 / 352.8 px</b>，各貼一張同一互動地圖對照——看不同螢幕寬度下嵌入的長相。）</p>
+  <div class="tier-demo">
+    <figure class="tier">
+      <div class="embed-wrap" style="width:720px">
+        <iframe src="tokyo-bousai-map.html" title="東京・防災・生態 另類旅遊地圖｜環境資訊中心"
+                loading="lazy" allowfullscreen></iframe>
+      </div>
+      <figcaption>▲ 桌機檔位　720px（顯示標題列）</figcaption>
+    </figure>
+    <figure class="tier">
+      <div class="embed-wrap" style="width:528px">
+        <iframe src="tokyo-bousai-map.html" title="東京・防災・生態 另類旅遊地圖｜環境資訊中心"
+                loading="lazy" allowfullscreen></iframe>
+      </div>
+      <figcaption>▲ 平板檔位　528px（無標題版）</figcaption>
+    </figure>
+    <figure class="tier">
+      <div class="embed-wrap" style="width:352.8px">
+        <iframe src="tokyo-bousai-map.html" title="東京・防災・生態 另類旅遊地圖｜環境資訊中心"
+                loading="lazy" allowfullscreen></iframe>
+      </div>
+      <figcaption>▲ 手機檔位　352.8px（無標題版）</figcaption>
+    </figure>
+  </div>
 
   <h2>GO 出發吧～</h2>
   <p>（示意內文）看完地下神殿，不妨照著上方地圖，把北本自然觀察公園、池袋防災館、臨海廣域防災公園、東京港野鳥公園與防災專門店 BOUSAI FARM 一起排進下趟東京行。</p>
 
   <p class="note">※ 本頁為地圖內嵌預覽，非正式發布頁；文章文字僅為版面示意。</p>
 </article>
+<script>
+(function(){
+  const btn = document.getElementById('copyEmbed');
+  const msg = document.getElementById('copyMsg');
+  const out = document.getElementById('copyOut');
+  // 抓整張地圖 → 轉義塞進 iframe srcdoc → 完全自足，不需上傳任何檔案（樣式也被 iframe 隔離）
+  async function buildFullEmbed(){
+    const html = await fetch('tokyo-bousai-map.html', {cache:'no-store'}).then(r=>{
+      if(!r.ok) throw new Error('抓地圖失敗 HTTP '+r.status); return r.text();
+    });
+    const esc = html.replace(/&/g,'&amp;').replace(/"/g,'&quot;');   // srcdoc 屬性用雙引號，需轉 & 與 "
+    return '<div style="position:relative;max-width:720px;margin:auto;aspect-ratio:720/476">\n'
+         + '  <iframe loading="lazy" allowfullscreen srcdoc="' + esc + '"\n'
+         + '          style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px"></iframe>\n'
+         + '</div>';
+  }
+  btn.addEventListener('click', async () => {
+    btn.disabled = true; msg.textContent = '產生完整嵌入碼中…';
+    try{
+      const code = await buildFullEmbed();
+      out.value = code; out.hidden = false;              // 顯示於下方 textarea，供核對／手動全選複製
+      let copied = false;
+      try{ await navigator.clipboard.writeText(code); copied = true; }
+      catch(e){ out.focus(); out.select(); copied = document.execCommand('copy'); }
+      msg.textContent = (copied ? '已複製 ✓ ' : '請在下方框全選複製 ') +
+        '約 ' + Math.round(code.length/1024) + ' KB，直接貼進 e-info 文章 HTML（不需上傳檔案）';
+    }catch(e){
+      msg.textContent = '產生失敗：' + (e && e.message ? e.message : e);
+    }
+    btn.disabled = false;
+  });
+})();
+</script>
