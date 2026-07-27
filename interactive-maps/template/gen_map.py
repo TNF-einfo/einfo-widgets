@@ -2,7 +2,7 @@
 """地圖產生器（template）。用法: python template/gen_map.py [instance]（預設 tokyo）。
    讀 {instance}/spots.py（地點＋敘述）＋ {instance}/boundaries/*.geojson → 產 {instance}/<MAP_FILE>。
    無圖磚（無道路），只留行政界線＋水域；瓦紙固定配色。座標/文案/照片/地名全在 {instance}/spots.py。"""
-import os, sys, json, importlib.util
+import os, sys, json, base64, importlib.util
 HERE = os.path.dirname(os.path.abspath(__file__))          # template/
 ROOT = os.path.dirname(HERE)                               # 專案根
 inst = sys.argv[1] if len(sys.argv) > 1 else "tokyo"
@@ -82,9 +82,6 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
     color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
     border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12);
   }
-  .pin-name.left{ left:auto; right:27px }
-  .pin-name.tr{ left:10px; top:auto; bottom:22px }   /* 右上：往上抬＋略右 */
-  .pin-name.down{ top:10px }   /* 野鳥公園：名稱略往下，避開鄰近標籤（各版皆套用） */
   .rlabel{
     font-weight:800; letter-spacing:1px; font-size:12px; color:var(--label); opacity:.92; text-align:center;
     white-space:nowrap; pointer-events:none; text-shadow:0 1px 2px #fff,0 0 5px #fff,0 0 5px #fff;
@@ -110,8 +107,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   @media (max-width:719.98px){
     .titlebar, .legend{ display:none }
     .rlabel{ font-size:11px; letter-spacing:0 } .rlabel.big{ font-size:13px; letter-spacing:1px }
-    .pin-anchor{ transform:scale(.8) }   /* 圖釘＋名稱縮小（繞底尖縮放、尖點仍對準座標），免重疊 */
-    .pin-name{ font-size:11px; left:25px } .pin-name.left{ right:25px }
+    .pin-name{ font-size:11px }
     .info{ left:8px; bottom:8px; width:auto; max-width:44%; padding:8px; font-size:11px }
     .card img.photo{ height:64px; margin:5px 0 } .card h3{ font-size:12.5px }
   }
@@ -128,10 +124,6 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
     .pin-name{ font-size:15px }
     .info{ max-width:40%; padding:9px; font-size:12px; max-height:none; overflow:visible }   /* 手機 popup 縮小一點（寬 40%）；不要 scroll */
     .card img.photo{ height:70px } .card h3{ font-size:13px }
-  }
-  /* 桌機＋平板（≥528，即非手機）：北本自然觀察公園(②)名稱移到 pin 右側；手機維持右上 */
-  @media (min-width:528px){
-    .pin-name[data-spot="2"]{ left:27px; top:0; bottom:auto }
   }
   /* 桌機：防災商品專賣店(⑥)照片裁切範圍往上移一點 */
   @media (min-width:720px){
@@ -184,7 +176,7 @@ for (const s of spots){
     className:'', iconSize:[23,23], iconAnchor:[11,23],
     html:`<div class="pin-anchor" data-spot="${s.n}">
             <div class="pin" style="background:${c.color}"><b>${s.n}</b></div>
-            <span class="pin-name${s.pinLeft?' left':''}${s.pinTR?' tr':''}${s.pinDown?' down':''}" data-spot="${s.n}">${s.short||s.zh}</span>
+            <span class="pin-name" data-spot="${s.n}">${s.short||s.zh}</span>
           </div>`
   });
   const photo = s.img;
@@ -223,33 +215,75 @@ function refit(){
   map.fitBounds(bounds, { paddingTopLeft:P.tl, paddingBottomRight:P.br, animate:false });
 }
 
-// 繁中地名：自動位移避讓（圖釘優先；重疊就試位移，都塞不下才刪）。抽成函式＝縮放後可重算
-const nearPin = (a,b) => Math.abs(a.x-b.x)<86 && Math.abs(a.y-b.y)<28;
-const nearLbl = (a,b) => Math.abs(a.x-b.x)<60 && Math.abs(a.y-b.y)<20;
-const CAND = [[0,0],[0,-15],[0,16],[-42,0],[44,0],[-42,-15],[44,-15],[-42,16],[44,16],[0,-30],[0,32],[-70,0],[72,0]];
+// ── Auto Layout：圖釘名＋地名全自動避讓（量測寬度→候選位置→碰撞偵測；不再手動移標籤）──
+const overlap = (a,b) => a.x1<b.x2 && a.x2>b.x1 && a.y1<b.y2 && a.y2>b.y1;
 let labelMarkers = [];
-function placeLabels(){
+
+// 圖釘名：在圖釘周圍試 8 個位置（右/左/四角/上/下），挑第一個不撞（其他圖釘＋已放的名）的。
+// 回傳「已佔用方框」清單（圖釘＋圖釘名），給地名避讓用。座標皆用 Leaflet layerPoint（螢幕像素）。
+function layoutPinNames(){
+  const size = map.getSize();
+  const pins = [...document.querySelectorAll('.pin-anchor')].map(a => {
+    const s = spots.find(x => x.n === +a.dataset.spot);
+    const p = map.latLngToLayerPoint([s.lat, s.lng]);
+    return { a, px:p.x, py:p.y, box:{ x1:p.x-13, y1:p.y-25, x2:p.x+13, y2:p.y+3 } };
+  });
+  const occupied = pins.map(pn => pn.box);
+  for (const pin of pins){
+    const el = pin.a.querySelector('.pin-name');
+    el.style.left = el.style.top = '';                 // 歸零好量寬（寬度與位置無關）
+    const w = el.offsetWidth, h = el.offsetHeight || 20, { px, py } = pin, g = 5, ph = 13;
+    const cand = [
+      [px+ph+g,   py-11-h/2],   // E 右（垂直置中）
+      [px-ph-g-w, py-11-h/2],   // W 左
+      [px+ph-2,   py-27-h],     // NE 右上
+      [px-ph+2-w, py-27-h],     // NW 左上
+      [px+ph-2,   py+4],        // SE 右下
+      [px-ph+2-w, py+4],        // SW 左下
+      [px-w/2,    py-27-h],     // N 上
+      [px-w/2,    py+4],        // S 下
+    ];
+    let pick = cand[0];
+    for (const [bx,by] of cand){
+      const box = { x1:bx, y1:by, x2:bx+w, y2:by+h };
+      const inFrame = bx>=2 && by>=2 && bx+w<=size.x-2 && by+h<=size.y-2;
+      if (inFrame && !occupied.some(o => overlap(box,o))){ pick = [bx,by]; break; }
+    }
+    const [bx,by] = pick;
+    el.style.left = (bx-(px-11)) + 'px';               // 換算回 icon 內的相對位移
+    el.style.top  = (by-(py-23)) + 'px';
+    occupied.push({ x1:bx, y1:by, x2:bx+w, y2:by+h });
+  }
+  return occupied;
+}
+
+// 地名（縣市/區）：在其座標附近試候選位置，避開圖釘＋圖釘名＋已放地名；塞不下就略過（次要）。
+const RCAND = [[0,0],[0,-18],[0,18],[-42,0],[44,0],[-42,-18],[44,-18],[-42,18],[44,18],[0,-34],[0,34],[-74,0],[76,0]];
+function placeLabels(occupied){
   labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
-  const pinPts = spots.map(s => map.latLngToLayerPoint([s.lat, s.lng]));
-  const lblPts = [];
+  const size = map.getSize(), placed = occupied.slice();
   for (const p of places){
     const base = map.latLngToLayerPoint([p.lat, p.lng]);
+    const fw = p.big?16:12, w = p.t.length*fw*1.02+6, h = p.big?22:18;
     let chosen = null;
-    for (const [dx,dy] of CAND){
-      const pt = { x:base.x+dx, y:base.y+dy };
-      if (!pinPts.some(q=>nearPin(pt,q)) && !lblPts.some(q=>nearLbl(pt,q))){ chosen = pt; break; }
+    for (const [dx,dy] of RCAND){
+      const cx = base.x+dx, cy = base.y+dy;
+      const box = { x1:cx-w/2, y1:cy-h/2, x2:cx+w/2, y2:cy+h/2 };
+      const inFrame = box.x1>=1 && box.y1>=1 && box.x2<=size.x-1 && box.y2<=size.y-1;
+      if (inFrame && !placed.some(o => overlap(box,o))){ chosen = {cx,cy,box}; break; }
     }
     if (!chosen) continue;
-    lblPts.push(chosen);
+    placed.push(chosen.box);
     const cls = 'rlabel' + (p.big?' big':'') + (p.sea?' sea':'');
-    const mk = L.marker(map.layerPointToLatLng([chosen.x, chosen.y]), {
+    const mk = L.marker(map.layerPointToLatLng([chosen.cx, chosen.cy]), {
       interactive:false, keyboard:false,
-      icon:L.divIcon({ className:cls, html:p.t, iconSize:[120,20], iconAnchor:[60,10] })
+      icon:L.divIcon({ className:cls, html:p.t, iconSize:[Math.ceil(w),Math.ceil(h)], iconAnchor:[Math.ceil(w/2),Math.ceil(h/2)] })
     }).addTo(map);
     labelMarkers.push(mk);
   }
 }
-refit(); placeLabels();
+function relayout(){ placeLabels(layoutPinNames()); }
+refit(); relayout();
 
 // 說明輪播：桌機自動輪播 6 景點說明、對應圖釘加脈動高亮；手機不輪播並收起說明
 function isSmall(){ return window.matchMedia('(max-width:719.98px)').matches; }
@@ -273,7 +307,7 @@ function jump(n){ showSpot(n); stopCar(); carTimer = setInterval(carTick, carMs(
 function syncCar(){ startCar(); }
 syncCar();
 
-map.on('resize', () => { refit(); placeLabels(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
+map.on('resize', () => { refit(); relayout(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
 
 // 圖例 + 篩選
 const legend = document.getElementById('legend');
@@ -284,6 +318,7 @@ for (const [key,c] of Object.entries(CAT)){
   chip.addEventListener('click', () => {
     const on = chip.dataset.on === '1'; chip.dataset.on = on ? '0' : '1';
     if (on) map.removeLayer(layers[key]); else layers[key].addTo(map);
+    relayout();   // 篩選後重排標籤
   });
   legend.appendChild(chip);
 }
@@ -299,3 +334,13 @@ html = (TPL
 out = os.path.join(IDIR, cfg.MAP_FILE)
 open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, "KB:", round(len(html.encode())/1024, 1))
+
+# 文章內嵌示意頁：把整張地圖 base64 內嵌（複製鈕本地解碼、不需 fetch → file:// 也能用）
+b64 = base64.b64encode(html.encode("utf-8")).decode("ascii")
+ap = (open(os.path.join(HERE, "article_preview.tpl.html"), encoding="utf-8").read()
+      .replace("__MAP_FILE__", cfg.MAP_FILE)
+      .replace("__MAP_TITLE__", cfg.TITLE + "｜" + cfg.MARK)
+      .replace("@@MAP_B64@@", b64))
+ap_out = os.path.join(IDIR, "article-preview.html")
+open(ap_out, "w", encoding="utf-8").write(ap)
+print("wrote", ap_out, "KB:", round(len(ap.encode())/1024, 1))
