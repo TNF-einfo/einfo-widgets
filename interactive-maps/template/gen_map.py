@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""產生 tokyo-bousai-map.html：都縣界+東京23區界+其他縣市町村界 + 更多地名(自動位移避讓)。
-   瓦紙(washi)固定配色。"""
-import os
-BASE = os.path.dirname(os.path.abspath(__file__))   # geojson 與本檔同在 build/
-kanto  = open(BASE + r"\kanto.geojson", encoding="utf-8").read()
-ku     = open(BASE + r"\tokyo_ku.geojson", encoding="utf-8").read()
-others = open(BASE + r"\others_muni.geojson", encoding="utf-8").read()
+"""地圖產生器（template）。用法: python template/gen_map.py [instance]（預設 tokyo）。
+   讀 {instance}/spots.py（地點＋敘述）＋ {instance}/boundaries/*.geojson → 產 {instance}/<MAP_FILE>。
+   無圖磚（無道路），只留行政界線＋水域；瓦紙固定配色。座標/文案/照片/地名全在 {instance}/spots.py。"""
+import os, sys, json, importlib.util
+HERE = os.path.dirname(os.path.abspath(__file__))          # template/
+ROOT = os.path.dirname(HERE)                               # 專案根
+inst = sys.argv[1] if len(sys.argv) > 1 else "tokyo"
+IDIR = os.path.join(ROOT, inst)
+_spec = importlib.util.spec_from_file_location("cfg", os.path.join(IDIR, "spots.py"))
+cfg = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(cfg)
+_bd = os.path.join(IDIR, "boundaries")
+kanto  = open(os.path.join(_bd, "kanto.geojson"), encoding="utf-8").read()
+ku     = open(os.path.join(_bd, "tokyo_ku.geojson"), encoding="utf-8").read()
+others = open(os.path.join(_bd, "others_muni.geojson"), encoding="utf-8").read()
 
 TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中心
      Leaflet + 內嵌行政區 GeoJSON（都縣界＋東京23區界＋鄰縣市町村界；無圖磚＝無道路，只留行政交界＋水域）。
@@ -13,7 +20,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
      界線/pin/地名皆以 Python 算圖核對。座標/文案/照片在 spots、地名在 places。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>東京・防災・生態 另類旅遊地圖｜環境資訊中心</title>
+<title>__TITLE__｜__MARK__</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -136,8 +143,8 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   <div id="map"></div>
   <div class="paper-wash"></div>
   <div class="titlebar">
-    <div class="mark">環境資訊中心</div>
-    <h1>東京・防災・生態 另類旅遊地圖</h1>
+    <div class="mark">__MARK__</div>
+    <h1>__TITLE__</h1>
   </div>
   <div class="legend" id="legend"></div>
   <div class="info" id="info"></div>
@@ -148,84 +155,9 @@ const KANTO = __KANTO__;
 const KU = __KU__;
 const OTHERS = __OTHERS__;
 
-const CAT = {
-  bousai:{ name:'防災探索', color:'#4a5ab0', emo:'⛑' },
-  nature:{ name:'自然生態', color:'#5fae72', emo:'🌿' },
-  shop:  { name:'採購名單', color:'#e07a9c', emo:'🛍' },
-};
-const spots = [
-  { n:1, cat:'bousai', lat:35.997475, lng:139.8114455, area:'埼玉・春日部',
-    zh:'地下神殿・龍Q館', ja:'首都圏外郭放水路 龍Q館',
-    img:'https://e-info.org.tw/images/e29e8885-4ce9-49d3-b147-b292bccca37b-w800.webP',
-    desc:'地底22公尺、面積是希臘帕德嫩神殿6.4倍的排水「調壓水槽」，防洪時排水、平時開放參觀。七種行程可選，還能俯瞰約70公尺深、可容納一架太空梭的豎井。',
-    url:'https://e-info.org.tw/node/243576' },
-  { n:2, cat:'nature', lat:36.0113203, lng:139.5091906, area:'埼玉・北本', pinTR:1,
-    zh:'北本自然觀察公園', ja:'北本自然観察公園',
-    img:'https://e-info.org.tw/images/8de3a00f-d626-4775-9a52-b45aec55f836-w800.webP',
-    desc:'貼近里山風景的自然觀察公園，附設埼玉縣自然學習中心，入場免費，適合放慢腳步賞自然。',
-    url:'https://e-info.org.tw/node/243428' },
-  { n:3, cat:'bousai', lat:35.7280647, lng:139.7070079, area:'東京・池袋', pinTR:1,
-    zh:'池袋防災館', ja:'池袋防災館（東京消防庁）',
-    img:'https://e-info.org.tw/images/c0de1ff4-42e4-499b-942c-9eee4590eef1-w800.webP',
-    desc:'逛街順路就能體驗的地震模擬──不是主題樂園式的尖叫，同事親身心得是：「我覺得快死掉了！」',
-    url:'' },
-  { n:4, cat:'bousai', lat:35.6349494, lng:139.7958032, area:'東京・有明',
-    zh:'臨海廣域防災公園', ja:'東京臨海広域防災公園（そなエリア東京）',
-    img:'https://e-info.org.tw/images/e5d34109-50bc-48c4-8181-970dee66e21f-w800.webP',
-    desc:'東京的緊急避難地與災害指揮中心。長椅可當爐灶、涼亭變救護區；常設體驗「東京直下72小時」實境逃生，離豐洲市場不遠。',
-    url:'' },
-  { n:5, cat:'nature', lat:35.5838724, lng:139.7603075, area:'東京・大田', pinDown:1,
-    zh:'東京港野鳥公園', ja:'東京港野鳥公園',
-    img:'https://e-info.org.tw/images/f07f0241-5104-4121-ab91-dc3a497e9ddb-w800.webP',
-    desc:'夾在批發市場與物流中心之間的生態聖域，是東京灣邊的賞鳥好去處。',
-    url:'' },
-  { n:6, cat:'shop', lat:35.7113, lng:139.8678, area:'東京・江戸川', short:'防災商品專賣店',
-    zh:'防災商品專賣店 BOUSAI FARM', ja:'防災ファーム 江戸川中央店',
-    img:'https://e-info.org.tw/images/9b881cf3-021e-4ab0-a886-a3d3bd205774-w800.webP',
-    desc:'由防災士嚴選商品的防災專門店，記者專訪過的採購祕境，想找更專業裝備就來這。',
-    url:'' },
-];
-const places = [
-  { t:'埼玉縣', lat:35.95, lng:139.56, big:1 },
-  { t:'千葉縣', lat:35.66, lng:139.905, big:1 },
-  { t:'神奈川縣', lat:35.52, lng:139.62, big:1 },
-  { t:'東京灣', lat:35.575, lng:139.85, big:1, sea:1 },
-  { t:'春日部市', lat:35.975, lng:139.752 },
-  { t:'越谷市', lat:35.891, lng:139.790 },
-  { t:'草加市', lat:35.825, lng:139.805 },
-  { t:'川口市', lat:35.808, lng:139.724 },
-  { t:'埼玉市', lat:35.906, lng:139.624 },
-  { t:'上尾市', lat:35.977, lng:139.593 },
-  { t:'北本市', lat:36.027, lng:139.530 },
-  { t:'三鄉市', lat:35.833, lng:139.872 },
-  { t:'松戶市', lat:35.788, lng:139.903 },
-  { t:'流山市', lat:35.856, lng:139.902 },
-  { t:'川崎市', lat:35.531, lng:139.703 },
-  { t:'武藏野市', lat:35.718, lng:139.566 },
-  { t:'千代田區', lat:35.694, lng:139.753 },
-  { t:'中央區', lat:35.667, lng:139.772 },
-  { t:'港區', lat:35.658, lng:139.752 },
-  { t:'新宿區', lat:35.694, lng:139.703 },
-  { t:'文京區', lat:35.708, lng:139.752 },
-  { t:'台東區', lat:35.713, lng:139.780 },
-  { t:'墨田區', lat:35.710, lng:139.801 },
-  { t:'江東區', lat:35.673, lng:139.817 },
-  { t:'品川區', lat:35.609, lng:139.730 },
-  { t:'目黑區', lat:35.641, lng:139.698 },
-  { t:'大田區', lat:35.561, lng:139.716 },
-  { t:'世田谷區', lat:35.646, lng:139.653 },
-  { t:'澀谷區', lat:35.664, lng:139.698 },
-  { t:'中野區', lat:35.707, lng:139.664 },
-  { t:'杉並區', lat:35.700, lng:139.636 },
-  { t:'豐島區', lat:35.726, lng:139.716 },
-  { t:'北區', lat:35.753, lng:139.734 },
-  { t:'荒川區', lat:35.736, lng:139.783 },
-  { t:'板橋區', lat:35.751, lng:139.709 },
-  { t:'練馬區', lat:35.735, lng:139.652 },
-  { t:'足立區', lat:35.775, lng:139.805 },
-  { t:'葛飾區', lat:35.744, lng:139.847 },
-  { t:'江戶川區', lat:35.706, lng:139.868 },
-];
+const CAT = __CAT__;
+const spots = __SPOTS__;
+const places = __PLACES__;
 
 const map = L.map('map', {
   zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
@@ -358,7 +290,12 @@ for (const [key,c] of Object.entries(CAT)){
 </script>
 """
 
-html = TPL.replace("__KANTO__", kanto).replace("__KU__", ku).replace("__OTHERS__", others)
-out = os.path.join(os.path.dirname(BASE), "tokyo-bousai-map.html")   # 寫到上一層專案夾 tokyo-bousai-map/
+html = (TPL
+        .replace("__KANTO__", kanto).replace("__KU__", ku).replace("__OTHERS__", others)
+        .replace("__CAT__", json.dumps(cfg.CAT, ensure_ascii=False))
+        .replace("__SPOTS__", json.dumps(cfg.SPOTS, ensure_ascii=False))
+        .replace("__PLACES__", json.dumps(cfg.PLACES, ensure_ascii=False))
+        .replace("__TITLE__", cfg.TITLE).replace("__MARK__", cfg.MARK))
+out = os.path.join(IDIR, cfg.MAP_FILE)
 open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, "KB:", round(len(html.encode())/1024, 1))
