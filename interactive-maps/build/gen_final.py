@@ -112,14 +112,23 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   @media (min-width:528px) and (max-width:719.98px){
     .pin-name{ font-size:16px }
     .card img.photo{ height:auto }
+    .card[data-spot="1"] img.photo{ aspect-ratio:800/600 }   /* 地下神殿(①)原圖近正方，平板裁成 4:3、跟其他一樣大 */
   }
   /* 手機檔（對齊 e-info 352.8；≤527.98）：只留分類/照片/名稱、地名 15、popup 放大一點 */
   @media (max-width:527.98px){
     .card p.desc{ display:none }
     .card .area{ display:none }
     .pin-name{ font-size:15px }
-    .info{ max-width:56%; padding:10px; font-size:12.5px }
+    .info{ padding:10px; font-size:12.5px; max-height:none; overflow:visible }   /* 寬度用共用 max-width:44%（56% 讓臨海/防災長名撐太寬）；手機 popup 不要 scroll */
     .card img.photo{ height:84px } .card h3{ font-size:14px }
+  }
+  /* 桌機＋平板（≥528，即非手機）：北本自然觀察公園(②)名稱移到 pin 右側；手機維持右上 */
+  @media (min-width:528px){
+    .pin-name[data-spot="2"]{ left:27px; top:0; bottom:auto }
+  }
+  /* 桌機：防災商品專賣店(⑥)照片裁切範圍往上移一點 */
+  @media (min-width:720px){
+    .card[data-spot="6"] img.photo{ object-position:50% 30% }
   }
 </style>
 
@@ -248,7 +257,7 @@ for (const s of spots){
   });
   const photo = s.img;
   const html =
-    `<div class="card">
+    `<div class="card" data-spot="${s.n}">
        <span class="tag" style="background:${c.color}">${c.emo} ${c.name}</span>
        <span class="area">${s.area}</span>
        <img class="photo" src="${photo}" alt="${s.zh}" loading="lazy">
