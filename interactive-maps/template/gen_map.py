@@ -394,3 +394,16 @@ ap = (open(os.path.join(HERE, "article_preview.tpl.html"), encoding="utf-8").rea
 ap_out = os.path.join(IDIR, "article-preview.html")
 open(ap_out, "w", encoding="utf-8").write(ap)
 print("wrote", ap_out, "KB:", round(len(ap.encode())/1024, 1))
+
+# 純地圖外包一層 iframe（隔離＋自足）：整張地圖轉義塞進 <iframe srcdoc>，此檔可直接開預覽，
+# 或複製 <div> 區塊貼進文章（等同 article-preview 的「複製完整嵌入碼」，但免開頁點鈕）。
+esc = html.replace("&", "&amp;").replace('"', "&quot;")  # srcdoc 屬性用雙引號，需轉 & 與 "
+embed = ('<!doctype html><html lang="zh-Hant"><meta charset="utf-8">'
+         '<title>' + cfg.TITLE + '｜iframe 嵌入</title>\n'
+         '<div style="position:relative;max-width:720px;margin:auto;aspect-ratio:720/476">\n'
+         '  <iframe loading="lazy" allowfullscreen srcdoc="' + esc + '"\n'
+         '          style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px"></iframe>\n'
+         '</div>\n</html>\n')
+embed_out = os.path.join(IDIR, cfg.MAP_FILE.replace(".html", ".embed.html"))
+open(embed_out, "w", encoding="utf-8").write(embed)
+print("wrote", embed_out, "KB:", round(len(embed.encode())/1024, 1))
