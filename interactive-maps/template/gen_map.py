@@ -122,6 +122,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
     .card p.desc{ display:none }
     .card .area{ display:none }
     .pin-name{ font-size:15px }
+    .pin-anchor{ transform:scale(.72) }   /* 手機：圖釘縮小免互相重疊（繞底尖縮放、尖點仍對準座標；量測法會吃到縮放後尺寸） */
     .info{ max-width:40%; padding:9px; font-size:12px; max-height:none; overflow:visible }   /* 手機 popup 縮小一點（寬 40%）；不要 scroll */
     .card img.photo{ height:70px } .card h3{ font-size:13px }
   }
@@ -215,75 +216,88 @@ function refit(){
   map.fitBounds(bounds, { paddingTopLeft:P.tl, paddingBottomRight:P.br, animate:false });
 }
 
-// ── Auto Layout：圖釘名＋地名全自動避讓（量測寬度→候選位置→碰撞偵測；不再手動移標籤）──
+// ── Auto Layout（量測法）：pin名/地名 自動避開 pin圖示＋popup＋彼此；碰撞優先上下移、換邊最後。
+//    全用螢幕座標 getBoundingClientRect（旋轉/縮放/字級都量到實際值），不再手動移標籤。
 const overlap = (a,b) => a.x1<b.x2 && a.x2>b.x1 && a.y1<b.y2 && a.y2>b.y1;
+const overlapArea = (a,b) => Math.max(0, Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1)) * Math.max(0, Math.min(a.y2,b.y2)-Math.max(a.y1,b.y1));
+const asBox = r => ({ x1:r.left, y1:r.top, x2:r.right, y2:r.bottom });
 let labelMarkers = [];
 
-// 圖釘名：在圖釘周圍試 8 個位置（右/左/四角/上/下），挑第一個不撞（其他圖釘＋已放的名）的。
-// 回傳「已佔用方框」清單（圖釘＋圖釘名），給地名避讓用。座標皆用 Leaflet layerPoint（螢幕像素）。
-function layoutPinNames(){
-  const size = map.getSize();
-  const pins = [...document.querySelectorAll('.pin-anchor')].map(a => {
-    const s = spots.find(x => x.n === +a.dataset.spot);
-    const p = map.latLngToLayerPoint([s.lat, s.lng]);
-    return { a, px:p.x, py:p.y, box:{ x1:p.x-13, y1:p.y-25, x2:p.x+13, y2:p.y+3 } };
-  });
-  const occupied = pins.map(pn => pn.box);
-  for (const pin of pins){
-    const el = pin.a.querySelector('.pin-name');
-    el.style.left = el.style.top = '';                 // 歸零好量寬（寬度與位置無關）
-    const w = el.offsetWidth, h = el.offsetHeight || 20, { px, py } = pin, g = 5, ph = 13;
-    const cand = [
-      [px+ph+g,   py-11-h/2],   // E 右（垂直置中）
-      [px-ph-g-w, py-11-h/2],   // W 左
-      [px+ph-2,   py-27-h],     // NE 右上
-      [px-ph+2-w, py-27-h],     // NW 左上
-      [px+ph-2,   py+4],        // SE 右下
-      [px-ph+2-w, py+4],        // SW 左下
-      [px-w/2,    py-27-h],     // N 上
-      [px-w/2,    py+4],        // S 下
-    ];
-    let pick = cand[0];
-    for (const [bx,by] of cand){
-      const box = { x1:bx, y1:by, x2:bx+w, y2:by+h };
-      const inFrame = bx>=2 && by>=2 && bx+w<=size.x-2 && by+h<=size.y-2;
-      if (inFrame && !occupied.some(o => overlap(box,o))){ pick = [bx,by]; break; }
-    }
-    const [bx,by] = pick;
-    el.style.left = (bx-(px-11)) + 'px';               // 換算回 icon 內的相對位移
-    el.style.top  = (by-(py-23)) + 'px';
-    occupied.push({ x1:bx, y1:by, x2:bx+w, y2:by+h });
-  }
-  return occupied;
+// 障礙基底：pin 圖示（量測、含旋轉縮放）＋ popup（先秀 spot1＝敘述最長那張、量其框當保留區）
+function baseObstacles(){
+  const occ = [], PM = 6;   // pin 障礙外擴 6px：吸收 .hi 高亮放大(scale 1.25)＋留呼吸空間
+  document.querySelectorAll('.pin').forEach(p => { const r = p.getBoundingClientRect();
+    occ.push({ x1:r.left-PM, y1:r.top-PM, x2:r.right+PM, y2:r.bottom+PM }); });
+  try { stopCar(); } catch(e){}
+  showSpot(1);
+  const ir = document.getElementById('info').getBoundingClientRect();
+  if (ir.width > 1) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  return occ;
 }
 
-// 地名（縣市/區）：在其座標附近試候選位置，避開圖釘＋圖釘名＋已放地名；塞不下就略過（次要）。
-const RCAND = [[0,0],[0,-18],[0,18],[-42,0],[44,0],[-42,-18],[44,-18],[-42,18],[44,18],[0,-34],[0,34],[-74,0],[76,0]];
-function placeLabels(occupied){
+// pin 地點名候選順序：右中→右上→右下→上→下→左中→左上→左下（碰撞優先上下移、換邊最後）
+const NAME_POS = [
+  { left:'34px', top:'50%', transform:'translateY(-50%)' },      // 右中（預設；34 = pin半徑16+外擴6+餘裕，clear 障礙框）
+  { left:'34px', bottom:'16px' },                                 // 右上（先上下移，仍在右側→不壓到自己的 pin）
+  { left:'34px', top:'17px' },                                    // 右下
+  { left:'50%', bottom:'34px', transform:'translateX(-50%)' },    // 正上
+  { left:'50%', top:'34px', transform:'translateX(-50%)' },       // 正下
+  { right:'34px', top:'50%', transform:'translateY(-50%)' },      // 左中（沒辦法才換邊）
+  { right:'34px', bottom:'16px' },                                // 左上
+  { right:'34px', top:'17px' },                                   // 左下
+];
+function setPos(el, c){
+  el.style.left = c.left || ''; el.style.right = c.right || '';
+  el.style.top = c.top || ''; el.style.bottom = c.bottom || ''; el.style.transform = c.transform || '';
+}
+function layoutPinNames(occ, frame){
+  document.querySelectorAll('.pin-anchor').forEach(a => {
+    const el = a.querySelector('.pin-name');
+    let bestC = NAME_POS[0], bestBox = null, bestPen = Infinity, clear = false;
+    for (const c of NAME_POS){
+      setPos(el, c);
+      const b = asBox(el.getBoundingClientRect());
+      const outFrame = Math.max(0, frame.x1-b.x1) + Math.max(0, b.x2-frame.x2)
+                     + Math.max(0, frame.y1-b.y1) + Math.max(0, b.y2-frame.y2);
+      const pen = occ.reduce((s,o) => s + overlapArea(b,o), 0) + outFrame*80;   // 出框重罰
+      if (pen === 0){ bestBox = b; clear = true; break; }         // 全清＝直接用（維持候選優先序）
+      if (pen < bestPen){ bestPen = pen; bestC = c; bestBox = b; }   // 否則記住「最少重疊」的
+    }
+    if (!clear) setPos(el, bestC);   // 都不全清→套用最少重疊的候選
+    occ.push(bestBox);
+  });
+}
+
+// 地名（縣市/區）：其座標附近試候選（先上下、後左右），避開所有障礙；塞不下略過（次要）。
+const RCAND = [[0,0],[0,-18],[0,18],[0,-34],[0,34],[-44,0],[46,0],[-44,-18],[46,-18],[-44,18],[46,18],[-76,0],[78,0]];
+function placeLabels(occ, frame){
   labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
-  const size = map.getSize(), placed = occupied.slice();
+  const cont = document.getElementById('map').getBoundingClientRect();
   for (const p of places){
-    const base = map.latLngToLayerPoint([p.lat, p.lng]);
-    const fw = p.big?16:12, w = p.t.length*fw*1.02+6, h = p.big?22:18;
+    const cp = map.latLngToContainerPoint([p.lat, p.lng]);
+    const bx = cont.left + cp.x, by = cont.top + cp.y;
+    const fw = p.big ? 16 : 12, w = [...p.t].length * fw + 8, h = p.big ? 22 : 18;
     let chosen = null;
     for (const [dx,dy] of RCAND){
-      const cx = base.x+dx, cy = base.y+dy;
-      const box = { x1:cx-w/2, y1:cy-h/2, x2:cx+w/2, y2:cy+h/2 };
-      const inFrame = box.x1>=1 && box.y1>=1 && box.x2<=size.x-1 && box.y2<=size.y-1;
-      if (inFrame && !placed.some(o => overlap(box,o))){ chosen = {cx,cy,box}; break; }
+      const cx = bx+dx, cy = by+dy, box = { x1:cx-w/2, y1:cy-h/2, x2:cx+w/2, y2:cy+h/2 };
+      const inFrame = box.x1 >= frame.x1+1 && box.y1 >= frame.y1+1 && box.x2 <= frame.x2-1 && box.y2 <= frame.y2-1;
+      if (inFrame && !occ.some(o => overlap(box,o))){ chosen = {cx,cy,box}; break; }
     }
     if (!chosen) continue;
-    placed.push(chosen.box);
+    occ.push(chosen.box);
     const cls = 'rlabel' + (p.big?' big':'') + (p.sea?' sea':'');
-    const mk = L.marker(map.layerPointToLatLng([chosen.cx, chosen.cy]), {
-      interactive:false, keyboard:false,
-      icon:L.divIcon({ className:cls, html:p.t, iconSize:[Math.ceil(w),Math.ceil(h)], iconAnchor:[Math.ceil(w/2),Math.ceil(h/2)] })
-    }).addTo(map);
+    const ll = map.containerPointToLatLng([chosen.cx - cont.left, chosen.cy - cont.top]);
+    const mk = L.marker(ll, { interactive:false, keyboard:false,
+      icon:L.divIcon({ className:cls, html:p.t, iconSize:[Math.ceil(w),Math.ceil(h)], iconAnchor:[Math.ceil(w/2),Math.ceil(h/2)] }) }).addTo(map);
     labelMarkers.push(mk);
   }
 }
-function relayout(){ placeLabels(layoutPinNames()); }
-refit(); relayout();
+function relayout(){
+  const frame = asBox(document.querySelector('.frame').getBoundingClientRect());
+  const occ = baseObstacles();
+  layoutPinNames(occ, frame);
+  placeLabels(occ, frame);
+}
 
 // 說明輪播：桌機自動輪播 6 景點說明、對應圖釘加脈動高亮；手機不輪播並收起說明
 function isSmall(){ return window.matchMedia('(max-width:719.98px)').matches; }
@@ -305,7 +319,7 @@ function startCar(){ if (carTimer) return; carTick(); carTimer = setInterval(car
 function stopCar(){ if (carTimer){ clearInterval(carTimer); carTimer = null; } }
 function jump(n){ showSpot(n); stopCar(); carTimer = setInterval(carTick, carMs()); }   // 點某點：跳到它並重置輪播
 function syncCar(){ startCar(); }
-syncCar();
+refit(); relayout(); syncCar();   // 初次：fit → 自動排標籤（此時 showSpot 已定義）→ 開輪播
 
 map.on('resize', () => { refit(); relayout(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
 
