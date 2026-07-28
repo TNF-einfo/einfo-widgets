@@ -6,6 +6,11 @@ TITLE = "東京・防災・生態 另類旅遊地圖"
 MARK = "環境資訊中心"
 MAP_FILE = "tokyo-bousai-map.html"
 
+# 東京用手調三層界線（第一個＝陸地填色）＋手列 PLACES；設了 BOUNDARIES 就不自動抓（保留手調成果）。
+BOUNDARIES = ["kanto.geojson", "tokyo_ku.geojson", "others_muni.geojson"]
+ATTRIB = ('境界資料 © <a href="https://github.com/dataofjapan/land">dataofjapan/land</a>'
+          '・<a href="https://github.com/smartnews-smri/japan-topography">japan-topography</a>')
+
 CAT = {
     "bousai": {"name": "防災探索", "color": "#4a5ab0", "emo": "⛑"},
     "nature": {"name": "自然生態", "color": "#5fae72", "emo": "🌿"},

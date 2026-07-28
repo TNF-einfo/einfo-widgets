@@ -3,16 +3,36 @@
    讀 {instance}/spots.py（地點＋敘述）＋ {instance}/boundaries/*.geojson → 產 {instance}/<MAP_FILE>。
    無圖磚（無道路），只留行政界線＋水域；瓦紙固定配色。座標/文案/照片/地名全在 {instance}/spots.py。"""
 import os, sys, json, base64, importlib.util
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fetch_boundaries as fb
 HERE = os.path.dirname(os.path.abspath(__file__))          # template/
 ROOT = os.path.dirname(HERE)                               # 專案根
 inst = sys.argv[1] if len(sys.argv) > 1 else "tokyo"
 IDIR = os.path.join(ROOT, inst)
 _spec = importlib.util.spec_from_file_location("cfg", os.path.join(IDIR, "spots.py"))
 cfg = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(cfg)
-_bd = os.path.join(IDIR, "boundaries")
-kanto  = open(os.path.join(_bd, "kanto.geojson"), encoding="utf-8").read()
-ku     = open(os.path.join(_bd, "tokyo_ku.geojson"), encoding="utf-8").read()
-others = open(os.path.join(_bd, "others_muni.geojson"), encoding="utf-8").read()
+_bd = os.path.join(IDIR, "boundaries"); os.makedirs(_bd, exist_ok=True)
+
+# 1) 缺座標的 spot → Nominatim 地理編碼（快取 boundaries/geocode.json，之後離線）
+_gcp = os.path.join(_bd, "geocode.json")
+_gc = json.load(open(_gcp, encoding="utf-8")) if os.path.isfile(_gcp) else {}
+for s in cfg.SPOTS:
+    if "lat" not in s or "lng" not in s:
+        key = s.get("geo") or s["zh"]
+        if key not in _gc:
+            g = fb.geocode(key)
+            if not g: raise SystemExit("geocode failed: " + key)
+            _gc[key] = g
+        s["lat"], s["lng"] = _gc[key]["lat"], _gc[key]["lng"]
+json.dump(_gc, open(_gcp, "w", encoding="utf-8"), ensure_ascii=False)
+
+# 2) 界線＋地名：cfg.BOUNDARIES 有就用（如東京手調三層＋手列 PLACES），否則自動抓
+if getattr(cfg, "BOUNDARIES", None):
+    boundary_files, places = cfg.BOUNDARIES, cfg.PLACES
+else:
+    boundary_files, places = fb.ensure_boundaries(IDIR, cfg.SPOTS)
+boundaries = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in boundary_files]
+attrib = getattr(cfg, "ATTRIB", 'boundaries © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
 
 TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中心
      Leaflet + 內嵌行政區 GeoJSON（都縣界＋東京23區界＋鄰縣市町村界；無圖磚＝無道路，只留行政交界＋水域）。
@@ -144,9 +164,8 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
 </div>
 
 <script>
-const KANTO = __KANTO__;
-const KU = __KU__;
-const OTHERS = __OTHERS__;
+const BOUNDARIES = __BOUNDARIES__;   // [0]=陸地(填色+粗界)，其餘=細界線
+const ATTRIB = __ATTRIB__;
 
 const CAT = __CAT__;
 const spots = __SPOTS__;
@@ -157,18 +176,17 @@ const map = L.map('map', {
   dragging:false, scrollWheelZoom:false, doubleClickZoom:false,
   touchZoom:false, boxZoom:false, keyboard:false, tap:false,
 });
-// 圖層：都縣界(陸地填色+縣界/海岸線)、其他縣市町村界(細線)、東京23區界(細線)
-const landLayer = L.geoJSON(KANTO, {
+// 圖層：BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
+const landLayer = L.geoJSON(BOUNDARIES[0], {
   style:{ fillColor:'#f4eee0', fillOpacity:1, color:'#c8a98f', weight:1.3, opacity:.9 },
-  attribution:'境界資料 © <a href="https://github.com/dataofjapan/land">dataofjapan/land</a>・<a href="https://github.com/smartnews-smri/japan-topography">japan-topography</a>'
+  attribution: ATTRIB
 }).addTo(map);
-const muniOther = L.geoJSON(OTHERS, { style:{ fill:false, color:'#c3b39a', weight:0.6, opacity:.7 } }).addTo(map);
-const muniKu    = L.geoJSON(KU,     { style:{ fill:false, color:'#c3b39a', weight:0.6, opacity:.75 } }).addTo(map);
+BOUNDARIES.slice(1).forEach(g => L.geoJSON(g, { style:{ fill:false, color:'#c3b39a', weight:0.6, opacity:.72 } }).addTo(map));
 
 const info = document.getElementById('info');
 
 // 圖釘
-const layers = { bousai:L.layerGroup(), nature:L.layerGroup(), shop:L.layerGroup() };
+const layers = {}; Object.keys(CAT).forEach(k => layers[k] = L.layerGroup());
 const bounds = [];
 const cardHtml = {};   // 景點編號 → 資訊卡 HTML（給地名點擊委派用）
 for (const s of spots){
@@ -292,8 +310,25 @@ function placeLabels(occ, frame){
     labelMarkers.push(mk);
   }
 }
+// popup 自動選「圖釘最少」的角落（任意城市：spots 群聚時 popup 才不壓到 pin）
+function pickPopupCorner(){
+  const info = document.getElementById('info');
+  const fr = document.querySelector('.frame').getBoundingClientRect();
+  const cx = fr.left + fr.width/2, cy = fr.top + fr.height/2, cnt = { tl:0, tr:0, bl:0, br:0 };
+  document.querySelectorAll('.pin').forEach(p => {
+    const r = p.getBoundingClientRect();
+    cnt[((r.top+r.bottom)/2 < cy ? 't':'b') + ((r.left+r.right)/2 < cx ? 'l':'r')]++;
+  });
+  const corner = ['bl','br','tl','tr'].sort((a,b) => cnt[a]-cnt[b])[0];   // 圖釘最少者；平手偏左下
+  const off = (window.matchMedia('(max-width:719.98px)').matches ? 8 : 12) + 'px';
+  info.style.top    = corner[0]==='t' ? off : 'auto';
+  info.style.bottom = corner[0]==='b' ? off : 'auto';
+  info.style.left   = corner[1]==='l' ? off : 'auto';
+  info.style.right  = corner[1]==='r' ? off : 'auto';
+}
 function relayout(){
   const frame = asBox(document.querySelector('.frame').getBoundingClientRect());
+  pickPopupCorner();
   const occ = baseObstacles();
   layoutPinNames(occ, frame);
   placeLabels(occ, frame);
@@ -340,10 +375,11 @@ for (const [key,c] of Object.entries(CAT)){
 """
 
 html = (TPL
-        .replace("__KANTO__", kanto).replace("__KU__", ku).replace("__OTHERS__", others)
+        .replace("__BOUNDARIES__", "[" + ",".join(boundaries) + "]")
+        .replace("__ATTRIB__", json.dumps(attrib, ensure_ascii=False))
         .replace("__CAT__", json.dumps(cfg.CAT, ensure_ascii=False))
         .replace("__SPOTS__", json.dumps(cfg.SPOTS, ensure_ascii=False))
-        .replace("__PLACES__", json.dumps(cfg.PLACES, ensure_ascii=False))
+        .replace("__PLACES__", json.dumps(places, ensure_ascii=False))
         .replace("__TITLE__", cfg.TITLE).replace("__MARK__", cfg.MARK))
 out = os.path.join(IDIR, cfg.MAP_FILE)
 open(out, "w", encoding="utf-8").write(html)
