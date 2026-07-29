@@ -15,11 +15,13 @@ const RAWH = +(args[args.indexOf("--height") + 1]) || 1920;
 const HEIGHT = RAWH % 2 ? RAWH - 1 : RAWH;    // H.264/yuv420p 需偶數高；奇數自動 -1（差 1px、看不出來）
 if (HEIGHT !== RAWH) console.log(`note: 高度 ${RAWH} 是奇數，改用 ${HEIGHT}（H.264 需偶數）`);
 const W = 1080, FPS = 30, PREVIEW = args.includes("--preview");
-const SAFE_TOP = 0.12, SAFE_BOT = 0.15, SAFE_X = 0.09;  // 社群安全區（參颱風片 上12%/下15%/左右9%），元素內縮避遮擋、不畫綠框
+const SAFE_TOP = 0.12, SAFE_X = 0.09;                  // 社群安全區（參颱風片 上12/左右9%），不畫綠框
+const SAFE_BOT = HEIGHT >= 1600 ? 0.15 : 0.085;        // 下留白：4:5(1305) 縮小→popup 往下長（owner）
 const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例）
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
 const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
 const ESTAB_OUT = HEIGHT >= 1600 ? 0.55 : 1.15;  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
+const PIN_X_OFF = 110;                    // 景點置中時往左偏，讓右側地名一起入鏡置中（owner）
 const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
 
@@ -30,14 +32,14 @@ const VIDEO_CSS = `
     max-width:none!important;aspect-ratio:auto!important;border-radius:0!important;box-shadow:none!important}
   #map{width:100%!important;height:100%!important;border-radius:0!important}
   #info{display:none!important}                     /* 藏原本的小角卡 */
-  .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:58%!important }
-  .legend{ right:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important }
-  .titlebar h1{ font-size:60px; line-height:1.12; white-space:normal }                  /* 標題放大＋自動換行（不爆框、不壓圖例） */
+  .legend{ display:none!important }                 /* 移掉右上圖示範例（owner） */
+  .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:none!important; padding:26px 44px!important }  /* 標題背景框加大 */
+  .titlebar h1{ font-size:50px; line-height:1.1; white-space:nowrap }                  /* 標題不換行、縮字剛好一行 */
   .titlebar .mark{ font-size:22px }
-  .rlabel{ font-size:15px } .rlabel.big{ font-size:22px }                              /* 行政區維持不動（owner） */
-  .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大（2.6 會爆邊→2.1） */
-  .pin-name{ font-size:18px }
-  .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動（全景不要動） */
+  .rlabel{ font-size:16px } .rlabel.big{ font-size:23px }                              /* 行政區地名（放大一點；密度靠每景點重排） */
+  .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大 */
+  .pin-name{ font-size:18px; background:rgba(255,255,255,.96)!important; box-shadow:0 1px 5px rgba(0,0,0,.2)!important }  /* 反白框跟字綁死、solid 不被擠不見（owner） */
+  .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動 */
   #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
     bottom:${(SAFE_BOT*100).toFixed(1)}%;max-height:${((1-SAFE_TOP-SAFE_BOT-0.16)*100).toFixed(1)}%;
     background:#fff;z-index:60;box-shadow:0 12px 40px rgba(90,70,40,.3);
@@ -47,7 +49,7 @@ const VIDEO_CSS = `
   #vpop .vhdr{display:flex;align-items:center;gap:12px}            /* 種類標籤＋地名同一行、靠左上 */
   #vpop .card .tag{font-size:22px;padding:5px 16px;border-radius:20px;flex:none}
   #vpop .card .area{font-size:22px;color:#a2957f;flex:none;margin:0}
-  #vpop .card img.photo{width:100%;height:14.5vh;object-fit:cover;border-radius:14px;margin:14px 0;display:block}
+  #vpop .card img.photo{width:100%;height:19vh;object-fit:cover;border-radius:14px;margin:14px 0;display:block}
   #vpop .card h3{margin:2px 0 0;font-size:44px}
   #vpop .card .ja{margin:2px 0 8px;font-size:22px;color:#a2957f}
   #vpop .card p.desc{margin:0;font-size:30px;line-height:1.5;color:#4a443b}
@@ -74,15 +76,15 @@ await p.evaluate((css, out) => {
 }, VIDEO_CSS, ESTAB_OUT);
 
 // 每個景點：算「相機中心」使該點落在畫面上半 SPOT_Y（在頁面內用 project/unproject，於 SPOT_ZOOM 下計算）
-const cams = await p.evaluate((SPOT_ZOOM, SPOT_Y, H) => {
+const cams = await p.evaluate((SPOT_ZOOM, SPOT_Y, H, XOFF) => {
   return spots.map(s => {
     const pt = map.project([s.lat, s.lng], SPOT_ZOOM);   // 該 zoom 下的像素座標
-    const want = { x: 540, y: H * SPOT_Y };              // 想讓景點出現在畫面上半中間
+    const want = { x: 540 - XOFF, y: H * SPOT_Y };       // 景點偏左＝把右側地名一起算進置中（owner）
     const centerPt = { x: pt.x + (540 - want.x), y: pt.y + (H / 2 - want.y) };
     const c = map.unproject([centerPt.x, centerPt.y], SPOT_ZOOM);
     return { n: s.n, lat: c.lat, lng: c.lng, z: SPOT_ZOOM };
   });
-}, SPOT_ZOOM, SPOT_Y, HEIGHT);
+}, SPOT_ZOOM, SPOT_Y, HEIGHT, PIN_X_OFF);
 const estab = await p.evaluate(() => window.__estab);
 
 async function setCam(lat, lng, z) { await p.evaluate((lat, lng, z) => map.setView([lat, lng], z, { animate: false }), lat, lng, z); }
@@ -101,6 +103,13 @@ async function setPopup(n) {
   }, n);
 }
 const lerp = (a, b, t) => a + (b - a) * t;
+async function relabel() {   // 就本視野重排標籤：此景點附近的行政區地名多放一點＋pin 名重定位；順手清高亮
+  await p.evaluate(() => {
+    try { relayout(); } catch (e) {}
+    document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));
+    const info = document.getElementById("info"); if (info) info.classList.remove("show");
+  });
+}
 
 // 組鏡頭關鍵段（from→to 視野＋該段要不要顯示 popup）
 const segs = [];
@@ -116,9 +125,9 @@ segs.push({ kind: "end", from: cams.at(-1), to: cams.at(-1), pop: cams.at(-1).n,
 if (PREVIEW) {
   // 只截幾張關鍵幀：大遠景、景點1、景點2、景點3
   mkdirSync("out", { recursive: true });
-  await setCam(estab.c.lat ?? estab.c.lat, estab.c.lng ?? estab.c.lng, estab.z); await setPopup(null);
+  await setCam(estab.c.lat, estab.c.lng, estab.z); await relabel(); await setPopup(null);
   await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_estab_${HEIGHT}.png` });
-  for (const i of [0, 1, 2]) { await setCam(cams[i].lat, cams[i].lng, cams[i].z); await setPopup(cams[i].n);
+  for (const i of [0, 1, 2]) { await setCam(cams[i].lat, cams[i].lng, cams[i].z); await relabel(); await setPopup(cams[i].n);
     await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_spot${cams[i].n}_${HEIGHT}.png` }); }
   await b.close(); console.log(`wrote out/preview_*_${HEIGHT}.png`); process.exit(0);
 }
@@ -136,6 +145,7 @@ for (const seg of segs) {
     const c1 = seg.from.c ? { lat: seg.from.c.lat, lng: seg.from.c.lng, z: seg.from.z } : seg.from;
     const c2 = seg.to.c ? { lat: seg.to.c.lat, lng: seg.to.c.lng, z: seg.to.z } : seg.to;
     await setCam(lerp(c1.lat, c2.lat, t), lerp(c1.lng, c2.lng, t), lerp(c1.z, c2.z, t));
+    if ((seg.kind === "hold" || seg.kind === "end") && f === 0) await relabel();  // 進入靜止段就本視野重排標籤（地名多放一點）
     const want = (seg.kind === "move" && seg.popAtEnd != null && t > .6) ? seg.popAtEnd : seg.pop;
     if (want !== popState) { await setPopup(want); popState = want; }
     const buf = await p.screenshot({ type: "png" });
