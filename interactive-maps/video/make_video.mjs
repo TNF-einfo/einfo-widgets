@@ -70,10 +70,12 @@ await p.evaluate((css, out) => {
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
   const vp = document.createElement("div"); vp.id = "vpop"; document.querySelector(".frame").appendChild(vp);
   try { stopCar(); } catch (e) {}
-  const maxT = setInterval(() => {}, 1e9); for (let i = 1; i <= maxT; i++) clearInterval(i);  // ponytail: 硬清所有 timer 停掉輪播（地圖載入後靜態、不需 timer）
-  document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));  // 清掉輪播留下的 pin 高亮（大遠景要乾淨）
+  map.off("resize");                    // 關鍵：移除地圖的 resize handler → invalidateSize 不會再觸發 syncCar 重啟輪播
   map.invalidateSize(true);
   if (typeof refit === "function") refit();
+  try { stopCar(); } catch (e) {}       // 保險再殺一次
+  const maxT = setInterval(() => {}, 1e9); for (let i = 1; i <= maxT; i++) clearInterval(i);  // 硬清所有 timer（輪播）
+  document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));  // 清掉輪播 pin 高亮
   window.__estab = { c: map.getCenter(), z: map.getZoom() - out };   // fit 後再拉遠 → 全景更小、留白多
 }, VIDEO_CSS, ESTAB_OUT);
 
@@ -89,12 +91,8 @@ const cams = await p.evaluate((SPOT_ZOOM, SPOT_Y, H, XOFF) => {
 }, SPOT_ZOOM, SPOT_Y, HEIGHT, PIN_X_OFF);
 const estab = await p.evaluate(() => window.__estab);
 
-async function setCam(lat, lng, z) {
-  await p.evaluate((lat, lng, z, ez) => {
-    map.setView([lat, lng], z, { animate: false });
-    const s = (1 + Math.max(0, z - ez) * 0.28).toFixed(3);   // 行政區名隨 zoom 原地放大（不重排、不跑動）
-    document.querySelectorAll(".rlabel").forEach(el => { el.style.transformOrigin = "center"; el.style.transform = "scale(" + s + ")"; });
-  }, lat, lng, z, estab.z);
+async function setCam(lat, lng, z) {   // 只設視野。行政區名放一次後就交給 Leaflet 定位（別覆蓋它的 translate＝會卡左上）
+  await p.evaluate((lat, lng, z) => map.setView([lat, lng], z, { animate: false }), lat, lng, z);
 }
 async function setPopup(n) {
   await p.evaluate((n) => {
