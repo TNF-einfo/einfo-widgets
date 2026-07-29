@@ -38,7 +38,7 @@ const VIDEO_CSS = `
   .titlebar .mark{ font-size:22px }
   .rlabel{ font-size:25px; font-weight:800 } .rlabel.big{ font-size:28px; font-weight:800 }  /* 行政區地名：~10 個、放大（owner） */
   .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大 */
-  .pin-name{ font-size:18px; background:rgba(255,255,255,.96)!important; box-shadow:0 1px 5px rgba(0,0,0,.2)!important }  /* 反白框 solid；全部顯示（含遠景，owner） */
+  .pin-name{ font-size:18px; background:#fff!important; border:1.5px solid #e6ddcb!important; box-shadow:0 2px 7px rgba(0,0,0,.25)!important; z-index:600!important }  /* 反白框：不透明＋綁字＋浮在上（owner：不要不見） */
   .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動 */
   .pin-anchor.hi{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* 輪播高亮不要額外放大 pin（維持 base 尺寸） */
   #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
@@ -125,13 +125,24 @@ async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避
     const ov = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
     const cands = labelMarkers.map(m => { const el = m.getElement(); const r = el && el.getBoundingClientRect();
       return r && r.width ? { m, big: el.classList.contains("big"), box: { x1: r.left - 6, y1: r.top - 6, x2: r.right + 6, y2: r.bottom + 6 } } : null; }).filter(Boolean);
-    const dc = b => Math.hypot((b.x1 + b.x2) / 2 - cx, (b.y1 + b.y2) / 2 - cy);
-    cands.sort((a, b) => (a.big !== b.big ? (a.big ? -1 : 1) : dc(a.box) - dc(b.box)));   // 優先 big(縣/市)，再近中心
+    const ctr = b => [(b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2];
     const keptB = [], keptM = [];
-    for (const c of cands) {
-      if (keptM.length >= 10 || keptB.some(k => ov(c.box, k))) { map.removeLayer(c.m); continue; }
-      keptB.push(c.box); keptM.push(c.m);
+    const tryAdd = c => { if (keptM.length < 10 && !keptB.some(k => ov(c.box, k))) { keptB.push(c.box); keptM.push(c.m); return true; } return false; };
+    for (const c of cands.filter(c => c.big)) if (!tryAdd(c)) map.removeLayer(c.m);   // 先放 big（縣/市/灣，本就在邊緣＝四散）
+    const pool = cands.filter(c => !c.big);   // 其餘用 farthest-point 填到 10＝四散全圖、不集中中間（owner）
+    while (keptM.length < 10 && pool.length) {
+      let bi = -1, bd = -1;
+      for (let i = 0; i < pool.length; i++) {
+        if (keptB.some(k => ov(pool[i].box, k))) continue;
+        const [px, py] = ctr(pool[i].box);
+        let md = keptB.length ? Infinity : 1e9;
+        for (const k of keptB) { const [kx, ky] = ctr(k); md = Math.min(md, Math.hypot(px - kx, py - ky)); }
+        if (md > bd) { bd = md; bi = i; }
+      }
+      if (bi < 0) break;
+      const c = pool.splice(bi, 1)[0]; keptB.push(c.box); keptM.push(c.m);
     }
+    pool.forEach(c => map.removeLayer(c.m));
     labelMarkers = keptM;
   });
 }
