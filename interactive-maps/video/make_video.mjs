@@ -17,6 +17,7 @@ if (HEIGHT !== RAWH) console.log(`note: 高度 ${RAWH} 是奇數，改用 ${HEIG
 const W = 1080, FPS = 30, PREVIEW = args.includes("--preview");
 const SAFE_TOP = 0.12, SAFE_X = 0.09;                  // 社群安全區（參颱風片 上12/左右9%），不畫綠框
 const SAFE_BOT = HEIGHT >= 1600 ? 0.15 : 0.085;        // 下留白：4:5(1305) 縮小→popup 往下長（owner）
+const POPUP_X = HEIGHT >= 1600 ? SAFE_X : 0.155;       // popup 左右留白：4:5(1305) 加大＝卡片變窄、照片不那麼寬扁（owner）
 const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例）
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
 const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
@@ -43,7 +44,7 @@ const VIDEO_CSS = `
   .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:38px; font-weight:800; color:#4a443b; background:#fff; padding:3px 18px; border-radius:40px; border:2px solid #e6ddcb; box-shadow:0 3px 10px rgba(0,0,0,.28) }
   .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動 */
   .pin-anchor.hi{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* 輪播高亮不要額外放大 pin（維持 base 尺寸） */
-  #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
+  #vpop{position:fixed;left:${(POPUP_X*100).toFixed(1)}%;right:${(POPUP_X*100).toFixed(1)}%;
     bottom:${(SAFE_BOT*100).toFixed(1)}%;max-height:${((1-SAFE_TOP-SAFE_BOT-0.16)*100).toFixed(1)}%;
     background:#fff;z-index:60;box-shadow:0 12px 40px rgba(90,70,40,.3);
     border-radius:26px;padding:30px 40px;box-sizing:border-box;display:none;overflow:hidden}
@@ -108,6 +109,8 @@ async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避
     const anchors = [...document.querySelectorAll(".pin-anchor")];
     const pins = anchors.map(a => { const r = a.querySelector(".pin").getBoundingClientRect(); return { cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, hw: (r.right - r.left) / 2, hh: (r.bottom - r.top) / 2, spot: +a.dataset.spot }; });
     anchors.forEach(a => { const name = a.querySelector(".pin-name"); if (!name) return; const lab = document.createElement("div"); lab.className = "toplabel"; lab.textContent = name.textContent; lab.dataset.spot = a.dataset.spot; top.appendChild(lab); name.style.display = "none"; });
+    const tb = document.querySelector(".titlebar");   // 標題框也當障礙（owner：北本被標題壓）
+    const titleBox = tb ? (() => { const r = tb.getBoundingClientRect(); return { x1: r.left - 6, y1: r.top - 6, x2: r.right + 6, y2: r.bottom + 6 }; })() : null;
     const placed = [];
     top.querySelectorAll(".toplabel").forEach(lab => {
       const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
@@ -118,6 +121,7 @@ async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避
         const bx = { x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh };
         let pen = 0;
         for (const q of pins) if (q.spot !== spot) pen += oA(bx, { x1: q.cx - q.hw - 4, y1: q.cy - q.hh - 4, x2: q.cx + q.hw + 4, y2: q.cy + q.hh + 4 }) * 8;  // 壓到別 pin＝重罰
+        if (titleBox) pen += oA(bx, titleBox) * 8;   // 壓到標題框＝重罰（owner：北本被標題壓）
         for (const b of placed) pen += oA(bx, b);   // 壓到別名字＝輕罰
         pen += (Math.max(0, fr.left - bx.x1) + Math.max(0, bx.x2 - fr.right) + Math.max(0, fr.top - bx.y1) + Math.max(0, bx.y2 - fr.bottom)) * 3;
         if (pen === 0) { best = [ox, oy]; break; }
