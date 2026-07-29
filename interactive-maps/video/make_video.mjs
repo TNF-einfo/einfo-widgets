@@ -36,10 +36,9 @@ const VIDEO_CSS = `
   .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:none!important; padding:26px 44px!important }  /* 標題背景框加大 */
   .titlebar h1{ font-size:50px; line-height:1.1; white-space:nowrap }                  /* 標題不換行、縮字剛好一行 */
   .titlebar .mark{ font-size:22px }
-  .rlabel{ font-size:21px; font-weight:800 } .rlabel.big{ font-size:24px; font-weight:800 }  /* 行政區地名：只留 ~6 個、放大（owner） */
+  .rlabel{ font-size:25px; font-weight:800 } .rlabel.big{ font-size:28px; font-weight:800 }  /* 行政區地名：~10 個、放大（owner） */
   .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大 */
-  .pin-name{ font-size:18px; background:rgba(255,255,255,.96)!important; box-shadow:0 1px 5px rgba(0,0,0,.2)!important; display:none!important }  /* 反白框 solid；預設收起 */
-  .pin-anchor.active .pin-name{ display:inline-block!important }                       /* 只當前景點顯示地名（全景乾淨不擠、放大原地放大不跑動） */
+  .pin-name{ font-size:18px; background:rgba(255,255,255,.96)!important; box-shadow:0 1px 5px rgba(0,0,0,.2)!important }  /* 反白框 solid；全部顯示（含遠景，owner） */
   .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動 */
   .pin-anchor.hi{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* 輪播高亮不要額外放大 pin（維持 base 尺寸） */
   #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
@@ -96,7 +95,6 @@ async function setCam(lat, lng, z) {   // 只設視野。行政區名放一次�
 }
 async function setPopup(n) {
   await p.evaluate((n) => {
-    document.querySelectorAll(".pin-anchor").forEach(a => a.classList.toggle("active", n != null && +a.dataset.spot === n));  // 只當前景點顯示地名
     const vp = document.getElementById("vpop");
     if (n == null) { vp.classList.remove("show"); vp.innerHTML = ""; }
     else {
@@ -110,20 +108,19 @@ async function setPopup(n) {
   }, n);
 }
 const lerp = (a, b, t) => a + (b - a) * t;
-async function placeDistricts() {   // 只在全景放一次：重要行政區名。拆兩段＝先放置→等 render→用真實尺寸去重（優先 big=縣/市、離中心近、彼此/pin 不重疊、最多 6）
-  await p.evaluate(() => {   // ① 放置（用地圖原本的 placeLabels 排一輪）
-    document.querySelectorAll(".pin-name").forEach(el => { el.style.left = ""; el.style.right = ""; el.style.top = ""; el.style.bottom = ""; el.style.transform = ""; });
-    const occ = [];   // 障礙：pin 圖示（全景無 popup）
-    document.querySelectorAll(".pin").forEach(p => { const r = p.getBoundingClientRect(); occ.push({ x1: r.left - 8, y1: r.top - 8, x2: r.right + 8, y2: r.bottom + 8 }); });
+async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避開 pin+彼此、遠景也顯示) ＋ 行政區 ~10 個(彼此不重疊；被 pin/名蓋到沒關係 owner)
+  await p.evaluate(() => {   // ① 放置
     const fr = document.querySelector(".frame").getBoundingClientRect();
-    try { placeLabels(occ, { x1: fr.left, y1: fr.top, x2: fr.right, y2: fr.bottom }); } catch (e) {}
-    document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));
-  });
-  await new Promise(r => setTimeout(r, 80));   // 等標籤 render 出來才量得到真尺寸（否則 rect=0 會被全刪＝全景地名消失）
-  await p.evaluate(() => {   // ② 用真實 rendered 尺寸去重（placeLabels 的固定字寬估計吃不到我放大的字）
-    const fr = document.querySelector(".frame").getBoundingClientRect();
+    const frame = { x1: fr.left, y1: fr.top, x2: fr.right, y2: fr.bottom };
     const occ = [];
     document.querySelectorAll(".pin").forEach(p => { const r = p.getBoundingClientRect(); occ.push({ x1: r.left - 8, y1: r.top - 8, x2: r.right + 8, y2: r.bottom + 8 }); });
+    try { layoutPinNames(occ, frame); } catch (e) {}   // pin 地名自動避讓（避開 pin＋彼此）＝遠景也顯示
+    try { placeLabels([], frame); } catch (e) {}        // 行政區排到滿（不避 pin/名＝被蓋沒關係），下一段再挑
+    document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));
+  });
+  await new Promise(r => setTimeout(r, 80));   // 等 render 才量得到真尺寸
+  await p.evaluate(() => {   // ② 行政區用真實尺寸去重：只跟彼此不重疊、優先 big、近中心、最多 10（被 pin/名蓋到沒關係）
+    const fr = document.querySelector(".frame").getBoundingClientRect();
     const cx = (fr.left + fr.right) / 2, cy = (fr.top + fr.bottom) / 2;
     const ov = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
     const cands = labelMarkers.map(m => { const el = m.getElement(); const r = el && el.getBoundingClientRect();
@@ -132,7 +129,7 @@ async function placeDistricts() {   // 只在全景放一次：重要行政區�
     cands.sort((a, b) => (a.big !== b.big ? (a.big ? -1 : 1) : dc(a.box) - dc(b.box)));   // 優先 big(縣/市)，再近中心
     const keptB = [], keptM = [];
     for (const c of cands) {
-      if (keptM.length >= 6 || keptB.some(k => ov(c.box, k)) || occ.some(o => ov(c.box, o))) { map.removeLayer(c.m); continue; }
+      if (keptM.length >= 10 || keptB.some(k => ov(c.box, k))) { map.removeLayer(c.m); continue; }
       keptB.push(c.box); keptM.push(c.m);
     }
     labelMarkers = keptM;
