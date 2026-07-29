@@ -1,0 +1,147 @@
+// 東京地圖 → 直式影片（大遠景 → zoom 景點1 → pan 依序，上半地圖、下半 popup 大卡）。
+// 用法：
+//   node make_video.mjs --preview            # 只輸出幾張關鍵幀 PNG 檢查構圖（便宜）
+//   node make_video.mjs --height 1920         # 全片 → out/tokyo_1080x1920.mp4
+//   node make_video.mjs --height 1305
+// 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
+import puppeteer from "puppeteer-core";
+import { spawn } from "node:child_process";
+import { mkdirSync, createWriteStream } from "node:fs";
+
+const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const MAP = "file:///C:/Research-Lab/einfo-scratch/tokyo-bousai-map/tokyo/tokyo-bousai-map.html";
+const args = process.argv.slice(2);
+const RAWH = +(args[args.indexOf("--height") + 1]) || 1920;
+const HEIGHT = RAWH % 2 ? RAWH - 1 : RAWH;    // H.264/yuv420p 需偶數高；奇數自動 -1（差 1px、看不出來）
+if (HEIGHT !== RAWH) console.log(`note: 高度 ${RAWH} 是奇數，改用 ${HEIGHT}（H.264 需偶數）`);
+const W = 1080, FPS = 30, PREVIEW = args.includes("--preview");
+const SAFE_TOP = 0.12, SAFE_BOT = 0.15, SAFE_X = 0.09;  // 社群安全區（參颱風片 上12%/下15%/左右9%），元素內縮避遮擋、不畫綠框
+const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例）
+const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
+const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
+const ESTAB_OUT = 0.55;                  // 大遠景在 fit 基礎上再拉遠幾級（更小、留白多）
+const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
+
+// 影片模式 CSS：地圖填滿整幀 + 下方大 popup 卡（字級放大給 1080 寬）
+const VIDEO_CSS = `
+  html,body{margin:0;background:#fff}
+  .frame{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
+    max-width:none!important;aspect-ratio:auto!important;border-radius:0!important;box-shadow:none!important}
+  #map{width:100%!important;height:100%!important;border-radius:0!important}
+  #info{display:none!important}                     /* 藏原本的小角卡 */
+  .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important }
+  .legend{ right:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important }
+  .titlebar h1{ font-size:34px } .titlebar .mark{ font-size:15px }
+  .rlabel{ font-size:15px } .rlabel.big{ font-size:22px }
+  .pin-anchor{ transform:scale(1.4)!important; transform-origin:11px 23px!important }  /* pin＋地名一起放大（origin 對準尖點＝座標不跑） */
+  .pin-name{ font-size:18px }
+  .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動（全景不要動） */
+  #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
+    bottom:${(SAFE_BOT*100).toFixed(1)}%;height:${(POPUP_H*100).toFixed(1)}%;
+    background:#fff;z-index:60;box-shadow:0 12px 40px rgba(90,70,40,.3);
+    border-radius:26px;padding:30px 40px;box-sizing:border-box;display:none;overflow:hidden}
+  #vpop.show{display:block}
+  #vpop .card{display:block;height:100%;overflow:hidden}
+  #vpop .vhdr{display:flex;align-items:center;gap:12px}            /* 種類標籤＋地名同一行、靠左上 */
+  #vpop .card .tag{font-size:22px;padding:5px 16px;border-radius:20px;flex:none}
+  #vpop .card .area{font-size:22px;color:#a2957f;flex:none;margin:0}
+  #vpop .card img.photo{width:100%;height:14.5vh;object-fit:cover;border-radius:14px;margin:14px 0;display:block}
+  #vpop .card h3{margin:2px 0 0;font-size:44px}
+  #vpop .card .ja{margin:2px 0 8px;font-size:22px;color:#a2957f}
+  #vpop .card p.desc{margin:0;font-size:30px;line-height:1.5;color:#4a443b}
+`;
+
+const b = await puppeteer.launch({ executablePath: CHROME, headless: true,
+  userDataDir: "C:\\Users\\shawn\\AppData\\Local\\Temp\\claude-chrome-video",
+  args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars", "--force-device-scale-factor=1"] });
+const p = await b.newPage();
+await p.setViewport({ width: W, height: HEIGHT, deviceScaleFactor: 1 });
+await p.goto(MAP, { waitUntil: "networkidle0", timeout: 60000 });
+await p.waitForFunction(() => typeof map !== "undefined" && document.querySelectorAll(".pin").length >= 6, { timeout: 30000 });
+
+// 進影片模式：注入 CSS、建 #vpop、停輪播、地圖填滿、記住大遠景視野
+await p.evaluate((css, out) => {
+  const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
+  const vp = document.createElement("div"); vp.id = "vpop"; document.querySelector(".frame").appendChild(vp);
+  try { stopCar(); } catch (e) {}
+  const maxT = setInterval(() => {}, 1e9); for (let i = 1; i <= maxT; i++) clearInterval(i);  // ponytail: 硬清所有 timer 停掉輪播（地圖載入後靜態、不需 timer）
+  document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));  // 清掉輪播留下的 pin 高亮（大遠景要乾淨）
+  map.invalidateSize(true);
+  if (typeof refit === "function") refit();
+  window.__estab = { c: map.getCenter(), z: map.getZoom() - out };   // fit 後再拉遠 → 全景更小、留白多
+}, VIDEO_CSS, ESTAB_OUT);
+
+// 每個景點：算「相機中心」使該點落在畫面上半 SPOT_Y（在頁面內用 project/unproject，於 SPOT_ZOOM 下計算）
+const cams = await p.evaluate((SPOT_ZOOM, SPOT_Y, H) => {
+  return spots.map(s => {
+    const pt = map.project([s.lat, s.lng], SPOT_ZOOM);   // 該 zoom 下的像素座標
+    const want = { x: 540, y: H * SPOT_Y };              // 想讓景點出現在畫面上半中間
+    const centerPt = { x: pt.x + (540 - want.x), y: pt.y + (H / 2 - want.y) };
+    const c = map.unproject([centerPt.x, centerPt.y], SPOT_ZOOM);
+    return { n: s.n, lat: c.lat, lng: c.lng, z: SPOT_ZOOM };
+  });
+}, SPOT_ZOOM, SPOT_Y, HEIGHT);
+const estab = await p.evaluate(() => window.__estab);
+
+async function setCam(lat, lng, z) { await p.evaluate((lat, lng, z) => map.setView([lat, lng], z, { animate: false }), lat, lng, z); }
+async function setPopup(n) {
+  await p.evaluate((n) => {
+    const vp = document.getElementById("vpop");
+    if (n == null) { vp.classList.remove("show"); vp.innerHTML = ""; }
+    else {
+      vp.innerHTML = cardHtml[n];
+      const card = vp.querySelector(".card");                       // 把 .tag＋.area 包進一行 header（左上）
+      const tag = card.querySelector(".tag"), area = card.querySelector(".area");
+      if (tag && area) { const h = document.createElement("div"); h.className = "vhdr";
+        card.insertBefore(h, tag); h.appendChild(tag); h.appendChild(area); }
+      vp.classList.add("show");
+    }
+  }, n);
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// 組鏡頭關鍵段（from→to 視野＋該段要不要顯示 popup）
+const segs = [];
+segs.push({ kind: "hold", from: estab, to: estab, pop: null, sec: SEC.estab });                 // 大遠景
+segs.push({ kind: "move", from: estab, to: cams[0], pop: null, popAtEnd: cams[0].n, sec: SEC.zoom }); // zoom 到景點1
+segs.push({ kind: "hold", from: cams[0], to: cams[0], pop: cams[0].n, sec: SEC.hold });
+for (let i = 1; i < cams.length; i++) {
+  segs.push({ kind: "move", from: cams[i - 1], to: cams[i], pop: cams[i - 1].n, popAtEnd: cams[i].n, sec: SEC.pan });
+  segs.push({ kind: "hold", from: cams[i], to: cams[i], pop: cams[i].n, sec: SEC.hold });
+}
+segs.push({ kind: "end", from: cams.at(-1), to: cams.at(-1), pop: cams.at(-1).n, sec: SEC.end });
+
+if (PREVIEW) {
+  // 只截幾張關鍵幀：大遠景、景點1、景點2、景點3
+  mkdirSync("out", { recursive: true });
+  await setCam(estab.c.lat ?? estab.c.lat, estab.c.lng ?? estab.c.lng, estab.z); await setPopup(null);
+  await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_estab_${HEIGHT}.png` });
+  for (const i of [0, 1, 2]) { await setCam(cams[i].lat, cams[i].lng, cams[i].z); await setPopup(cams[i].n);
+    await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_spot${cams[i].n}_${HEIGHT}.png` }); }
+  await b.close(); console.log(`wrote out/preview_*_${HEIGHT}.png`); process.exit(0);
+}
+
+// 全片：逐幀 setView + 截圖 → 管進 ffmpeg
+mkdirSync("out", { recursive: true });
+const outfile = `out/tokyo_1080x${HEIGHT}.mp4`;
+const ff = spawn("ffmpeg", ["-y", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
+  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", outfile], { stdio: ["pipe", "inherit", "inherit"] });
+let popState = "init";
+for (const seg of segs) {
+  const nf = Math.max(1, Math.round(seg.sec * FPS));
+  for (let f = 0; f < nf; f++) {
+    const t = ease(nf === 1 ? 1 : f / (nf - 1));
+    const c1 = seg.from.c ? { lat: seg.from.c.lat, lng: seg.from.c.lng, z: seg.from.z } : seg.from;
+    const c2 = seg.to.c ? { lat: seg.to.c.lat, lng: seg.to.c.lng, z: seg.to.z } : seg.to;
+    await setCam(lerp(c1.lat, c2.lat, t), lerp(c1.lng, c2.lng, t), lerp(c1.z, c2.z, t));
+    const want = (seg.kind === "move" && seg.popAtEnd != null && t > .6) ? seg.popAtEnd : seg.pop;
+    if (want !== popState) { await setPopup(want); popState = want; }
+    const buf = await p.screenshot({ type: "png" });
+    if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once("drain", r));
+  }
+}
+ff.stdin.end();
+await new Promise(r => ff.on("close", r));
+await b.close();
+console.log("wrote", outfile);
