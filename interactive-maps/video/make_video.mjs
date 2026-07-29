@@ -19,7 +19,7 @@ const SAFE_TOP = 0.12, SAFE_BOT = 0.15, SAFE_X = 0.09;  // 社群安全區（參
 const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例）
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
 const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
-const ESTAB_OUT = 0.55;                  // 大遠景在 fit 基礎上再拉遠幾級（更小、留白多）
+const ESTAB_OUT = HEIGHT >= 1600 ? 0.55 : 1.15;  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
 const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
 
@@ -30,19 +30,20 @@ const VIDEO_CSS = `
     max-width:none!important;aspect-ratio:auto!important;border-radius:0!important;box-shadow:none!important}
   #map{width:100%!important;height:100%!important;border-radius:0!important}
   #info{display:none!important}                     /* 藏原本的小角卡 */
-  .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important }
+  .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:58%!important }
   .legend{ right:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important }
-  .titlebar h1{ font-size:34px } .titlebar .mark{ font-size:15px }
-  .rlabel{ font-size:15px } .rlabel.big{ font-size:22px }
-  .pin-anchor{ transform:scale(1.4)!important; transform-origin:11px 23px!important }  /* pin＋地名一起放大（origin 對準尖點＝座標不跑） */
+  .titlebar h1{ font-size:60px; line-height:1.12; white-space:normal }                  /* 標題放大＋自動換行（不爆框、不壓圖例） */
+  .titlebar .mark{ font-size:22px }
+  .rlabel{ font-size:15px } .rlabel.big{ font-size:22px }                              /* 行政區維持不動（owner） */
+  .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大（2.6 會爆邊→2.1） */
   .pin-name{ font-size:18px }
   .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動（全景不要動） */
   #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
-    bottom:${(SAFE_BOT*100).toFixed(1)}%;height:${(POPUP_H*100).toFixed(1)}%;
+    bottom:${(SAFE_BOT*100).toFixed(1)}%;max-height:${((1-SAFE_TOP-SAFE_BOT-0.16)*100).toFixed(1)}%;
     background:#fff;z-index:60;box-shadow:0 12px 40px rgba(90,70,40,.3);
     border-radius:26px;padding:30px 40px;box-sizing:border-box;display:none;overflow:hidden}
   #vpop.show{display:block}
-  #vpop .card{display:block;height:100%;overflow:hidden}
+  #vpop .card{display:block;overflow:visible}      /* 卡片高度隨內容自動＝描述完整不裁切（owner） */
   #vpop .vhdr{display:flex;align-items:center;gap:12px}            /* 種類標籤＋地名同一行、靠左上 */
   #vpop .card .tag{font-size:22px;padding:5px 16px;border-radius:20px;flex:none}
   #vpop .card .area{font-size:22px;color:#a2957f;flex:none;margin:0}
