@@ -22,7 +22,7 @@ const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例�
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
 const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
 const ESTAB_OUT = HEIGHT >= 1600 ? 0.55 : 1.15;  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
-const MAP_CTR_Y = 0.37;                   // 景點特寫時 pin+名整體的垂直中心（標題與 popup 之間），owner：整體對齊
+// 特寫垂直中心＝執行期實測「標題框下緣～該景點 popup 上緣」的中點（每景點卡高不同→逐點量；勿用寫死比例，4:5 會偏低）
 const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
 
@@ -194,16 +194,25 @@ async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避
 // 全景版面放一次（行政區＋pin 名浮層），讀 pin 名偏移 → 算各景點相機（讓 pin＋名整體置中）
 await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await liftPinNames();
 const noff = await p.evaluate(() => Object.fromEntries(window.__pinlabels.map(pl => [pl.spot, [pl.gdx, pl.gdy]])));
-const cams = await p.evaluate((SPOT_ZOOM, H, MCY, off) => {
+// 逐景點實測垂直中心：標題框下緣＋該景點 popup 上緣的中點（卡高隨內容變、4:5 占比又不同 → 不能用固定比例）
+const titleBottom = await p.evaluate(() => document.querySelector(".titlebar").getBoundingClientRect().bottom);
+const spotNs = await p.evaluate(() => spots.map(s => s.n));
+const mcy = {};
+for (const n of spotNs) {
+  await setPopup(n);
+  mcy[n] = await p.evaluate(tb => (tb + document.getElementById("vpop").getBoundingClientRect().top) / 2, titleBottom);
+}
+await setPopup(null);
+const cams = await p.evaluate((SPOT_ZOOM, H, mcy, off) => {
   return spots.map(s => {
     const o = off[s.n] || [0, 0];   // o＝群組(pin框＋名字框聯集)中心相對 pin 的偏移
     const pt = map.project([s.lat, s.lng], SPOT_ZOOM);
-    const want = { x: 540 - o[0], y: MCY - o[1] };   // pin 落此 → 群組中心落在(540, MCY)＝標題與 popup 之間置中
+    const want = { x: 540 - o[0], y: mcy[s.n] - o[1] };   // pin 落此 → 群組中心落在(540, 實測帶中點)＝標題與 popup 之間置中
     const centerPt = { x: pt.x + (540 - want.x), y: pt.y + (H / 2 - want.y) };
     const c = map.unproject([centerPt.x, centerPt.y], SPOT_ZOOM);
     return { n: s.n, lat: c.lat, lng: c.lng, z: SPOT_ZOOM };
   });
-}, SPOT_ZOOM, HEIGHT, HEIGHT * MAP_CTR_Y, noff);
+}, SPOT_ZOOM, HEIGHT, mcy, noff);
 
 // 組鏡頭關鍵段（from→to 視野＋該段要不要顯示 popup）
 const segs = [];
