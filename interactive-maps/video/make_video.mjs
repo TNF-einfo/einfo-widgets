@@ -33,12 +33,14 @@ const VIDEO_CSS = `
   #map{width:100%!important;height:100%!important;border-radius:0!important}
   #info{display:none!important}                     /* 藏原本的小角卡 */
   .legend{ display:none!important }                 /* 移掉右上圖示範例（owner） */
-  .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:none!important; padding:26px 44px!important }  /* 標題背景框加大 */
+  .titlebar{ left:50%!important; right:auto!important; transform:translateX(-50%)!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:82%!important; padding:26px 44px!important; z-index:55!important; text-align:center }  /* 標題背景框置中＋加大（owner） */
   .titlebar h1{ font-size:50px; line-height:1.1; white-space:nowrap }                  /* 標題不換行、縮字剛好一行 */
   .titlebar .mark{ font-size:22px }
   .rlabel{ font-size:25px; font-weight:800 } .rlabel.big{ font-size:28px; font-weight:800 }  /* 行政區地名：~10 個、放大（owner） */
   .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大 */
-  .pin-name{ font-size:18px; background:#fff!important; border:1.5px solid #e6ddcb!important; box-shadow:0 2px 7px rgba(0,0,0,.25)!important; z-index:600!important }  /* 反白框：不透明＋綁字＋浮在上（owner：不要不見） */
+  .pin-name{ font-size:18px }   /* 原生 pin 名（會被抽到 #toplabels 浮層；此處只留基本樣式） */
+  #toplabels{ position:absolute; inset:0; z-index:50; pointer-events:none; overflow:hidden }   /* pin 名浮層：在地圖之上、popup(z60) 之下 → 永遠壓在所有 pin 之上、框不被蓋 */
+  .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:38px; font-weight:800; color:#4a443b; background:#fff; padding:3px 18px; border-radius:40px; border:2px solid #e6ddcb; box-shadow:0 3px 10px rgba(0,0,0,.28) }
   .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動 */
   .pin-anchor.hi{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* 輪播高亮不要額外放大 pin（維持 base 尺寸） */
   #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
@@ -90,8 +92,47 @@ const cams = await p.evaluate((SPOT_ZOOM, SPOT_Y, H, XOFF) => {
 }, SPOT_ZOOM, SPOT_Y, HEIGHT, PIN_X_OFF);
 const estab = await p.evaluate(() => window.__estab);
 
-async function setCam(lat, lng, z) {   // 只設視野。行政區名放一次後就交給 Leaflet 定位（別覆蓋它的 translate＝會卡左上）
-  await p.evaluate((lat, lng, z) => map.setView([lat, lng], z, { animate: false }), lat, lng, z);
+async function setCam(lat, lng, z) {   // 設視野＋把 pin 名浮層(#toplabels)貼回各 pin 的螢幕位置（固定偏移＝平滑不跳、永遠壓在 pin 上）
+  await p.evaluate((lat, lng, z) => {
+    map.setView([lat, lng], z, { animate: false });
+    if (window.__pinlabels) {
+      const fr = document.querySelector(".frame").getBoundingClientRect();
+      for (const pl of window.__pinlabels) {
+        const pin = document.querySelector('.pin-anchor[data-spot="' + pl.spot + '"] .pin');
+        if (!pin) continue;
+        const pr = pin.getBoundingClientRect();
+        pl.el.style.left = ((pr.left + pr.right) / 2 - fr.left + pl.dx) + "px";
+        pl.el.style.top = ((pr.top + pr.bottom) / 2 - fr.top + pl.dy) + "px";
+      }
+    }
+  }, lat, lng, z);
+}
+async function liftPinNames() {   // 把 6 個 pin 名抽到 #toplabels 浮層（壓在所有 pin 之上），記下相對各 pin 的螢幕偏移（來自 layoutPinNames 的避讓）
+  await p.evaluate(() => {
+    const frame = document.querySelector(".frame");
+    let top = document.getElementById("toplabels");
+    if (!top) { top = document.createElement("div"); top.id = "toplabels"; frame.appendChild(top); }
+    top.innerHTML = ""; window.__pinlabels = [];
+    document.querySelectorAll(".pin-anchor").forEach(a => {
+      const name = a.querySelector(".pin-name"), pin = a.querySelector(".pin");
+      if (!name || !pin) return;
+      const nr = name.getBoundingClientRect(), pr = pin.getBoundingClientRect();
+      const dx = (nr.left + nr.right) / 2 - (pr.left + pr.right) / 2;   // 名字中心相對 pin 中心的螢幕偏移（含 scale＋layoutPinNames 避讓結果）
+      const dy = (nr.top + nr.bottom) / 2 - (pr.top + pr.bottom) / 2;
+      const lab = document.createElement("div"); lab.className = "toplabel"; lab.textContent = name.textContent;
+      top.appendChild(lab);
+      name.style.display = "none";   // 藏原生的（在 pin-anchor 內、跨 marker 會被蓋）
+      window.__pinlabels.push({ el: lab, spot: +a.dataset.spot, dx, dy });
+    });
+    const fr = frame.getBoundingClientRect();   // 立即定位一次（不然要等下一次 setCam 才擺對位）
+    for (const pl of window.__pinlabels) {
+      const pin = document.querySelector('.pin-anchor[data-spot="' + pl.spot + '"] .pin');
+      if (!pin) continue;
+      const pr = pin.getBoundingClientRect();
+      pl.el.style.left = ((pr.left + pr.right) / 2 - fr.left + pl.dx) + "px";
+      pl.el.style.top = ((pr.top + pr.bottom) / 2 - fr.top + pl.dy) + "px";
+    }
+  });
 }
 async function setPopup(n) {
   await p.evaluate((n) => {
@@ -161,7 +202,7 @@ segs.push({ kind: "end", from: cams.at(-1), to: cams.at(-1), pop: cams.at(-1).n,
 if (PREVIEW) {
   // 只截幾張關鍵幀：大遠景、景點1、景點2、景點3
   mkdirSync("out", { recursive: true });
-  await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await setPopup(null);
+  await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await liftPinNames(); await setPopup(null);
   await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_estab_${HEIGHT}.png` });
   for (const i of [0, 1, 2]) { await setCam(cams[i].lat, cams[i].lng, cams[i].z); await setPopup(cams[i].n);
     await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_spot${cams[i].n}_${HEIGHT}.png` }); }
@@ -173,7 +214,7 @@ mkdirSync("out", { recursive: true });
 const outfile = `out/tokyo_1080x${HEIGHT}.mp4`;
 const ff = spawn("ffmpeg", ["-y", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
   "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", outfile], { stdio: ["pipe", "inherit", "inherit"] });
-await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts();   // 行政區名只在全景放一次，之後只隨 zoom 原地放大、不重排
+await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await liftPinNames();   // 行政區放一次；pin 名抽到浮層(壓在 pin 上、每幀貼回)
 let popState = "init";
 for (const seg of segs) {
   const nf = Math.max(1, Math.round(seg.sec * FPS));
