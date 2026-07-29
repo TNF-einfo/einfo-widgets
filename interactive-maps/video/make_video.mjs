@@ -223,7 +223,8 @@ for (let i = 1; i < cams.length; i++) {
   segs.push({ kind: "move", from: cams[i - 1], to: cams[i], pop: cams[i - 1].n, popAtEnd: cams[i].n, sec: SEC.pan });
   segs.push({ kind: "hold", from: cams[i], to: cams[i], pop: cams[i].n, sec: SEC.hold });
 }
-segs.push({ kind: "end", from: cams.at(-1), to: cams.at(-1), pop: cams.at(-1).n, sec: SEC.end });
+segs.push({ kind: "move", from: cams.at(-1), to: estab, pop: null, sec: SEC.zoom });   // 結尾 zoom out 回大遠景（owner）：popup 先收、鏡頭拉回全圖
+segs.push({ kind: "hold", from: estab, to: estab, pop: null, sec: SEC.end });
 
 if (PREVIEW) {
   // 只截幾張關鍵幀：大遠景、景點1、景點2、景點3
