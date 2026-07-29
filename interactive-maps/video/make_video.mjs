@@ -130,7 +130,10 @@ async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避
       const [ox, oy] = best;
       placed.push({ x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh });
       lab.style.left = (P.cx - fr.left + ox) + "px"; lab.style.top = (P.cy - fr.top + oy) + "px";
-      window.__pinlabels.push({ el: lab, spot, dx: ox, dy: oy });
+      // 群組（pin 框＋名字框的聯集）中心相對 pin 中心的偏移 → 給相機置中用（名字寬度要算進去，否則長名字會偏右）
+      const gx1 = Math.min(P.cx - P.hw, P.cx + ox - lw), gx2 = Math.max(P.cx + P.hw, P.cx + ox + lw);
+      const gy1 = Math.min(P.cy - P.hh, P.cy + oy - lh), gy2 = Math.max(P.cy + P.hh, P.cy + oy + lh);
+      window.__pinlabels.push({ el: lab, spot, dx: ox, dy: oy, gdx: (gx1 + gx2) / 2 - P.cx, gdy: (gy1 + gy2) / 2 - P.cy });
     });
   });
 }
@@ -190,12 +193,12 @@ async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避
 
 // 全景版面放一次（行政區＋pin 名浮層），讀 pin 名偏移 → 算各景點相機（讓 pin＋名整體置中）
 await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await liftPinNames();
-const noff = await p.evaluate(() => Object.fromEntries(window.__pinlabels.map(pl => [pl.spot, [pl.dx, pl.dy]])));
+const noff = await p.evaluate(() => Object.fromEntries(window.__pinlabels.map(pl => [pl.spot, [pl.gdx, pl.gdy]])));
 const cams = await p.evaluate((SPOT_ZOOM, H, MCY, off) => {
   return spots.map(s => {
-    const o = off[s.n] || [0, 0];
+    const o = off[s.n] || [0, 0];   // o＝群組(pin框＋名字框聯集)中心相對 pin 的偏移
     const pt = map.project([s.lat, s.lng], SPOT_ZOOM);
-    const want = { x: 540 - o[0] / 2, y: MCY - o[1] / 2 };   // pin 落此 → pin＋名整體中心落在(540, MCY)＝標題與 popup 之間置中
+    const want = { x: 540 - o[0], y: MCY - o[1] };   // pin 落此 → 群組中心落在(540, MCY)＝標題與 popup 之間置中
     const centerPt = { x: pt.x + (540 - want.x), y: pt.y + (H / 2 - want.y) };
     const c = map.unproject([centerPt.x, centerPt.y], SPOT_ZOOM);
     return { n: s.n, lat: c.lat, lng: c.lng, z: SPOT_ZOOM };
