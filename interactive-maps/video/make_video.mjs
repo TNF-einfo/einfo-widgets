@@ -21,7 +21,7 @@ const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例�
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
 const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
 const ESTAB_OUT = HEIGHT >= 1600 ? 0.55 : 1.15;  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
-const PIN_X_OFF = 110;                    // 景點置中時往左偏，讓右側地名一起入鏡置中（owner）
+const PIN_X_OFF = 160;                    // 景點置中時往左偏，讓右側地名一起入鏡置中（owner，加大更置中）
 const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
 
@@ -36,9 +36,10 @@ const VIDEO_CSS = `
   .titlebar{ left:${(SAFE_X*100).toFixed(1)}%!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:none!important; padding:26px 44px!important }  /* 標題背景框加大 */
   .titlebar h1{ font-size:50px; line-height:1.1; white-space:nowrap }                  /* 標題不換行、縮字剛好一行 */
   .titlebar .mark{ font-size:22px }
-  .rlabel{ font-size:16px } .rlabel.big{ font-size:23px }                              /* 行政區地名（放大一點；密度靠每景點重排） */
+  .rlabel{ font-size:21px; font-weight:800 } .rlabel.big{ font-size:24px; font-weight:800 }  /* 行政區地名：只留 ~6 個、放大（owner） */
   .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大 */
-  .pin-name{ font-size:18px; background:rgba(255,255,255,.96)!important; box-shadow:0 1px 5px rgba(0,0,0,.2)!important }  /* 反白框跟字綁死、solid 不被擠不見（owner） */
+  .pin-name{ font-size:18px; background:rgba(255,255,255,.96)!important; box-shadow:0 1px 5px rgba(0,0,0,.2)!important; display:none!important }  /* 反白框 solid；預設收起 */
+  .pin-anchor.active .pin-name{ display:inline-block!important }                       /* 只當前景點顯示地名（全景乾淨不擠、放大原地放大不跑動） */
   .pin, .pin-anchor, .hi{ animation:none!important }                                  /* 停用輪播脈動 */
   #vpop{position:fixed;left:${(SAFE_X*100).toFixed(1)}%;right:${(SAFE_X*100).toFixed(1)}%;
     bottom:${(SAFE_BOT*100).toFixed(1)}%;max-height:${((1-SAFE_TOP-SAFE_BOT-0.16)*100).toFixed(1)}%;
@@ -90,6 +91,7 @@ const estab = await p.evaluate(() => window.__estab);
 async function setCam(lat, lng, z) { await p.evaluate((lat, lng, z) => map.setView([lat, lng], z, { animate: false }), lat, lng, z); }
 async function setPopup(n) {
   await p.evaluate((n) => {
+    document.querySelectorAll(".pin-anchor").forEach(a => a.classList.toggle("active", n != null && +a.dataset.spot === n));  // 只當前景點顯示地名
     const vp = document.getElementById("vpop");
     if (n == null) { vp.classList.remove("show"); vp.innerHTML = ""; }
     else {
@@ -103,11 +105,28 @@ async function setPopup(n) {
   }, n);
 }
 const lerp = (a, b, t) => a + (b - a) * t;
-async function relabel() {   // 就本視野重排標籤：此景點附近的行政區地名多放一點＋pin 名重定位；順手清高亮
+async function relabel() {   // 就本視野排「行政區地名」（多放一點）；pin 地名固定在 pin 右側＝放大原地放大、不跑動
   await p.evaluate(() => {
-    try { relayout(); } catch (e) {}
+    // pin 地名清掉 auto-layout 的位移 → 回 CSS 預設位置（pin 右側），只隨 pin 縮放、不重定位
+    document.querySelectorAll(".pin-name").forEach(el => { el.style.left = ""; el.style.right = ""; el.style.top = ""; el.style.bottom = ""; el.style.transform = ""; });
+    const occ = [];   // 障礙：pin 圖示＋我的下方 popup＋當前顯示的景點地名 → 行政區地名避開它們
+    document.querySelectorAll(".pin").forEach(p => { const r = p.getBoundingClientRect(); occ.push({ x1: r.left - 8, y1: r.top - 8, x2: r.right + 8, y2: r.bottom + 8 }); });
+    const vp = document.getElementById("vpop");
+    if (vp && vp.classList.contains("show")) { const r = vp.getBoundingClientRect(); occ.push({ x1: r.left - 6, y1: r.top - 6, x2: r.right + 6, y2: r.bottom + 6 }); }
+    const an = document.querySelector(".pin-anchor.active .pin-name");
+    if (an) { const r = an.getBoundingClientRect(); occ.push({ x1: r.left - 4, y1: r.top - 4, x2: r.right + 4, y2: r.bottom + 4 }); }
+    const fr = document.querySelector(".frame").getBoundingClientRect();
+    try { placeLabels(occ, { x1: fr.left, y1: fr.top, x2: fr.right, y2: fr.bottom }); } catch (e) {}
+    // 只留最多 6 個離畫面中心最近的行政區名（owner：留 5-6 個重要的、放大）
+    const mr = document.getElementById("map").getBoundingClientRect(), N = 6;
+    const cx = (fr.left + fr.right) / 2, cy = (fr.top + fr.bottom) / 2;
+    if (labelMarkers.length > N) {
+      const dist = m => { const cp = map.latLngToContainerPoint(m.getLatLng()); return Math.hypot(mr.left + cp.x - cx, mr.top + cp.y - cy); };
+      labelMarkers.sort((a, b) => dist(a) - dist(b));
+      labelMarkers.slice(N).forEach(m => map.removeLayer(m));
+      labelMarkers.length = N;
+    }
     document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));
-    const info = document.getElementById("info"); if (info) info.classList.remove("show");
   });
 }
 
