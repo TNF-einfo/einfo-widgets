@@ -1,16 +1,22 @@
-// 東京地圖 → 直式影片（大遠景 → zoom 景點1 → pan 依序，上半地圖、下半 popup 大卡）。
+// gen_map.py 產出的地圖 → 直式影片（大遠景 → zoom 景點1 → pan 依序 → zoom out 收尾；上半地圖、下半 popup 大卡）。
+// 模板：吃任何 gen_map.py 生的地圖（依賴其固定介面：spots／cardHtml／layoutPinNames／placeLabels／labelMarkers／refit／stopCar）。
 // 用法：
-//   node make_video.mjs --preview            # 只輸出幾張關鍵幀 PNG 檢查構圖（便宜）
-//   node make_video.mjs --height 1920         # 全片 → out/tokyo_1080x1920.mp4
-//   node make_video.mjs --height 1305
+//   node make_video.mjs --preview                       # 只輸出幾張關鍵幀 PNG 檢查構圖（便宜）
+//   node make_video.mjs --height 1920                    # 全片 → out/<地圖名>_1080x1920.mp4
+//   node make_video.mjs --map ../demo-kaohsiung/kaohsiung-map.html --height 1305
 // 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
 import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";
-import { mkdirSync, createWriteStream } from "node:fs";
+import { mkdirSync } from "node:fs";
+import { resolve, basename } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-const MAP = "file:///C:/Research-Lab/einfo-scratch/tokyo-bousai-map/tokyo/tokyo-bousai-map.html";
 const args = process.argv.slice(2);
+const MAP_FILE = args.includes("--map") ? resolve(args[args.indexOf("--map") + 1])
+  : "C:/Research-Lab/einfo-scratch/tokyo-bousai-map/tokyo/tokyo-bousai-map.html";
+const MAP = pathToFileURL(MAP_FILE).href;
+const NAME = basename(MAP_FILE, ".html").replace(/-map$|-bousai-map$/, "") || "map";   // tokyo-bousai-map→tokyo、kaohsiung-map→kaohsiung
 const RAWH = +(args[args.indexOf("--height") + 1]) || 1920;
 const HEIGHT = RAWH % 2 ? RAWH - 1 : RAWH;    // H.264/yuv420p 需偶數高；奇數自動 -1（差 1px、看不出來）
 if (HEIGHT !== RAWH) console.log(`note: 高度 ${RAWH} 是奇數，改用 ${HEIGHT}（H.264 需偶數）`);
@@ -65,7 +71,7 @@ const b = await puppeteer.launch({ executablePath: CHROME, headless: true,
 const p = await b.newPage();
 await p.setViewport({ width: W, height: HEIGHT, deviceScaleFactor: 1 });
 await p.goto(MAP, { waitUntil: "networkidle0", timeout: 60000 });
-await p.waitForFunction(() => typeof map !== "undefined" && document.querySelectorAll(".pin").length >= 6, { timeout: 30000 });
+await p.waitForFunction(() => typeof map !== "undefined" && typeof spots !== "undefined" && document.querySelectorAll(".pin").length >= spots.length, { timeout: 30000 });
 
 // 進影片模式：注入 CSS、建 #vpop、停輪播、地圖填滿、記住大遠景視野
 await p.evaluate((css, out) => {
@@ -230,15 +236,15 @@ if (PREVIEW) {
   // 只截幾張關鍵幀：大遠景、景點1、景點2、景點3
   mkdirSync("out", { recursive: true });
   await setCam(estab.c.lat, estab.c.lng, estab.z); await setPopup(null);   // 版面已在上面放好
-  await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_estab_${HEIGHT}.png` });
+  await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_${NAME}_estab_${HEIGHT}.png` });
   for (const i of [0, 1, 2]) { await setCam(cams[i].lat, cams[i].lng, cams[i].z); await setPopup(cams[i].n);
-    await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_spot${cams[i].n}_${HEIGHT}.png` }); }
-  await b.close(); console.log(`wrote out/preview_*_${HEIGHT}.png`); process.exit(0);
+    await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_${NAME}_spot${cams[i].n}_${HEIGHT}.png` }); }
+  await b.close(); console.log(`wrote out/preview_${NAME}_*_${HEIGHT}.png`); process.exit(0);
 }
 
 // 全片：逐幀 setView + 截圖 → 管進 ffmpeg
 mkdirSync("out", { recursive: true });
-const outfile = `out/tokyo_1080x${HEIGHT}.mp4`;
+const outfile = `out/${NAME}_1080x${HEIGHT}.mp4`;
 const ff = spawn("ffmpeg", ["-y", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
   "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", outfile], { stdio: ["pipe", "inherit", "inherit"] });
 await setCam(estab.c.lat, estab.c.lng, estab.z);   // 回全景起點（版面＝行政區＋pin 名浮層已在上面放好）
