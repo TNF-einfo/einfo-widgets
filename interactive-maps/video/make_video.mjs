@@ -21,7 +21,7 @@ const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例�
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
 const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
 const ESTAB_OUT = HEIGHT >= 1600 ? 0.55 : 1.15;  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
-const PIN_X_OFF = 160;                    // 景點置中時往左偏，讓右側地名一起入鏡置中（owner，加大更置中）
+const MAP_CTR_Y = 0.37;                   // 景點特寫時 pin+名整體的垂直中心（標題與 popup 之間），owner：整體對齊
 const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
 
@@ -33,7 +33,7 @@ const VIDEO_CSS = `
   #map{width:100%!important;height:100%!important;border-radius:0!important}
   #info{display:none!important}                     /* 藏原本的小角卡 */
   .legend{ display:none!important }                 /* 移掉右上圖示範例（owner） */
-  .titlebar{ left:50%!important; right:auto!important; transform:translateX(-50%)!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:82%!important; padding:26px 44px!important; z-index:55!important; text-align:center }  /* 標題背景框置中＋加大（owner） */
+  .titlebar{ left:50%!important; right:auto!important; transform:translateX(-50%)!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:82%!important; padding:26px 44px!important; z-index:55!important }  /* 背景框置中；內文靠左（環境資訊中心/標題都靠左，owner） */
   .titlebar h1{ font-size:50px; line-height:1.1; white-space:nowrap }                  /* 標題不換行、縮字剛好一行 */
   .titlebar .mark{ font-size:22px }
   .rlabel{ font-size:25px; font-weight:800 } .rlabel.big{ font-size:28px; font-weight:800 }  /* 行政區地名：~10 個、放大（owner） */
@@ -80,17 +80,7 @@ await p.evaluate((css, out) => {
   window.__estab = { c: map.getCenter(), z: map.getZoom() - out };   // fit 後再拉遠 → 全景更小、留白多
 }, VIDEO_CSS, ESTAB_OUT);
 
-// 每個景點：算「相機中心」使該點落在畫面上半 SPOT_Y（在頁面內用 project/unproject，於 SPOT_ZOOM 下計算）
-const cams = await p.evaluate((SPOT_ZOOM, SPOT_Y, H, XOFF) => {
-  return spots.map(s => {
-    const pt = map.project([s.lat, s.lng], SPOT_ZOOM);   // 該 zoom 下的像素座標
-    const want = { x: 540 - XOFF, y: H * SPOT_Y };       // 景點偏左＝把右側地名一起算進置中（owner）
-    const centerPt = { x: pt.x + (540 - want.x), y: pt.y + (H / 2 - want.y) };
-    const c = map.unproject([centerPt.x, centerPt.y], SPOT_ZOOM);
-    return { n: s.n, lat: c.lat, lng: c.lng, z: SPOT_ZOOM };
-  });
-}, SPOT_ZOOM, SPOT_Y, HEIGHT, PIN_X_OFF);
-const estab = await p.evaluate(() => window.__estab);
+const estab = await p.evaluate(() => window.__estab);   // 景點相機(cams)移到 placeDistricts/liftPinNames 之後算（要先知道 pin 名偏移才能整體置中）
 
 async function setCam(lat, lng, z) {   // 設視野＋把 pin 名浮層(#toplabels)貼回各 pin 的螢幕位置（固定偏移＝平滑不跳、永遠壓在 pin 上）
   await p.evaluate((lat, lng, z) => {
@@ -107,31 +97,37 @@ async function setCam(lat, lng, z) {   // 設視野＋把 pin 名浮層(#toplabe
     }
   }, lat, lng, z);
 }
-async function liftPinNames() {   // 把 6 個 pin 名抽到 #toplabels 浮層（壓在所有 pin 之上），記下相對各 pin 的螢幕偏移（來自 layoutPinNames 的避讓）
+async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避讓：框不壓別的 pin icon（右→上→左→下，閃不掉才選壓最少）
   await p.evaluate(() => {
     const frame = document.querySelector(".frame");
     let top = document.getElementById("toplabels");
     if (!top) { top = document.createElement("div"); top.id = "toplabels"; frame.appendChild(top); }
     top.innerHTML = ""; window.__pinlabels = [];
-    document.querySelectorAll(".pin-anchor").forEach(a => {
-      const name = a.querySelector(".pin-name"), pin = a.querySelector(".pin");
-      if (!name || !pin) return;
-      const nr = name.getBoundingClientRect(), pr = pin.getBoundingClientRect();
-      const dx = (nr.left + nr.right) / 2 - (pr.left + pr.right) / 2;   // 名字中心相對 pin 中心的螢幕偏移（含 scale＋layoutPinNames 避讓結果）
-      const dy = (nr.top + nr.bottom) / 2 - (pr.top + pr.bottom) / 2;
-      const lab = document.createElement("div"); lab.className = "toplabel"; lab.textContent = name.textContent;
-      top.appendChild(lab);
-      name.style.display = "none";   // 藏原生的（在 pin-anchor 內、跨 marker 會被蓋）
-      window.__pinlabels.push({ el: lab, spot: +a.dataset.spot, dx, dy });
+    const fr = frame.getBoundingClientRect();
+    const oA = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
+    const anchors = [...document.querySelectorAll(".pin-anchor")];
+    const pins = anchors.map(a => { const r = a.querySelector(".pin").getBoundingClientRect(); return { cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, hw: (r.right - r.left) / 2, hh: (r.bottom - r.top) / 2, spot: +a.dataset.spot }; });
+    anchors.forEach(a => { const name = a.querySelector(".pin-name"); if (!name) return; const lab = document.createElement("div"); lab.className = "toplabel"; lab.textContent = name.textContent; lab.dataset.spot = a.dataset.spot; top.appendChild(lab); name.style.display = "none"; });
+    const placed = [];
+    top.querySelectorAll(".toplabel").forEach(lab => {
+      const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
+      const lr = lab.getBoundingClientRect(), lw = lr.width / 2, lh = lr.height / 2, G = P.hw + 12, V = P.hh + 12;
+      const cands = [[G + lw, 0], [0, -(V + lh)], [-(G + lw), 0], [0, V + lh], [G + lw, -(V + lh)], [-(G + lw), -(V + lh)]];  // 右→上→左→下→右上→左上
+      let best = cands[0], bestPen = Infinity;
+      for (const [ox, oy] of cands) {
+        const bx = { x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh };
+        let pen = 0;
+        for (const q of pins) if (q.spot !== spot) pen += oA(bx, { x1: q.cx - q.hw - 4, y1: q.cy - q.hh - 4, x2: q.cx + q.hw + 4, y2: q.cy + q.hh + 4 }) * 8;  // 壓到別 pin＝重罰
+        for (const b of placed) pen += oA(bx, b);   // 壓到別名字＝輕罰
+        pen += (Math.max(0, fr.left - bx.x1) + Math.max(0, bx.x2 - fr.right) + Math.max(0, fr.top - bx.y1) + Math.max(0, bx.y2 - fr.bottom)) * 3;
+        if (pen === 0) { best = [ox, oy]; break; }
+        if (pen < bestPen) { bestPen = pen; best = [ox, oy]; }
+      }
+      const [ox, oy] = best;
+      placed.push({ x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh });
+      lab.style.left = (P.cx - fr.left + ox) + "px"; lab.style.top = (P.cy - fr.top + oy) + "px";
+      window.__pinlabels.push({ el: lab, spot, dx: ox, dy: oy });
     });
-    const fr = frame.getBoundingClientRect();   // 立即定位一次（不然要等下一次 setCam 才擺對位）
-    for (const pl of window.__pinlabels) {
-      const pin = document.querySelector('.pin-anchor[data-spot="' + pl.spot + '"] .pin');
-      if (!pin) continue;
-      const pr = pin.getBoundingClientRect();
-      pl.el.style.left = ((pr.left + pr.right) / 2 - fr.left + pl.dx) + "px";
-      pl.el.style.top = ((pr.top + pr.bottom) / 2 - fr.top + pl.dy) + "px";
-    }
   });
 }
 async function setPopup(n) {
@@ -188,6 +184,20 @@ async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避
   });
 }
 
+// 全景版面放一次（行政區＋pin 名浮層），讀 pin 名偏移 → 算各景點相機（讓 pin＋名整體置中）
+await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await liftPinNames();
+const noff = await p.evaluate(() => Object.fromEntries(window.__pinlabels.map(pl => [pl.spot, [pl.dx, pl.dy]])));
+const cams = await p.evaluate((SPOT_ZOOM, H, MCY, off) => {
+  return spots.map(s => {
+    const o = off[s.n] || [0, 0];
+    const pt = map.project([s.lat, s.lng], SPOT_ZOOM);
+    const want = { x: 540 - o[0] / 2, y: MCY - o[1] / 2 };   // pin 落此 → pin＋名整體中心落在(540, MCY)＝標題與 popup 之間置中
+    const centerPt = { x: pt.x + (540 - want.x), y: pt.y + (H / 2 - want.y) };
+    const c = map.unproject([centerPt.x, centerPt.y], SPOT_ZOOM);
+    return { n: s.n, lat: c.lat, lng: c.lng, z: SPOT_ZOOM };
+  });
+}, SPOT_ZOOM, HEIGHT, HEIGHT * MAP_CTR_Y, noff);
+
 // 組鏡頭關鍵段（from→to 視野＋該段要不要顯示 popup）
 const segs = [];
 segs.push({ kind: "hold", from: estab, to: estab, pop: null, sec: SEC.estab });                 // 大遠景
@@ -202,7 +212,7 @@ segs.push({ kind: "end", from: cams.at(-1), to: cams.at(-1), pop: cams.at(-1).n,
 if (PREVIEW) {
   // 只截幾張關鍵幀：大遠景、景點1、景點2、景點3
   mkdirSync("out", { recursive: true });
-  await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await liftPinNames(); await setPopup(null);
+  await setCam(estab.c.lat, estab.c.lng, estab.z); await setPopup(null);   // 版面已在上面放好
   await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_estab_${HEIGHT}.png` });
   for (const i of [0, 1, 2]) { await setCam(cams[i].lat, cams[i].lng, cams[i].z); await setPopup(cams[i].n);
     await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_spot${cams[i].n}_${HEIGHT}.png` }); }
@@ -214,7 +224,7 @@ mkdirSync("out", { recursive: true });
 const outfile = `out/tokyo_1080x${HEIGHT}.mp4`;
 const ff = spawn("ffmpeg", ["-y", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
   "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", outfile], { stdio: ["pipe", "inherit", "inherit"] });
-await setCam(estab.c.lat, estab.c.lng, estab.z); await placeDistricts(); await liftPinNames();   // 行政區放一次；pin 名抽到浮層(壓在 pin 上、每幀貼回)
+await setCam(estab.c.lat, estab.c.lng, estab.z);   // 回全景起點（版面＝行政區＋pin 名浮層已在上面放好）
 let popState = "init";
 for (const seg of segs) {
   const nf = Math.max(1, Math.round(seg.sec * FPS));
