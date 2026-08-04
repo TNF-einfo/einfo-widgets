@@ -214,6 +214,9 @@ function baseObstacles(){
   showSpot(1);
   const ir = document.getElementById('info').getBoundingClientRect();
   if (ir.width > 1) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  const tb = document.querySelector('.titlebar');   // 標題框也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
+  if (tb){ const tr = tb.getBoundingClientRect();
+    if (tr.width > 1) occ.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
   return occ;
 }
 
