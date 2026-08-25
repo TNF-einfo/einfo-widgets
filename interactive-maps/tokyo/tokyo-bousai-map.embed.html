@@ -170,11 +170,14 @@ for (const s of spots){
           </div>`
   });
   const photo = s.img;
+  // 這張圖刻意「不要」loading=&quot;lazy&quot;（2026-08-25 修）：彈出視窗是 Leaflet 動態插進 DOM 的，
+  // 惰性載入的 intersection observer 判不出它可見 → 照片永遠停在灰框、naturalWidth 0。
+  // 而且 lazy 本來就沒必要——彈出視窗本身就是延遲機制，圖只有在使用者點開時才存在。
   const html =
     `<div class=&quot;card&quot; data-spot=&quot;${s.n}&quot;>
        <span class=&quot;tag&quot; style=&quot;background:${c.color}&quot;>${c.emo} ${c.name}</span>
        <span class=&quot;area&quot;>${s.area}</span>
-       <img class=&quot;photo&quot; src=&quot;${photo}&quot; alt=&quot;${s.zh}&quot; loading=&quot;lazy&quot;>
+       <img class=&quot;photo&quot; src=&quot;${photo}&quot; alt=&quot;${s.zh}&quot;>
        <h3>${s.zh}</h3><p class=&quot;ja&quot;>${s.ja}</p>
        <p class=&quot;desc&quot;>${s.desc}</p>
      </div>`;
