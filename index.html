@@ -34,6 +34,7 @@
   .row > a { color: var(--accent); font-weight: 600; text-decoration: none; }
   .row > a:hover, .row > a:focus-visible { text-decoration: underline; }
   .row .desc { color: var(--muted); font-size: 14px; flex: 1 1 auto; }
+  .row.wip > a { color: var(--muted); font-weight: 500; }
 
   button.copy {
     font: inherit; font-size: 13px; color: var(--ink);
@@ -52,15 +53,14 @@
   <p class="lede">搭配報導使用的互動地圖。要嵌進文章，按「複製嵌入碼」貼進文章的原始碼區塊。</p>
 
   <div class="row">
-    <a href="interactive-maps/tokyo/tokyo-bousai-map.html">東京・防災・生態 另類旅遊地圖 →</a>
+    <a href="interactive-maps/tokyo-map-stable/tokyo-bousai-map.html">東京・防災・生態 另類旅遊地圖 →</a>
     <span class="desc">六個防災與自然生態景點</span>
     <button type="button" class="copy" data-title="東京・防災・生態 另類旅遊地圖">複製嵌入碼</button>
   </div>
 
-  <div class="row">
-    <a href="interactive-maps/demo-kaohsiung/kaohsiung-map.html">高雄示範地圖 →</a>
-    <span class="desc">地圖產生器的示範</span>
-    <button type="button" class="copy" data-title="高雄示範地圖">複製嵌入碼</button>
+  <div class="row wip">
+    <a href="interactive-maps/tokyo-autolayout-test/tokyo-bousai-map.html">東京・防災・生態 另類旅遊地圖（自動排版測試）→</a>
+    <span class="desc">同一份內容、標籤改由程式自動排；測試中，還不要拿去發稿</span>
   </div>
 
   <p class="said" id="said" role="status" aria-live="polite"></p>
