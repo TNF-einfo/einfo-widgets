@@ -15,14 +15,24 @@
 
 ## 嵌進文章
 
-用 `src=` 指到這裡，**不要把地圖的 HTML 貼進文章內文**：
+用 `src=` 指到這裡，**不要把地圖的 HTML 貼進文章內文**。首頁每張地圖旁邊有「複製嵌入碼」，
+產出的就是下面這一段：
 
 ```html
-<iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tokyo/tokyo-bousai-map.html"
-        title="東京・防災・生態 另類旅遊地圖" loading="lazy"
-        style="width:100%;max-width:720px;aspect-ratio:720/476;border:0;border-radius:16px;display:block;margin:24px auto">
-</iframe>
+<div style="max-width:720px;margin:32px auto">
+  <div style="position:relative;aspect-ratio:720/476">
+    <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tokyo/tokyo-bousai-map.html"
+            title="東京・防災・生態 另類旅遊地圖" loading="lazy" allowfullscreen
+            style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">
+    </iframe>
+  </div>
+</div>
 ```
+
+**尺寸與比例不要自己改**：`max-width` 720、`aspect-ratio` 720/476，外層 `position:relative`
+＋ iframe 絕對定位填滿。地圖內部的響應式斷點吃的是 **iframe 自身寬度**，且已對齊 e-info 的
+三檔嵌入寬度（桌機 **720**／平板 **528**／手機 **352.8**）並實測過三個檔位；把 iframe 鎖成
+別的寬度，內層會挑錯檔位。圖說請自己另外加一行 `<p>` 在這段下面。
 
 各資料夾裡的 `*.embed.html` 是舊做法（把整份地圖包成 `srcdoc` 供整段複製），保留供對照，
 **新文章請用上面那一行**。
