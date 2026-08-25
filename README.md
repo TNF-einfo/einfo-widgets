@@ -6,12 +6,18 @@
 
 ## 內容
 
-- **`interactive-maps/`** — 可內嵌互動地圖（任意城市）。單一自足 HTML，Leaflet ＋ 內嵌行政區
-  GeoJSON；無圖磚（沒有道路），只留行政界線與水域，繁中地名自動位移避讓。互動全部關閉，
-  嵌在文章裡不會攔走讀者的捲動。
-  - `tokyo/` — 東京・防災・生態 另類旅遊地圖
-  - `demo-kaohsiung/` — 高雄示範（證明產生器適用於任意城市）
-  - `template/` — 產生器。要開一座新城市的地圖看 `interactive-maps/README.md`
+- **`interactive-maps/`** — 可內嵌互動地圖。單一自足 HTML，Leaflet ＋ 內嵌行政區 GeoJSON；
+  無圖磚（沒有道路），只留行政界線與水域。互動全部關閉，嵌在文章裡不會攔走讀者的捲動。
+  - **`tokyo-map-stable/` — 東京・防災・生態 另類旅遊地圖（目前的交付版，發稿用這個）**。
+    標籤手動排好、不會重疊，也是文章 node/243698 實際採用的那一版。**無法重生**（標籤寫在產出的
+    HTML 上、不在 `spots.py` 裡）。
+  - `tokyo-autolayout-test/` — 同一份內容、標籤改由 `gen_map.py` 自動排。**測試中，先不要發稿**：
+    排出來的位置與手調版不一樣（owner 2026-08-25 決定發稿仍用手調版）。這個資料夾才是產生器的
+    實例（`spots.py` 是輸入）。
+  - `template/` — 產生器（可吃任意城市）。開一座新城市的地圖看 `interactive-maps/README.md`。
+  - `video/` — 地圖→直式短影音（puppeteer 驅動地圖逐幀）。**刻意留在這裡不搬去 `data-shorts`**：
+    它依賴 `gen_map.py` 產出的內部介面（`layoutPinNames`／`placeLabels` 等已明文定為不可動的固定
+    介面就是為了它），而且規則會雙向回流（2026-08-04 就把影片版的標籤避讓規則寫回產生器）。
 
 ## 嵌進文章
 
@@ -21,7 +27,7 @@
 ```html
 <div style="max-width:720px;margin:32px auto">
   <div style="position:relative;aspect-ratio:720/476">
-    <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tokyo/tokyo-bousai-map.html"
+    <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tokyo-map-stable/tokyo-bousai-map.html"
             title="東京・防災・生態 另類旅遊地圖" loading="lazy" allowfullscreen
             style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">
     </iframe>

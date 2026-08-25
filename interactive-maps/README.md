@@ -1,35 +1,45 @@
-# tokyo-bousai-map — 可內嵌互動地圖模板（任意城市）
+# interactive-maps — 可內嵌互動地圖（任意城市）
 
 〈環境資訊中心〉風格的**可內嵌互動地圖**（單一自足 HTML，無圖磚＝無道路、只留行政界線＋水域）。
-**模板化完成**：在一個實例資料夾裡編「地點＋敘述」，跑一行就產出地圖——界線自動抓、標籤自動避讓。
+在一個實例資料夾裡編「地點＋敘述」，跑一行就產出地圖——界線自動抓、標籤自動排。
+
+> **哪一份是交付版**：發稿請用 **`tokyo-map-stable/`**（標籤手動排好、文章 node/243698 就是這一版）。
+> `tokyo-autolayout-test/` 是自動排版的測試，位置與手調版不同，**先不要拿去發稿**
+> （owner 2026-08-25 決定）。
 
 ## 結構
 ```
-tokyo-bousai-map/
+interactive-maps/
   template/               引擎（可重用）
     gen_map.py            產生器：讀 {instance}/spots.py → 補座標→抓界線→自動排標籤→產地圖＋文章預覽
     fetch_boundaries.py   任意城市界線抓取（Nominatim 定位 + Overpass 抓行政界 + osm2geojson 組多邊形）
     article_preview.tpl.html  文章預覽模板（地圖 base64 內嵌、複製鈕本地解碼）
     build_*.py / verify_map.py / render_labels.py   舊工具（東京界線來源／Python 自我核對）
-  tokyo/                  實例：東京（手調三層界線＋手列地名，設了 BOUNDARIES 故不自動抓）
-  demo-kaohsiung/         實例：高雄示範（無 BOUNDARIES→自動抓界線，證明任意城市可用）
+  tokyo-map-stable/       ★ 交付版：手調標籤、無法重生（標籤寫在產出的 HTML 上，不在 spots.py）
+  tokyo-autolayout-test/  自動排版測試＝產生器的實例（手調三層界線＋手列地名，設了 BOUNDARIES 故不自動抓）
     spots.py             ★ 只編這個：TITLE/MARK + CAT 分類 + SPOTS（地點名/敘述，座標可省→自動編碼）
     boundaries/          自動抓後快取於此（land/subdiv.geojson + places.json + geocode.json）
     <MAP_FILE> + article-preview.html   ← 產生
+  video/                  地圖 → 直式短影音（見母 README 為何不搬去 data-shorts）
 ```
 
 ## 開一張新城市地圖（給同事／未來 MCP）
-1. 複製 `demo-kaohsiung/` 成 `<yourcity>/`，只改 `spots.py`：`TITLE`、`MAP_FILE`、`CAT`、`SPOTS`
+1. 開一個 `<yourcity>/` 資料夾，裡面只放一個 `spots.py`：`TITLE`、`MAP_FILE`、`CAT`、`SPOTS`
    （每個 spot 給 `zh` 名＋`desc`＋`cat`；`lat`/`lng` 可省略→自動地理編碼，或給 `geo` 當查詢字串）。
    **不要**設 `BOUNDARIES`（留空才會自動抓那一帶的行政界線）。
+   > 現成的範本：原本有一份 `demo-kaohsiung/`（無 `BOUNDARIES`、自動抓界線，證明任意城市可用），
+   > owner 2026-08-25 決定從這個公開 repo 移除。要照抄的話，它還在 git 歷史裡
+   > （`git log --diff-filter=D -- interactive-maps/demo-kaohsiung`），也還在 `gassao1998/einfo-scratch`。
+   > 注意**不要**複製 `tokyo-autolayout-test/` 當範本——那個實例設了 `BOUNDARIES`，不會自動抓界線。
 2. `python template/gen_map.py <yourcity>` → 首次會抓界線（需連網、快取進 boundaries/），之後離線可重跑。
-3. 開 `<yourcity>/article-preview.html` 按「📋 複製完整嵌入碼」貼進文章。
+3. 嵌入碼到 <https://tnf-einfo.github.io/einfo-widgets/> 按「複製嵌入碼」拿（尺寸規則已固定，別自己改）。
 > ⚠ 若某城市所有景點**擠在很小範圍**，手機/平板檔位 popup 可能壓到少數 pin（桌機不受影響）；景點散布全市（如東京）則各檔位皆乾淨。
 
-## 重產（東京）
+## 重產（自動排版測試版）
 ```
-python template/gen_map.py tokyo      # 讀 tokyo/spots.py → 產 tokyo/tokyo-bousai-map.html
+python template/gen_map.py tokyo-autolayout-test    # 讀該夾 spots.py → 重產它的 tokyo-bousai-map.html
 ```
+`tokyo-map-stable/` **不能**用這個方式重產（標籤是手排在產出檔上的）。
 
 ## 內嵌（交付＝不上傳檔案）
 開 `article-preview.html`（或審核 app `/tokyo-map/article`）→ 按「📋 複製完整嵌入碼」→ 貼進 e-info 文章 HTML。
