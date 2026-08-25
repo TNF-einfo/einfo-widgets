@@ -25,37 +25,103 @@
   .eyebrow { font-size: 12px; letter-spacing: .16em; color: var(--accent); font-weight: 600; }
   h1 { font-size: 26px; margin: 6px 0 10px; letter-spacing: -0.01em; }
   .lede { color: var(--muted); margin: 0 0 32px; }
-  ul { list-style: none; padding: 0; margin: 0; }
-  li { border-top: 1px solid var(--line); }
-  li:last-child { border-bottom: 1px solid var(--line); }
-  li a {
-    display: block; padding: 18px 4px; color: inherit; text-decoration: none;
+
+  .row {
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    padding: 18px 4px; border-top: 1px solid var(--line);
   }
-  li a:hover, li a:focus-visible { background: var(--surface); }
-  li .name { font-weight: 600; color: var(--accent); }
-  li .desc { color: var(--muted); font-size: 14px; }
+  .row:last-of-type { border-bottom: 1px solid var(--line); }
+  .row > a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .row > a:hover, .row > a:focus-visible { text-decoration: underline; }
+  .row .desc { color: var(--muted); font-size: 14px; flex: 1 1 auto; }
+
+  button.copy {
+    font: inherit; font-size: 13px; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 12px; cursor: pointer; white-space: nowrap;
+  }
+  button.copy:hover { border-color: var(--accent); color: var(--accent); }
+  button.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .said { font-size: 13px; color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="shell">
   <div class="eyebrow">環境資訊中心</div>
   <h1>互動地圖</h1>
-  <p class="lede">搭配報導使用的互動地圖。</p>
+  <p class="lede">搭配報導使用的互動地圖。要嵌進文章，按「複製嵌入碼」貼進文章的原始碼區塊。</p>
 
-  <ul>
-    <li>
-      <a href="interactive-maps/tokyo/tokyo-bousai-map.html">
-        <span class="name">東京・防災・生態 另類旅遊地圖 →</span>
-        <span class="desc">六個防災與自然生態景點</span>
-      </a>
-    </li>
-    <li>
-      <a href="interactive-maps/demo-kaohsiung/kaohsiung-map.html">
-        <span class="name">高雄示範地圖 →</span>
-        <span class="desc">地圖產生器的示範</span>
-      </a>
-    </li>
-  </ul>
+  <div class="row">
+    <a href="interactive-maps/tokyo/tokyo-bousai-map.html">東京・防災・生態 另類旅遊地圖 →</a>
+    <span class="desc">六個防災與自然生態景點</span>
+    <button type="button" class="copy" data-title="東京・防災・生態 另類旅遊地圖">複製嵌入碼</button>
+  </div>
+
+  <div class="row">
+    <a href="interactive-maps/demo-kaohsiung/kaohsiung-map.html">高雄示範地圖 →</a>
+    <span class="desc">地圖產生器的示範</span>
+    <button type="button" class="copy" data-title="高雄示範地圖">複製嵌入碼</button>
+  </div>
+
+  <p class="said" id="said" role="status" aria-live="polite"></p>
 </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // 嵌入碼從同一列的連結現算，不另外寫一份網址（不會有兩處各自過期的問題）
+  function snippet(url, title) {
+    return '<iframe src="' + url + '"\n' +
+           '        title="' + title.replace(/"/g, '&quot;') + '" loading="lazy"\n' +
+           '        style="width:100%;max-width:720px;aspect-ratio:720/476;border:0;\n' +
+           '               border-radius:16px;display:block;margin:24px auto">\n' +
+           '</iframe>';
+  }
+
+  var said = document.getElementById('said');
+  var timer;
+  function tell(msg) {
+    said.textContent = msg;
+    clearTimeout(timer);
+    timer = setTimeout(function () { said.textContent = ''; }, 3000);
+  }
+
+  document.querySelectorAll('button.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var link = btn.closest('.row').querySelector('a');
+      var text = snippet(link.href, btn.dataset.title);
+
+      var manual = function () {
+        // 剪貼簿被擋時的退路：放進一個暫時的 textarea 選起來，請人自己按 Ctrl+C
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:8px;bottom:8px;width:calc(100% - 16px);height:7em';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          if (document.execCommand('copy')) { ta.remove(); tell('已複製'); return; }
+        } catch (e) { /* 落到下面 */ }
+        tell('已選取，請按 Ctrl+C（Mac 是 ⌘C）複製');
+        ta.addEventListener('blur', function () { ta.remove(); });
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { tell('已複製'); }, manual);
+      } else {
+        manual();
+      }
+    });
+  });
+
+  // 自我檢查：嵌入碼壞了就在頁面上說，不要安靜地複製出壞東西
+  var probe = snippet('https://example.org/m.html', 'a"b');
+  if (probe.indexOf('src="https://example.org/m.html"') < 0 ||
+      probe.indexOf('title="a&quot;b"') < 0 ||
+      probe.indexOf('</iframe>') < 0) {
+    said.textContent = '嵌入碼產生有問題，請先不要用，並告知維護者。';
+  }
+})();
+</script>
 </body>
 </html>
