@@ -70,13 +70,21 @@
 (function () {
   "use strict";
 
-  // 嵌入碼從同一列的連結現算，不另外寫一份網址（不會有兩處各自過期的問題）
+  // 嵌入碼從同一列的連結現算，不另外寫一份網址（不會有兩處各自過期的問題）。
+  //
+  // 尺寸／比例照既有規劃，別自己改：max-width 720、aspect-ratio 720/476，
+  // 外層 position:relative ＋ iframe 絕對定位填滿——這是實際發布文章用的那一套、
+  // 已經在桌機 720／平板 528／手機 352.8 三個檔位實測過。地圖內部的斷點吃的是
+  // **iframe 自身寬度**，所以別把它鎖成別的寬度，否則內層會挑錯檔位。
   function snippet(url, title) {
-    return '<iframe src="' + url + '"\n' +
-           '        title="' + title.replace(/"/g, '&quot;') + '" loading="lazy"\n' +
-           '        style="width:100%;max-width:720px;aspect-ratio:720/476;border:0;\n' +
-           '               border-radius:16px;display:block;margin:24px auto">\n' +
-           '</iframe>';
+    return '<div style="max-width:720px;margin:32px auto">\n' +
+           '  <div style="position:relative;aspect-ratio:720/476">\n' +
+           '    <iframe src="' + url + '"\n' +
+           '            title="' + title.replace(/"/g, '&quot;') + '" loading="lazy" allowfullscreen\n' +
+           '            style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">\n' +
+           '    </iframe>\n' +
+           '  </div>\n' +
+           '</div>';
   }
 
   var said = document.getElementById('said');
@@ -118,6 +126,9 @@
   var probe = snippet('https://example.org/m.html', 'a"b');
   if (probe.indexOf('src="https://example.org/m.html"') < 0 ||
       probe.indexOf('title="a&quot;b"') < 0 ||
+      probe.indexOf('max-width:720px') < 0 ||          // 尺寸規則不可以漂掉
+      probe.indexOf('aspect-ratio:720/476') < 0 ||
+      probe.indexOf('position:absolute;inset:0') < 0 ||
       probe.indexOf('</iframe>') < 0) {
     said.textContent = '嵌入碼產生有問題，請先不要用，並告知維護者。';
   }
