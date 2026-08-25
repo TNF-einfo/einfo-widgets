@@ -66,6 +66,11 @@
     color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
     border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12);
   }
+  /* pin 名浮層（影片版規則寫回）：抽到獨立層 → 永遠壓在所有 pin(z1)＋紙紋(z2) 之上、標題/圖例(z6)/popup(z8) 之下 */
+  #toplabels{ position:absolute; inset:0; z-index:5; pointer-events:none; overflow:hidden }
+  .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:14px; font-weight:800;
+    color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
+    border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12); pointer-events:auto }
   .rlabel{
     font-weight:800; letter-spacing:1px; font-size:12px; color:var(--label); opacity:.92; text-align:center;
     white-space:nowrap; pointer-events:none; text-shadow:0 1px 2px #fff,0 0 5px #fff,0 0 5px #fff;
@@ -91,13 +96,13 @@
   @media (max-width:719.98px){
     .titlebar, .legend{ display:none }
     .rlabel{ font-size:11px; letter-spacing:0 } .rlabel.big{ font-size:13px; letter-spacing:1px }
-    .pin-name{ font-size:11px }
+    .pin-name, .toplabel{ font-size:11px }
     .info{ left:8px; bottom:8px; width:auto; max-width:44%; padding:8px; font-size:11px }
     .card img.photo{ height:64px; margin:5px 0 } .card h3{ font-size:12.5px }
   }
   /* 平板檔（對齊 e-info 528；區間 528–719.98）：地名 16、照片不裁切（原比例，popup 寬度維持、只有高度隨圖變） */
   @media (min-width:528px) and (max-width:719.98px){
-    .pin-name{ font-size:16px }
+    .pin-name, .toplabel{ font-size:16px }
     .card img.photo{ height:auto }
     .card[data-spot="1"] img.photo{ aspect-ratio:800/600 }   /* 地下神殿(①)原圖近正方，平板裁成 4:3、跟其他一樣大 */
   }
@@ -105,7 +110,7 @@
   @media (max-width:527.98px){
     .card p.desc{ display:none }
     .card .area{ display:none }
-    .pin-name{ font-size:15px }
+    .pin-name, .toplabel{ font-size:15px }
     .pin-anchor{ transform:scale(.72) }   /* 手機：圖釘縮小免互相重疊（繞底尖縮放、尖點仍對準座標；量測法會吃到縮放後尺寸） */
     .info{ max-width:40%; padding:9px; font-size:12px; max-height:none; overflow:visible }   /* 手機 popup 縮小一點（寬 40%）；不要 scroll */
     .card img.photo{ height:70px } .card h3{ font-size:13px }
@@ -163,11 +168,14 @@ for (const s of spots){
           </div>`
   });
   const photo = s.img;
+  // 這張圖刻意「不要」loading="lazy"（2026-08-25 修）：彈出視窗是 Leaflet 動態插進 DOM 的，
+  // 惰性載入的 intersection observer 判不出它可見 → 照片永遠停在灰框、naturalWidth 0。
+  // 而且 lazy 本來就沒必要——彈出視窗本身就是延遲機制，圖只有在使用者點開時才存在。
   const html =
     `<div class="card" data-spot="${s.n}">
        <span class="tag" style="background:${c.color}">${c.emo} ${c.name}</span>
        <span class="area">${s.area}</span>
-       <img class="photo" src="${photo}" alt="${s.zh}" loading="lazy">
+       <img class="photo" src="${photo}" alt="${s.zh}">
        <h3>${s.zh}</h3><p class="ja">${s.ja}</p>
        <p class="desc">${s.desc}</p>
      </div>`;
@@ -205,26 +213,29 @@ const overlapArea = (a,b) => Math.max(0, Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1)
 const asBox = r => ({ x1:r.left, y1:r.top, x2:r.right, y2:r.bottom });
 let labelMarkers = [];
 
-// 障礙基底：pin 圖示（量測、含旋轉縮放）＋ popup（先秀 spot1＝敘述最長那張、量其框當保留區）
+// 障礙基底（非 pin）：popup（先秀 spot1＝敘述最長那張、量其框）＋標題框。pin 由 layoutPinNames 自算，不在此重複放。
 function baseObstacles(){
-  const occ = [], PM = 6;   // pin 障礙外擴 6px：吸收 .hi 高亮放大(scale 1.25)＋留呼吸空間
-  document.querySelectorAll('.pin').forEach(p => { const r = p.getBoundingClientRect();
-    occ.push({ x1:r.left-PM, y1:r.top-PM, x2:r.right+PM, y2:r.bottom+PM }); });
+  const occ = [];
   try { stopCar(); } catch(e){}
   showSpot(1);
   const ir = document.getElementById('info').getBoundingClientRect();
   if (ir.width > 1) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  const tb = document.querySelector('.titlebar');   // 標題框也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
+  if (tb){ const tr = tb.getBoundingClientRect();
+    if (tr.width > 1) occ.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
   return occ;
 }
 
+// ⚠ layoutPinNames／placeLabels＝ video/make_video.mjs 依賴的固定介面（簽名與行為勿改）；
+//   gen_map 靜態圖的「影片版規則」（pin 名浮層＋行政區 cap/farthest）走下方 gen_map 專用的 liftPinNames／capDistricts。
 // pin 地點名候選順序：右中→右上→右下→上→下→左中→左上→左下（碰撞優先上下移、換邊最後）
 const NAME_POS = [
   { left:'34px', top:'50%', transform:'translateY(-50%)' },      // 右中（預設；34 = pin半徑16+外擴6+餘裕，clear 障礙框）
-  { left:'34px', bottom:'16px' },                                 // 右上（先上下移，仍在右側→不壓到自己的 pin）
+  { left:'34px', bottom:'16px' },                                 // 右上
   { left:'34px', top:'17px' },                                    // 右下
   { left:'50%', bottom:'34px', transform:'translateX(-50%)' },    // 正上
   { left:'50%', top:'34px', transform:'translateX(-50%)' },       // 正下
-  { right:'34px', top:'50%', transform:'translateY(-50%)' },      // 左中（沒辦法才換邊）
+  { right:'34px', top:'50%', transform:'translateY(-50%)' },      // 左中
   { right:'34px', bottom:'16px' },                                // 左上
   { right:'34px', top:'17px' },                                   // 左下
 ];
@@ -232,7 +243,7 @@ function setPos(el, c){
   el.style.left = c.left || ''; el.style.right = c.right || '';
   el.style.top = c.top || ''; el.style.bottom = c.bottom || ''; el.style.transform = c.transform || '';
 }
-function layoutPinNames(occ, frame){
+function layoutPinNames(occ, frame){   // 原介面（make_video 依賴）：就地定位 .pin-name span、避開 occ+彼此
   document.querySelectorAll('.pin-anchor').forEach(a => {
     const el = a.querySelector('.pin-name');
     let bestC = NAME_POS[0], bestBox = null, bestPen = Infinity, clear = false;
@@ -241,18 +252,62 @@ function layoutPinNames(occ, frame){
       const b = asBox(el.getBoundingClientRect());
       const outFrame = Math.max(0, frame.x1-b.x1) + Math.max(0, b.x2-frame.x2)
                      + Math.max(0, frame.y1-b.y1) + Math.max(0, b.y2-frame.y2);
-      const pen = occ.reduce((s,o) => s + overlapArea(b,o), 0) + outFrame*80;   // 出框重罰
-      if (pen === 0){ bestBox = b; clear = true; break; }         // 全清＝直接用（維持候選優先序）
-      if (pen < bestPen){ bestPen = pen; bestC = c; bestBox = b; }   // 否則記住「最少重疊」的
+      const pen = occ.reduce((s,o) => s + overlapArea(b,o), 0) + outFrame*80;
+      if (pen === 0){ bestBox = b; clear = true; break; }
+      if (pen < bestPen){ bestPen = pen; bestC = c; bestBox = b; }
     }
-    if (!clear) setPos(el, bestC);   // 都不全清→套用最少重疊的候選
+    if (!clear) setPos(el, bestC);
     occ.push(bestBox);
   });
 }
 
-// 地名（縣市/區）：其座標附近試候選（先上下、後左右），避開所有障礙；塞不下略過（次要）。
+// ── 以下 gen_map 靜態圖專用（make_video 不呼叫）：影片版標籤規則寫回 ──
+// pin 名抽到 #toplabels 浮層 → 永遠壓在所有 pin(marker) 之上（跨 marker 的 z-index 對獨立 marker 無效，故抽出獨立層）；
+// 自做避讓：候選順序右→上→左→下→右上→左上，閃不掉才選「壓最少」；避開 pin icon＋標題框/popup(occ)＋彼此，出框重罰。
+function ensureTopLayer(){
+  let top = document.getElementById('toplabels');
+  if (!top){
+    top = document.createElement('div'); top.id = 'toplabels';
+    document.querySelector('.frame').appendChild(top);
+    top.addEventListener('click', e => { const t = e.target.closest && e.target.closest('.toplabel');
+      if (t && cardHtml[t.dataset.spot]) jump(+t.dataset.spot); });   // 點浮層名字＝開該景點資訊卡
+  }
+  return top;
+}
+function liftPinNames(occ, frame){
+  const top = ensureTopLayer(); top.innerHTML = '';
+  const fr = document.querySelector('.frame').getBoundingClientRect();
+  const anchors = [...document.querySelectorAll('.pin-anchor')];
+  const pins = anchors.map(a => { const r = a.querySelector('.pin').getBoundingClientRect();
+    return { cx:(r.left+r.right)/2, cy:(r.top+r.bottom)/2, hw:(r.right-r.left)/2, hh:(r.bottom-r.top)/2, spot:+a.dataset.spot }; });
+  anchors.forEach(a => { const nm = a.querySelector('.pin-name'); if (!nm) return;   // 原生 pin 名隱藏、改由浮層渲染
+    const lab = document.createElement('div'); lab.className = 'toplabel'; lab.textContent = nm.textContent;
+    lab.dataset.spot = a.dataset.spot; top.appendChild(lab); nm.style.display = 'none'; });
+  const placed = [];
+  top.querySelectorAll('.toplabel').forEach(lab => {
+    const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
+    const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
+    const cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
+    let best = cands[0], bestPen = Infinity;
+    for (const [ox,oy] of cands){
+      const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
+      let pen = 0;
+      for (const q of pins) if (q.spot !== spot) pen += overlapArea(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }) * 8;  // 壓別 pin＝重罰
+      for (const o of occ) pen += overlapArea(bx, o) * 8;   // 壓標題框／popup（occ 內障礙）＝重罰
+      for (const b of placed) pen += overlapArea(bx, b);    // 壓別名字＝輕罰
+      pen += (Math.max(0,fr.left-bx.x1)+Math.max(0,bx.x2-fr.right)+Math.max(0,fr.top-bx.y1)+Math.max(0,bx.y2-fr.bottom)) * 3;  // 出框
+      if (pen === 0){ best = [ox,oy]; break; }
+      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; }
+    }
+    const [ox,oy] = best;
+    placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
+    lab.style.left = (P.cx - fr.left + ox) + 'px'; lab.style.top = (P.cy - fr.top + oy) + 'px';
+  });
+}
+
+// RCAND：地名候選位移（原點→上下→左右）——make_video 的 placeLabels 與 gen_map 的 placeDistricts 共用
 const RCAND = [[0,0],[0,-18],[0,18],[0,-34],[0,34],[-44,0],[46,0],[-44,-18],[46,-18],[-44,18],[46,18],[-76,0],[78,0]];
-function placeLabels(occ, frame){
+function placeLabels(occ, frame){   // 原介面（make_video 依賴，勿改）：地名排到滿、避開 occ+彼此、塞不下略過
   labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
   const cont = document.getElementById('map').getBoundingClientRect();
   for (const p of places){
@@ -271,6 +326,55 @@ function placeLabels(occ, frame){
     const ll = map.containerPointToLatLng([chosen.cx - cont.left, chosen.cy - cont.top]);
     const mk = L.marker(ll, { interactive:false, keyboard:false,
       icon:L.divIcon({ className:cls, html:p.t, iconSize:[Math.ceil(w),Math.ceil(h)], iconAnchor:[Math.ceil(w/2),Math.ceil(h/2)] }) }).addTo(map);
+    labelMarkers.push(mk);
+  }
+}
+
+// gen_map 靜態圖專用（make_video 不呼叫）：行政區地名 只避「標題框＋popup」與彼此（**可被 pin／pin 名蓋，owner 定**）；
+// 先為每個地名找框內候選位，再篩最多 10——先放 big（縣/市/灣＝本在邊緣＝四散），其餘 farthest-point 填、四散全圖不集中中間。
+function placeDistricts(frame){
+  labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
+  const cont = document.getElementById('map').getBoundingClientRect();
+  const avoid = [];   // 只避標題框＋popup（地名可被 pin／pin 名蓋）
+  const tb = document.querySelector('.titlebar');
+  if (tb){ const tr = tb.getBoundingClientRect(); if (tr.width > 1) avoid.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
+  const ir = document.getElementById('info').getBoundingClientRect();
+  if (ir.width > 1) avoid.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  const cand = [];
+  for (const p of places){
+    const cp = map.latLngToContainerPoint([p.lat, p.lng]);
+    const bx = cont.left + cp.x, by = cont.top + cp.y;
+    const fw = p.big ? 16 : 12, w = [...p.t].length * fw + 8, h = p.big ? 22 : 18;
+    let chosen = null;
+    for (const [dx,dy] of RCAND){
+      const cx = bx+dx, cy = by+dy, box = { x1:cx-w/2, y1:cy-h/2, x2:cx+w/2, y2:cy+h/2 };
+      const inFrame = box.x1 >= frame.x1+1 && box.y1 >= frame.y1+1 && box.x2 <= frame.x2-1 && box.y2 <= frame.y2-1;
+      if (inFrame && !avoid.some(o => overlap(box,o))){ chosen = {cx,cy,box}; break; }
+    }
+    if (chosen) cand.push({ p, cx:chosen.cx, cy:chosen.cy, box:chosen.box, big:!!p.big, w, h });
+  }
+  const ctr = b => [(b.x1+b.x2)/2, (b.y1+b.y2)/2];
+  const kept = [], keptBox = [];
+  const tryAdd = c => { if (kept.length < 10 && !keptBox.some(k => overlap(c.box,k))){ kept.push(c); keptBox.push(c.box); return true; } return false; };
+  for (const c of cand.filter(c => c.big)) tryAdd(c);        // 先放 big（本在邊緣）
+  const pool = cand.filter(c => !c.big);
+  while (kept.length < 10 && pool.length){                    // 其餘 farthest-point 填到 10＝四散全圖
+    let bi = -1, bd = -1;
+    for (let i = 0; i < pool.length; i++){
+      if (keptBox.some(k => overlap(pool[i].box, k))) continue;
+      const [px,py] = ctr(pool[i].box);
+      let md = keptBox.length ? Infinity : 1e9;
+      for (const k of keptBox){ const [kx,ky] = ctr(k); md = Math.min(md, Math.hypot(px-kx, py-ky)); }
+      if (md > bd){ bd = md; bi = i; }
+    }
+    if (bi < 0) break;
+    const c = pool.splice(bi,1)[0]; kept.push(c); keptBox.push(c.box);
+  }
+  for (const c of kept){
+    const cls = 'rlabel' + (c.p.big?' big':'') + (c.p.sea?' sea':'');
+    const ll = map.containerPointToLatLng([c.cx - cont.left, c.cy - cont.top]);
+    const mk = L.marker(ll, { interactive:false, keyboard:false,
+      icon:L.divIcon({ className:cls, html:c.p.t, iconSize:[Math.ceil(c.w),Math.ceil(c.h)], iconAnchor:[Math.ceil(c.w/2),Math.ceil(c.h/2)] }) }).addTo(map);
     labelMarkers.push(mk);
   }
 }
@@ -293,9 +397,9 @@ function pickPopupCorner(){
 function relayout(){
   const frame = asBox(document.querySelector('.frame').getBoundingClientRect());
   pickPopupCorner();
-  const occ = baseObstacles();
-  layoutPinNames(occ, frame);
-  placeLabels(occ, frame);
+  const occ = baseObstacles();     // popup + 標題框（pin 由 liftPinNames 自算）
+  liftPinNames(occ, frame);        // pin 名 → #toplabels 浮層（壓在所有 pin 之上）
+  placeDistricts(frame);           // 行政區 cap-10 + farthest-spread（可被 pin/名蓋）
 }
 
 // 說明輪播：桌機自動輪播 6 景點說明、對應圖釘加脈動高亮；手機不輪播並收起說明
