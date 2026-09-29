@@ -775,6 +775,12 @@ if (SAT){
 }
 
 refit(); relayout(); syncCar();   // 初次：fit → 自動排標籤（此時 showSpot 已定義）→ 開輪播
+// 直接開網址（不是嵌在文章裡）：一載入就定在第一個點，不要先停在北端、過半秒再滑下去（owner 09-29）。
+// 嵌在文章裡不這樣做：外頁的捲動是讀者在控制，載入時硬跳會把人拉走
+if (POPUP_FLOAT && window.self === window.top){
+  const el = document.querySelector('.pin-anchor[data-spot="' + curSpot + '"]');
+  if (el){ const r = el.getBoundingClientRect(); window.scrollTo({ top:r.top + scrollY - innerHeight / 2, behavior:'instant' }); }
+}
 
 map.on('resize', () => { refit(); relayout(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
 </script>
