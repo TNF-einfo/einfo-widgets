@@ -14,7 +14,8 @@ UNDERLAY = ["reef.geojson"]               # 礁盤，畫在陸地下面，環礁
 # 衛星影像底圖：Sentinel-2 2026-01-05 單景（S2B_MSIL2A_20260105T222759_R072_T60LYR），10 公尺、放大兩倍並銳化，
 # Web Mercator 靜態圖一張（WebP 280 KB），看得到 TCAP 新生地；授權可散布，要標 Copernicus 出處（見 README）。
 # 經過：Esri 最新版有灰帶與暗塊拼接 → Sentinel-2 2024 無雲鑲嵌（owner 嫌「太模糊」）→ Esri Wayback 2022-06（看不到新生地）→
-# Esri Wayback 2024-11（有雲、有拼接色塊，直接串 Esri 圖磚用在新聞網站的授權要問 Esri）→ owner 看了比較圖說「換銳化的看看」（09-29）。
+# Esri Wayback 2024-11（有雲、有拼接色塊，直接串 Esri 圖磚用在新聞網站的授權要問 Esri）→ owner 看了比較圖說「換銳化的看看」，
+# 試過後定案（09-29：「現在的底圖可以」）。
 # 設了 IMAGE 就不用下面的 TILES；拿掉 IMAGE 回到 Esri 2024-11，兩個都拿掉回到插畫風。
 IMAGE = {"url": "basemap/s2_20260105_2x.webp", "bounds": [[-8.575, 179.14], [-8.415, 179.24]],
          "attribution": "Contains modified Copernicus Sentinel data 2026"}
