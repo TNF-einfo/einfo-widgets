@@ -14,6 +14,8 @@
   - `tokyo-autolayout-test/` — 同一份內容、標籤改由 `gen_map.py` 自動排。**測試中，先不要發稿**：
     排出來的位置與手調版不一樣（owner 2026-08-25 決定發稿仍用手調版）。這個資料夾才是產生器的
     實例（`spots.py` 是輸入）。
+  - `tuvalu/` — 吐瓦魯・富納富提（第一版）。長型、固定 1080 高，嵌入碼的外框跟東京那張不同，
+    **測試中，先不要發稿**，細節看該夾 `README.md`。
   - `template/` — 產生器（可吃任意城市）。開一座新城市的地圖看 `interactive-maps/README.md`。
   - `video/` — 地圖→直式短影音（puppeteer 驅動地圖逐幀）。**刻意留在這裡不搬去 `data-shorts`**：
     它依賴 `gen_map.py` 產出的內部介面（`layoutPinNames`／`placeLabels` 等已明文定為不可動的固定

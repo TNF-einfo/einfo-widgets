@@ -20,6 +20,7 @@ interactive-maps/
     spots.py             ★ 只編這個：TITLE/MARK + CAT 分類 + SPOTS（地點名/敘述，座標可省→自動編碼）
     boundaries/          自動抓後快取於此（land/subdiv.geojson + places.json + geocode.json）
     <MAP_FILE> + article-preview.html   ← 產生
+  tuvalu/                 吐瓦魯・富納富提（第一版、測試中）：長型、環礁底圖、用到下面的選用設定
   video/                  地圖 → 直式短影音（見母 README 為何不搬去 data-shorts）
 ```
 
@@ -34,6 +35,17 @@ interactive-maps/
 2. `python template/gen_map.py <yourcity>` → 首次會抓界線（需連網、快取進 boundaries/），之後離線可重跑。
 3. 嵌入碼到 <https://tnf-einfo.github.io/einfo-widgets/> 按「複製嵌入碼」拿（尺寸規則已固定，別自己改）。
 > ⚠ 若某城市所有景點**擠在很小範圍**，手機/平板檔位 popup 可能壓到少數 pin（桌機不受影響）；景點散布全市（如東京）則各檔位皆乾淨。
+
+### 選用設定（`spots.py` 裡，不設就照東京的預設）
+- `HEIGHT`：固定畫框高度（px），寬度跟文章欄寬走。長型地圖用：手機上照樣這麼高、往下捲著看，不會整張縮小。
+  設了它，嵌入碼外框要改用 `height:<HEIGHT>px`，不用 `aspect-ratio`（見 `tuvalu/README.md`）。
+- `ASPECT`：固定比例，預設 `720/476`。
+- `UNDERLAY`：畫在陸地下面的填色層（`boundaries/` 裡的 geojson），例如環礁的礁盤。
+- `POPUP_SIDE`：`"left"`／`"right"`，說明卡固定在該側中段；不設就自動挑圖釘最少的角落。
+- spot 加 `"offmap": 1`：這個點不參與縮放範圍，畫在畫面邊緣、朝真實方位（距離寫進 `short`）。離其他點太遠、框進來會讓其他點擠成一團時用。
+
+圖釘名稱的排法（2026-09-29 起）：出框的代價比壓到別人高，名字優先留在框內；六個候選位置都會壓到別人超過一成時，
+名字先藏、只留編號，點圖釘照樣開說明卡。`tokyo-autolayout-test/` 重產時，平板與手機檔會因此少幾個原本被切掉的名字。
 
 ## 重產（自動排版測試版）
 ```
