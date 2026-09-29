@@ -41,6 +41,8 @@ interactive-maps/
   設了它，嵌入碼外框要改用 `height:<HEIGHT>px`，不用 `aspect-ratio`（見 `tuvalu/README.md`）。
 - `ASPECT`：固定比例，預設 `720/476`。
 - `UNDERLAY`：畫在陸地下面的填色層（`boundaries/` 裡的 geojson），例如環礁的礁盤。
+- `TILES`：`{"url", "attribution", "maxNativeZoom"}`，改用圖磚底圖（例如衛星影像）。設了它就不畫向量陸地、不抓界線、
+  拿掉紙紋，地名改白字深陰影。圖磚用在新聞網站的授權要自己確認（見 `tuvalu/README.md`）。
 - `POPUP_SIDE`：`"left"`／`"right"`，說明卡固定在該側中段；不設就自動挑圖釘最少的角落。
 - spot 加 `"offmap": 1`：這個點不參與縮放範圍，畫在畫面邊緣、朝真實方位（距離寫進 `short`）。離其他點太遠、框進來會讓其他點擠成一團時用。
 

@@ -26,14 +26,18 @@ for s in cfg.SPOTS:
         s["lat"], s["lng"] = _gc[key]["lat"], _gc[key]["lng"]
 json.dump(_gc, open(_gcp, "w", encoding="utf-8"), ensure_ascii=False)
 
-# 2) 界線＋地名：cfg.BOUNDARIES 有就用（如東京手調三層＋手列 PLACES），否則自動抓
-if getattr(cfg, "BOUNDARIES", None):
+# 2) 界線＋地名：cfg.TILES（圖磚底圖，例如衛星影像）設了就不畫向量陸地、也不抓界線；
+#    否則 cfg.BOUNDARIES 有就用（如東京手調三層＋手列 PLACES），再否則自動抓
+tiles = getattr(cfg, "TILES", None)
+if tiles:
+    boundary_files, places = [], getattr(cfg, "PLACES", [])
+elif getattr(cfg, "BOUNDARIES", None):
     boundary_files, places = cfg.BOUNDARIES, cfg.PLACES
 else:
     boundary_files, places = fb.ensure_boundaries(IDIR, cfg.SPOTS)
 boundaries = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in boundary_files]
-# 選用：UNDERLAY＝壓在陸地下面的填色層（例：環礁的礁盤）
-underlay = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in getattr(cfg, "UNDERLAY", [])]
+# 選用：UNDERLAY＝壓在陸地下面的填色層（例：環礁的礁盤）；有圖磚就用不到
+underlay = [] if tiles else [open(os.path.join(_bd, f), encoding="utf-8").read() for f in getattr(cfg, "UNDERLAY", [])]
 # 畫框尺寸：預設固定比例（東京 720/476，三檔寬度等比縮）；設 HEIGHT＝固定高度、寬度跟文章欄寬走
 # （長型地圖用：手機上照樣這麼高，讀者往下捲著看，不會整張縮小）。嵌入碼的外框要跟著用同一條。
 frame_size = f"height:{cfg.HEIGHT}px" if getattr(cfg, "HEIGHT", None) else "aspect-ratio:" + getattr(cfg, "ASPECT", "720/476")
@@ -118,6 +122,11 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   }
   .rlabel.big{ font-size:16px; letter-spacing:3px; color:var(--labelbig) }
   .rlabel.sea{ color:var(--sealbl) }
+  /* 圖磚（衛星影像）底圖：拿掉紙紋；地名改白字深陰影，壓在深色影像上才讀得到 */
+  .frame.tiles .paper-wash{ display:none }
+  /* 圖磚多畫 1px 疊住鄰居（見下方 _initTile）；Leaflet 1.9 預設的 plus-lighter 會把疊住的那條加亮成白線，改回一般混色 */
+  .frame.tiles .leaflet-container img.leaflet-tile{ mix-blend-mode:normal }
+  .frame.tiles .rlabel{ color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.75), 0 0 8px rgba(0,0,0,.45) }
   .info{ position:absolute; left:12px; bottom:12px; z-index:8; width:282px; max-width:54%;
     max-height:75%; overflow:auto;   /* 上限＝地圖高的 3/4，超過就內部捲動不爆邊 */
     background:#fff; border-radius:13px; border:1.5px solid #fff; box-shadow:0 8px 24px rgba(90,70,40,.28);
@@ -176,6 +185,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
 <script>
 const BOUNDARIES = __BOUNDARIES__;   // [0]=陸地(填色+粗界)，其餘=細界線
 const UNDERLAY = __UNDERLAY__;       // 陸地下面的淺色填色層（礁盤等），可為空
+const TILES = __TILES__;             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
 const ATTRIB = __ATTRIB__;
 
 const CAT = __CAT__;
@@ -188,13 +198,22 @@ const map = L.map('map', {
   dragging:false, scrollWheelZoom:false, doubleClickZoom:false,
   touchZoom:false, boxZoom:false, keyboard:false, tap:false,
 });
-// 圖層：BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
-UNDERLAY.forEach(g => L.geoJSON(g, { style:{ stroke:false, fillColor:'#d3e6ea', fillOpacity:1 }, interactive:false }).addTo(map));
-const landLayer = L.geoJSON(BOUNDARIES[0], {
-  style:{ fillColor:'#f4eee0', fillOpacity:1, color:'#c8a98f', weight:1.3, opacity:.9 },
-  attribution: ATTRIB
-}).addTo(map);
-BOUNDARIES.slice(1).forEach(g => L.geoJSON(g, { style:{ fill:false, color:'#c3b39a', weight:0.6, opacity:.72 } }).addTo(map));
+// 圖層：有 TILES 就只鋪圖磚（衛星影像等），拿掉紙紋；否則 BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
+if (TILES){
+  // 小數縮放時圖磚之間會露出細縫：每張圖磚多畫 1px 疊住鄰居（Leaflet #3575 的通用解），配上面 CSS 的 mix-blend-mode:normal
+  const initTile = L.GridLayer.prototype._initTile;
+  L.GridLayer.include({ _initTile(tile){ initTile.call(this, tile); const s = this.getTileSize();
+    tile.style.width = (s.x + 1) + 'px'; tile.style.height = (s.y + 1) + 'px'; } });
+  L.tileLayer(TILES.url, { attribution:TILES.attribution, maxNativeZoom:TILES.maxNativeZoom || 18, maxZoom:22 }).addTo(map);
+  document.querySelector('.frame').classList.add('tiles');
+} else {
+  UNDERLAY.forEach(g => L.geoJSON(g, { style:{ stroke:false, fillColor:'#d3e6ea', fillOpacity:1 }, interactive:false }).addTo(map));
+  L.geoJSON(BOUNDARIES[0], {
+    style:{ fillColor:'#f4eee0', fillOpacity:1, color:'#c8a98f', weight:1.3, opacity:.9 },
+    attribution: ATTRIB
+  }).addTo(map);
+  BOUNDARIES.slice(1).forEach(g => L.geoJSON(g, { style:{ fill:false, color:'#c3b39a', weight:0.6, opacity:.72 } }).addTo(map));
+}
 
 const info = document.getElementById('info');
 
@@ -512,6 +531,7 @@ for (const [key,c] of Object.entries(CAT)){
 html = (TPL
         .replace("__BOUNDARIES__", "[" + ",".join(boundaries) + "]")
         .replace("__UNDERLAY__", "[" + ",".join(underlay) + "]")
+        .replace("__TILES__", json.dumps(tiles, ensure_ascii=False))
         .replace("__FRAME_SIZE__", frame_size)
         .replace("__POPUP_SIDE__", json.dumps(getattr(cfg, "POPUP_SIDE", None)))
         .replace("__ATTRIB__", json.dumps(attrib, ensure_ascii=False))
