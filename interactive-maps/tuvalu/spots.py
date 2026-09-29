@@ -10,8 +10,8 @@ POPUP_SIDE = "left"                       # 說明卡固定在左側中段（潟
 
 BOUNDARIES = ["land.geojson"]             # 設了就不自動抓行政界
 UNDERLAY = ["reef.geojson"]               # 礁盤，畫在陸地下面，環礁的形狀靠它看出來
-# 衛星影像底圖（owner 09-29：「底圖換成真實的看看」）。設了 TILES，上面兩層向量底圖就不畫；
-# 拿掉這段就回到插畫風（對照版另存在 tuvalu-map-illustrated.html）。
+# 衛星影像底圖（owner 09-29：「底圖換成真實的看看」，看過兩版後選衛星版）。設了 TILES，上面兩層向量底圖就不畫；
+# 拿掉這段就回到插畫風。
 # ⚠ 發稿前要確認 Esri 圖磚用在新聞網站的授權條件，還沒查。
 TILES = {"url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
          "attribution": "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community",
