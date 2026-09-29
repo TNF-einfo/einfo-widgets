@@ -32,6 +32,11 @@ if getattr(cfg, "BOUNDARIES", None):
 else:
     boundary_files, places = fb.ensure_boundaries(IDIR, cfg.SPOTS)
 boundaries = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in boundary_files]
+# 選用：UNDERLAY＝壓在陸地下面的填色層（例：環礁的礁盤）
+underlay = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in getattr(cfg, "UNDERLAY", [])]
+# 畫框尺寸：預設固定比例（東京 720/476，三檔寬度等比縮）；設 HEIGHT＝固定高度、寬度跟文章欄寬走
+# （長型地圖用：手機上照樣這麼高，讀者往下捲著看，不會整張縮小）。嵌入碼的外框要跟著用同一條。
+frame_size = f"height:{cfg.HEIGHT}px" if getattr(cfg, "HEIGHT", None) else "aspect-ratio:" + getattr(cfg, "ASPECT", "720/476")
 attrib = getattr(cfg, "ATTRIB", 'boundaries © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
 
 TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中心
@@ -58,7 +63,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
     display:flex; align-items:center; justify-content:center; min-height:100vh; padding:0;
   }
   .frame{
-    position:relative; width:720px; max-width:100%; aspect-ratio:720/476;
+    position:relative; width:720px; max-width:100%; __FRAME_SIZE__;
     border-radius:16px; overflow:hidden; background:var(--paper);   /* 不要框線/陰影，但保留圓角 */
   }
   #map{ position:absolute; inset:0; width:100%; height:100%; background:var(--water); z-index:1 }
@@ -170,11 +175,13 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
 
 <script>
 const BOUNDARIES = __BOUNDARIES__;   // [0]=陸地(填色+粗界)，其餘=細界線
+const UNDERLAY = __UNDERLAY__;       // 陸地下面的淺色填色層（礁盤等），可為空
 const ATTRIB = __ATTRIB__;
 
 const CAT = __CAT__;
 const spots = __SPOTS__;
 const places = __PLACES__;
+const POPUP_SIDE = __POPUP_SIDE__;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
 
 const map = L.map('map', {
   zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
@@ -182,6 +189,7 @@ const map = L.map('map', {
   touchZoom:false, boxZoom:false, keyboard:false, tap:false,
 });
 // 圖層：BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
+UNDERLAY.forEach(g => L.geoJSON(g, { style:{ stroke:false, fillColor:'#d3e6ea', fillOpacity:1 }, interactive:false }).addTo(map));
 const landLayer = L.geoJSON(BOUNDARIES[0], {
   style:{ fillColor:'#f4eee0', fillOpacity:1, color:'#c8a98f', weight:1.3, opacity:.9 },
   attribution: ATTRIB
@@ -193,6 +201,7 @@ const info = document.getElementById('info');
 // 圖釘
 const layers = {}; Object.keys(CAT).forEach(k => layers[k] = L.layerGroup());
 const bounds = [];
+const markers = {};    // 景點編號 → marker（offmap 的點 fit 完要搬到畫面邊緣）
 const cardHtml = {};   // 景點編號 → 資訊卡 HTML（給地名點擊委派用）
 for (const s of spots){
   const c = CAT[s.cat];
@@ -216,10 +225,10 @@ for (const s of spots){
        <p class="desc">${s.desc}</p>
      </div>`;
   cardHtml[s.n] = html;
-  L.marker([s.lat, s.lng], { icon, keyboard:false, zIndexOffset:1000 })
+  markers[s.n] = L.marker([s.lat, s.lng], { icon, keyboard:false, zIndexOffset:1000 })
     .on('click', () => jump(s.n))
     .addTo(layers[s.cat]);
-  bounds.push([s.lat, s.lng]);
+  if (!s.offmap) bounds.push([s.lat, s.lng]);   // offmap 不參與 fit，免得把其他點縮成一團
 }
 Object.values(layers).forEach(l => l.addTo(map));
 // 點圖釘旁的地名也開資訊卡（事件委派：地名溢出 icon 框、冒泡接不到，改在容器上聽 .pin-name）
@@ -240,6 +249,20 @@ function refit(){
     P = { tl:[124,114], br:[104,56] };   // 桌機：四邊留白＝縮小、左多＝右移、上避標題、右給 BOUSAI
   }
   map.fitBounds(bounds, { paddingTopLeft:P.tl, paddingBottomRight:P.br, animate:false });
+  placeOffmap();
+}
+// offmap 的點：從畫面中心朝真實位置拉一條線，停在內縮 OFF_M 的邊框上（方向是真的，距離寫在 short 名稱裡）
+const OFF_M = 40;
+function placeOffmap(){
+  const sz = map.getSize(), c = L.point(sz.x/2, sz.y/2);
+  for (const s of spots){
+    if (!s.offmap) continue;
+    const p = map.latLngToContainerPoint([s.lat, s.lng]), dx = p.x - c.x, dy = p.y - c.y;
+    const kx = dx ? ((dx > 0 ? sz.x - OFF_M : OFF_M) - c.x) / dx : Infinity;
+    const ky = dy ? ((dy > 0 ? sz.y - OFF_M : OFF_M) - c.y) / dy : Infinity;
+    const k = Math.min(kx, ky, 1);   // 本來就在框內（k≥1）就不動
+    markers[s.n].setLatLng(map.containerPointToLatLng(L.point(c.x + dx*k, c.y + dy*k)));
+  }
 }
 
 // ── Auto Layout（量測法）：pin名/地名 自動避開 pin圖示＋popup＋彼此；碰撞優先上下移、換邊最後。
@@ -324,17 +347,19 @@ function liftPinNames(occ, frame){
     const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
     const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
     const cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
-    let best = cands[0], bestPen = Infinity;
+    let best = cands[0], bestPen = Infinity, bestOv = 0;
     for (const [ox,oy] of cands){
       const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
-      let pen = 0;
-      for (const q of pins) if (q.spot !== spot) pen += overlapArea(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }) * 8;  // 壓別 pin＝重罰
-      for (const o of occ) pen += overlapArea(bx, o) * 8;   // 壓標題框／popup（occ 內障礙）＝重罰
-      for (const b of placed) pen += overlapArea(bx, b);    // 壓別名字＝輕罰
-      pen += (Math.max(0,fr.left-bx.x1)+Math.max(0,bx.x2-fr.right)+Math.max(0,fr.top-bx.y1)+Math.max(0,bx.y2-fr.bottom)) * 3;  // 出框
-      if (pen === 0){ best = [ox,oy]; break; }
-      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; }
+      let pen = 0, ov = 0, a;
+      for (const q of pins) if (q.spot !== spot){ a = overlapArea(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }); pen += a * 8; ov += a; }  // 壓別 pin＝重罰
+      for (const o of occ){ a = overlapArea(bx, o); pen += a * 8; ov += a; }   // 壓標題框／popup（occ 內障礙）＝重罰
+      for (const b of placed){ a = overlapArea(bx, b); pen += a; ov += a; }    // 壓別名字＝輕罰
+      pen += (Math.max(0,fr.left-bx.x1)+Math.max(0,bx.x2-fr.right)+Math.max(0,fr.top-bx.y1)+Math.max(0,bx.y2-fr.bottom)) * 1000;  // 出框＝字被切掉，比壓到別人更糟
+      if (pen === 0){ best = [ox,oy]; bestOv = 0; break; }
+      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; }
     }
+    // 六個位置都會壓到別人超過一成（手機檔的密集區）→ 名字先藏，只留編號；點圖釘照樣開說明卡
+    if (bestOv > 0.1 * (4 * lw * lh)){ lab.style.display = 'none'; return; }
     const [ox,oy] = best;
     placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
     lab.style.left = (P.cx - fr.left + ox) + 'px'; lab.style.top = (P.cy - fr.top + oy) + 'px';
@@ -417,6 +442,12 @@ function placeDistricts(frame){
 // popup 自動選「圖釘最少」的角落（任意城市：spots 群聚時 popup 才不壓到 pin）
 function pickPopupCorner(){
   const info = document.getElementById('info');
+  if (POPUP_SIDE){   // 長型地圖：卡片放左／右側中段（潟湖、外海那片空白），不去擠南北兩端的點
+    const off = (window.matchMedia('(max-width:719.98px)').matches ? 8 : 12) + 'px';
+    info.style.left = POPUP_SIDE === 'left' ? off : 'auto'; info.style.right = POPUP_SIDE === 'right' ? off : 'auto';
+    info.style.top = '50%'; info.style.bottom = 'auto'; info.style.transform = 'translateY(-50%)';
+    return;
+  }
   const fr = document.querySelector('.frame').getBoundingClientRect();
   const cx = fr.left + fr.width/2, cy = fr.top + fr.height/2, cnt = { tl:0, tr:0, bl:0, br:0 };
   document.querySelectorAll('.pin').forEach(p => {
@@ -480,6 +511,9 @@ for (const [key,c] of Object.entries(CAT)){
 
 html = (TPL
         .replace("__BOUNDARIES__", "[" + ",".join(boundaries) + "]")
+        .replace("__UNDERLAY__", "[" + ",".join(underlay) + "]")
+        .replace("__FRAME_SIZE__", frame_size)
+        .replace("__POPUP_SIDE__", json.dumps(getattr(cfg, "POPUP_SIDE", None)))
         .replace("__ATTRIB__", json.dumps(attrib, ensure_ascii=False))
         .replace("__CAT__", json.dumps(cfg.CAT, ensure_ascii=False))
         .replace("__SPOTS__", json.dumps(cfg.SPOTS, ensure_ascii=False))
@@ -494,6 +528,7 @@ b64 = base64.b64encode(html.encode("utf-8")).decode("ascii")
 ap = (open(os.path.join(HERE, "article_preview.tpl.html"), encoding="utf-8").read()
       .replace("__MAP_FILE__", cfg.MAP_FILE)
       .replace("__MAP_TITLE__", cfg.TITLE + "｜" + cfg.MARK)
+      .replace("__FRAME_SIZE__", frame_size)
       .replace("@@MAP_B64@@", b64))
 ap_out = os.path.join(IDIR, "article-preview.html")
 open(ap_out, "w", encoding="utf-8").write(ap)
@@ -504,7 +539,7 @@ print("wrote", ap_out, "KB:", round(len(ap.encode())/1024, 1))
 esc = html.replace("&", "&amp;").replace('"', "&quot;")  # srcdoc 屬性用雙引號，需轉 & 與 "
 embed = ('<!doctype html><html lang="zh-Hant"><meta charset="utf-8">'
          '<title>' + cfg.TITLE + '｜iframe 嵌入</title>\n'
-         '<div style="position:relative;max-width:720px;margin:auto;aspect-ratio:720/476">\n'
+         '<div style="position:relative;max-width:720px;margin:auto;' + frame_size + '">\n'
          '  <iframe loading="lazy" allowfullscreen srcdoc="' + esc + '"\n'
          '          style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px"></iframe>\n'
          '</div>\n</html>\n')
