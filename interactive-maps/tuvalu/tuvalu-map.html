@@ -150,6 +150,8 @@
   .frame.tiles .inset{ position:relative; width:136px; border-radius:12px; background:var(--glass); box-shadow:0 8px 24px rgba(0,0,0,.4);
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
   .frame.tiles .inset svg{ display:block; width:100%; height:auto }
+  .frame.tiles .inset{ transition:opacity .2s }
+  .frame.tiles.zoomed .inset{ opacity:0; pointer-events:none }   /* 放大中淡出：不擋地名、也不擋拖曳，彈回後再出現 */
   .frame.tiles .inset .view{ fill:rgba(255,255,255,.12); stroke:#fff; stroke-width:1.2; vector-effect:non-scaling-stroke }
   .frame.tiles .inset .cap{ position:absolute; left:9px; top:7px; color:var(--mute); font-size:10px; letter-spacing:.12em }
   .frame.tiles .ipin{ position:absolute; display:flex; align-items:center; gap:4px; transform:translate(-8px,-50%); cursor:pointer }
@@ -684,6 +686,7 @@ if (SAT){
     t = [Math.min(0, Math.max(W * (1 - s), t[0])), Math.min(0, Math.max(H * (1 - s), t[1]))];
     Object.assign(cur, { s, t });
     fr.classList.toggle('zooming', live);   // 拖曳、捏的當下不過渡；彈回照 CSS 過渡
+    fr.classList.toggle('zoomed', s > 1);   // 放大中小地圖先淡出（owner 09-29：地名會跑到小地圖上、在上面也拖不動）
     [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
   };
   // 彈回時頁面跟著捲：看得到那一段正中間現在顯示的那塊地圖，彈回後捲到畫面中間，停在移動後的地方
