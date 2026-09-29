@@ -273,7 +273,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles .info .x:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
   .frame.tiles .leaflet-control-attribution{ background:rgba(8,20,16,.55)!important; color:#c9d6cf }
   .frame.tiles .leaflet-control-attribution a{ color:#fff }
-  /* 放大（按住／雙指）：只有底圖（圖磚、影像）用 CSS scale 放大（倍率 --zs、平移 --ztx/--zty、中心 --zox/--zoy）；
+  /* 放大（雙指）：只有底圖（圖磚、影像）用 CSS scale 放大，畫面座標＝平移 (--ztx,--zty)＋倍率 --zs × 原座標（原點在畫框左上）；
      圖釘、地名不放大、只照放大後的位置移動（各自的錨點 --px/--py），字才不會糊（owner 09-29：放大時地名糊掉）。
      變數註冊成可過渡，彈回時底圖與圖釘同步；手指移動中（.zooming）不過渡才跟得上 */
   @property --zs { syntax:'<number>'; inherits:true; initial-value:1 }
@@ -281,9 +281,9 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   @property --zty { syntax:'<length>'; inherits:true; initial-value:0px }
   .frame.tiles{ transition:--zs .3s ease-out, --ztx .3s ease-out, --zty .3s ease-out }
   .frame.tiles.zooming{ transition:none }
-  .frame.tiles .leaflet-tile-pane, .frame.tiles .leaflet-overlay-pane{ transform-origin:var(--zox, 0px) var(--zoy, 0px); scale:var(--zs); translate:var(--ztx) var(--zty) }
+  .frame.tiles .leaflet-tile-pane, .frame.tiles .leaflet-overlay-pane{ transform-origin:0 0; scale:var(--zs); translate:var(--ztx) var(--zty) }
   .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel{
-    translate:calc((var(--zs) - 1) * (var(--px, 0px) - var(--zox, 0px)) + var(--ztx)) calc((var(--zs) - 1) * (var(--py, 0px) - var(--zoy, 0px)) + var(--zty)) }
+    translate:calc((var(--zs) - 1) * var(--px, 0px) + var(--ztx)) calc((var(--zs) - 1) * var(--py, 0px) + var(--zty)) }
   .frame.tiles #map{ touch-action:pan-x pan-y }   /* 單指照樣捲文章，雙指捏開交給頁面自己放大 */
   .frame.tiles #map, .frame.tiles #toplabels{ -webkit-user-select:none; user-select:none }   /* 按住拖著看時不要反白地名 */
   @media (prefers-reduced-motion:reduce){ .frame.tiles, .frame.tiles .pin, .frame.tiles .toplabel, .frame.tiles .corner, .frame.tiles .info.float{ transition:none } }
@@ -752,48 +752,47 @@ for (const [key,c] of Object.entries(CAT)){
   legend.appendChild(chip);
 }
 
-// 放大（衛星主題、觸控）：雙指捏開就放大；放手後停 1.5 秒再彈回原尺寸（owner 09-29：手機放手就彈，手指擋著看不到）。
-// 只放大底圖（CSS 變數見 .frame.tiles），圖釘與地名只跟著移位置、字不糊；不動 Leaflet 的縮放級，彈回後不必重排。說明卡、標題、小地圖不動
+// 放大（衛星主題、觸控）：雙指捏開就放大、原地縮放；放手後停 0.5 秒再彈回原尺寸（owner 09-29：1.5 秒改 0.5 秒）。
+// 只放大底圖（CSS 變數見 .frame.tiles），圖釘與地名只跟著移位置、字不糊；不動 Leaflet 的縮放級，彈回後不必重排。說明卡、標題、小地圖不動。
+// 只做觸控（owner 09-29 晚：桌機不要放大；桌機按住放大的版本在 git 歷史 8ebbddb）。
 if (SAT){
   const fr = document.querySelector('.frame'), mapEl = map.getContainer(), cur = { s:1, t:[0, 0] };
-  let zo = [0, 0], backT = null, drag = null;   // zo＝放大中心（相對畫框的 px）；drag＝放大後拖曳中 { p0:起點, t0:當時的平移 }
-  const setZoom = (s, t = [0, 0], live = false) => {
-    const W = fr.clientWidth, H = fr.clientHeight;   // 平移夾在放大後的底圖仍蓋滿畫框的範圍內，拖不出地圖邊界
-    t = [Math.min(zo[0] * (s - 1), Math.max(-(W - zo[0]) * (s - 1), t[0])), Math.min(zo[1] * (s - 1), Math.max(-(H - zo[1]) * (s - 1), t[1]))];
+  let backT = null, drag = null, pinch = null;   // drag＝放大後單指拖 { p:起點, t:當時的平移 }；pinch＝雙指捏 { d:兩指距離, m:中點, s, t }
+  const setZoom = (s, t = [0, 0], live = false) => {   // 畫面座標＝t＋s×原座標
+    const W = fr.clientWidth, H = fr.clientHeight;   // 夾住平移：放大後的底圖一直蓋滿畫框，拖不出地圖邊界
+    t = [Math.min(0, Math.max(W * (1 - s), t[0])), Math.min(0, Math.max(H * (1 - s), t[1]))];
     Object.assign(cur, { s, t });
-    fr.classList.toggle('zooming', live);   // 拖曳、捏的當下不過渡；其餘照 CSS 過渡
-    [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px'], ['--zox', zo[0] + 'px'], ['--zoy', zo[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
+    fr.classList.toggle('zooming', live);   // 拖曳、捏的當下不過渡；彈回照 CSS 過渡
+    [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
   };
-  const springBack = () => { clearTimeout(backT); backT = setTimeout(() => setZoom(1), 1500); };
+  const springBack = () => { clearTimeout(backT); backT = setTimeout(() => setZoom(1), 500); };
   const frameXY = (x, y) => { const r = fr.getBoundingClientRect(); return [x - r.left, y - r.top]; };
-  const startDrag = (x, y) => { clearTimeout(backT); drag = { p0:[x, y], t0:cur.t }; };
-  const moveDrag = (x, y) => setZoom(cur.s, [drag.t0[0] + x - drag.p0[0], drag.t0[1] + y - drag.p0[1]], true);
-  const endDrag = () => { if (drag){ drag = null; springBack(); } };
-  // 只做觸控（owner 09-29 晚：桌機不要放大；桌機按住放大的版本在 git 歷史 8ebbddb）。
-  // 手機：雙指捏開放大（最多 4 倍）、兩指一起移動可平移；放大中單指拖就移動畫面，彈回前再捏或拖都接著目前的狀態。
-  // 沒放大時單指照樣捲文章，只有捏、或放大中的拖才擋瀏覽器預設
-  let pinch = null;
-  const mid = ts => [(ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2];
+  const mid = ts => frameXY((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
   const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+  const grab = t => ({ p:[t.clientX, t.clientY], t:cur.t });
+  // 雙指捏開放大（最多 4 倍）、兩指一起移動可平移；放大中單指拖就移動畫面，彈回前再捏或拖都接著目前的狀態。
+  // 沒放大時單指照樣捲文章，只有捏、或放大中的拖才擋瀏覽器預設
   mapEl.addEventListener('touchstart', e => {
-    if (e.touches.length === 2){
-      clearTimeout(backT); drag = null;
-      if (cur.s === 1) zo = frameXY(...mid(e.touches));
-      pinch = { d:gap(e.touches), m:mid(e.touches), s:cur.s, t:cur.t };
-    } else if (e.touches.length === 1 && cur.s > 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+    clearTimeout(backT);
+    if (e.touches.length === 2){ drag = null; pinch = { d:gap(e.touches), m:mid(e.touches), s:cur.s, t:cur.t }; }
+    else if (e.touches.length === 1 && cur.s > 1) drag = grab(e.touches[0]);
   }, { passive:true });
   mapEl.addEventListener('touchmove', e => {
     if (pinch && e.touches.length === 2){
       e.preventDefault();
-      const m = mid(e.touches);
-      setZoom(Math.min(4, Math.max(1, pinch.s * gap(e.touches) / pinch.d)), [pinch.t[0] + m[0] - pinch.m[0], pinch.t[1] + m[1] - pinch.m[1]], true);
-    } else if (drag && e.touches.length === 1){ e.preventDefault(); moveDrag(e.touches[0].clientX, e.touches[0].clientY); }
+      // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間（owner 09-29：縮小時不要跑回原本放大的地方）
+      const s = Math.min(4, Math.max(1, pinch.s * gap(e.touches) / pinch.d)), m = mid(e.touches), k = s / pinch.s;
+      setZoom(s, [m[0] - (pinch.m[0] - pinch.t[0]) * k, m[1] - (pinch.m[1] - pinch.t[1]) * k], true);
+    } else if (drag && e.touches.length === 1){
+      e.preventDefault();
+      setZoom(cur.s, [drag.t[0] + e.touches[0].clientX - drag.p[0], drag.t[1] + e.touches[0].clientY - drag.p[1]], true);
+    }
   }, { passive:false });
   const untouch = e => {
     if (pinch && e.touches.length < 2){   // 放開一指就接著用剩下那指拖
       pinch = null;
-      if (e.touches.length === 1 && cur.s > 1) startDrag(e.touches[0].clientX, e.touches[0].clientY); else springBack();
-    } else if (!e.touches.length) endDrag();
+      if (e.touches.length === 1 && cur.s > 1) drag = grab(e.touches[0]); else springBack();
+    } else if (drag && !e.touches.length){ drag = null; springBack(); }
   };
   mapEl.addEventListener('touchend', untouch); mapEl.addEventListener('touchcancel', untouch);
 }
