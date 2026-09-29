@@ -100,7 +100,6 @@
   .card .ja{ margin:1px 0 5px; font-size:10.5px; color:#a2957f }
   .card p.desc{ margin:0 0 4px; color:#4a443b }
   .card a{ color:#4a5ab0; font-weight:800; font-size:12.5px; text-decoration:none; border-bottom:1.5px solid #c9cfea }
-  .card .coord{ display:none }   /* 經緯度只在衛星主題顯示（見檔尾 .frame.tiles） */
   /* 斷點依 e-info 三檔嵌入寬度對齊（桌機 720 / 平板 528 / 手機 352.8）；吃 iframe 自身寬度。
      小版（<720，即 e-info 平板＋手機）共用：拿掉標題/圖例、縮圖釘、地名先縮小 */
   @media (max-width:719.98px){
@@ -131,64 +130,54 @@
   }
 
   /* ── 衛星主題（有 TILES 時 .frame 加 .tiles；插畫風地圖不受影響）──
-     配色取自環資颱風短影音：深綠毛玻璃＋黃色強調。白底膠囊在擬真影像上像貼紙，改成白字深色描邊；
-     圖釘改圓點（中心對座標），說明卡照片滿版、宋體標題、附經緯度。 */
-  .frame.tiles{ --glass:rgba(16,42,31,.82); --line:rgba(255,255,255,.14); --cream:#f6f3e7; --mute:#aebfb5;
-    --gold:#f0b429; --deep:#10231b; --serif:&quot;Noto Serif TC&quot;,&quot;Source Han Serif TC&quot;,&quot;Songti TC&quot;,&quot;PMingLiU&quot;,serif;
-    --mono:ui-monospace,&quot;SF Mono&quot;,Menlo,Consolas,monospace; background:#0f2a22 }
+     配色取自環資颱風短影音（深綠＋黃）。原則是能拿掉的框線都拿掉（owner 09-29：圖示包太多框線）：
+     圖釘只剩實心圓點＋一層淡陰影；地名白字深色描邊、不用底；卡片與標題框只靠陰影分邊。 */
+  .frame.tiles{ --glass:rgba(16,42,31,.84); --cream:#f6f3e7; --mute:#aebfb5; --gold:#f0b429; --deep:#10231b;
+    --serif:&quot;Noto Serif TC&quot;,&quot;Source Han Serif TC&quot;,&quot;Songti TC&quot;,&quot;PMingLiU&quot;,serif; background:#0f2a22 }
   .frame.tiles #map, .frame.tiles .leaflet-container{ background:#0f2a22 }
   .frame.tiles .titlebar, .frame.tiles .legend, .frame.tiles .info{
-    background:var(--glass); border:1px solid var(--line); box-shadow:0 10px 28px rgba(0,0,0,.42); color:var(--cream);
-    -webkit-backdrop-filter:blur(8px) saturate(1.2); backdrop-filter:blur(8px) saturate(1.2) }
+    background:var(--glass); border:0; box-shadow:0 8px 24px rgba(0,0,0,.4); color:var(--cream);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
   .frame.tiles .titlebar{ padding:10px 14px 11px; border-radius:12px }
   .frame.tiles .titlebar .mark{ color:var(--gold); font-size:10.5px; letter-spacing:.22em }
   .frame.tiles .titlebar h1{ font-family:var(--serif); font-size:22px; letter-spacing:.08em; margin-top:3px }
   .frame.tiles .legend{ border-radius:12px; gap:7px }
-  .frame.tiles .chip{ color:var(--cream); font-weight:600; font-size:12px; letter-spacing:.04em }
-  .frame.tiles .chip .dot{ width:10px; height:10px; font-size:0; box-shadow:0 0 0 2px var(--deep), 0 0 0 3px rgba(255,255,255,.5) }
-  .frame.tiles .pin{ border-radius:50%; transform:none; border:2px solid var(--deep);
-    box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 2px 6px rgba(0,0,0,.5) }   /* 深綠細框＋外圈淡白線：亮沙地與深海都分得出來 */
+  .frame.tiles .chip{ color:var(--cream); font-weight:500; font-size:12px; letter-spacing:.04em }
+  .frame.tiles .chip .dot{ width:10px; height:10px; font-size:0 }
+  .frame.tiles .pin{ width:20px; height:20px; border-radius:50%; transform:none; border:0; box-shadow:0 1px 4px rgba(0,0,0,.55);
+    transition:transform .2s ease-out }
   .frame.tiles .pin b{ transform:none; color:var(--deep); font-size:11px }
-  .frame.tiles .pin-anchor{ transform-origin:50% 50% }
-  .frame.tiles .pin-anchor.hi .pin{ transform:scale(1.3); animation:ping 1.6s ease-out infinite }
-  @keyframes ping{
-    0%  { box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 0 3px var(--gold), 0 0 0 3px rgba(240,180,41,.55), 0 2px 6px rgba(0,0,0,.5) }
-    100%{ box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 0 3px var(--gold), 0 0 0 15px rgba(240,180,41,0), 0 2px 6px rgba(0,0,0,.5) } }
-  .frame.tiles .toplabel{ background:none; border:0; box-shadow:none; padding:0 2px; color:#fff; font-weight:700; letter-spacing:.03em;
-    text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.6) }
-  .frame.tiles .rlabel.sea{ color:rgba(228,244,244,.92); font-weight:600; letter-spacing:.5em }
+  .frame.tiles .pin-anchor{ width:20px; height:20px; transform-origin:50% 50% }
+  .frame.tiles .pin-anchor.hi .pin{ transform:scale(1.35); animation:none }   /* 正在介紹的點：放大＋地名變黃，不加框 */
+  .frame.tiles .toplabel{ background:none; border:0; box-shadow:none; padding:0 2px; color:#fff; font-weight:600; letter-spacing:.02em;
+    text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.6); transition:color .2s }
+  .frame.tiles .toplabel.hi{ color:var(--gold) }
+  .frame.tiles .rlabel.sea{ color:rgba(228,244,244,.9); font-weight:500; letter-spacing:.5em }
   .frame.tiles .info{ padding:0; border-radius:14px }
   .frame.tiles .card{ display:flex; flex-direction:column; padding:10px 13px 13px }
-  .frame.tiles .card img.photo{ order:-1; width:calc(100% + 26px); margin:-10px -13px 10px; border-radius:13px 13px 0 0; background:#1d3a30 }
+  .frame.tiles .card img.photo{ order:-1; width:calc(100% + 26px); margin:-10px -13px 10px; border-radius:14px 14px 0 0; background:#1d3a30 }
   .frame.tiles .card .meta{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap }
   .frame.tiles .card .tag{ background:transparent!important; padding:0; border-radius:0; color:var(--cream);
-    font-size:10.5px; font-weight:700; letter-spacing:.14em; display:inline-flex; align-items:center; gap:6px }
-  .frame.tiles .card .tag::before{ content:&quot;&quot;; width:8px; height:8px; border-radius:50%; background:var(--tag);
-    box-shadow:0 0 0 1.5px var(--deep), 0 0 0 2.5px rgba(255,255,255,.5) }
+    font-size:10.5px; font-weight:600; letter-spacing:.14em; display:inline-flex; align-items:center; gap:6px }
+  .frame.tiles .card .tag::before{ content:&quot;&quot;; width:8px; height:8px; border-radius:50%; background:var(--tag) }
   .frame.tiles .card .emo{ display:none }
   .frame.tiles .card .area{ margin:0; color:var(--mute) }
   .frame.tiles .card h3{ font-family:var(--serif); font-size:18px; letter-spacing:.04em; color:#fff; margin:6px 0 0 }
-  .frame.tiles .card .ja{ color:var(--mute); margin:2px 0 0 }
-  .frame.tiles .card .coord{ display:block; font:500 10px/1.4 var(--mono); color:#86a295; letter-spacing:.02em; margin:3px 0 7px }
+  .frame.tiles .card .ja{ color:var(--mute); margin:2px 0 8px }
   .frame.tiles .card p.desc{ color:#e3ebe6 }
   .frame.tiles .info .x{ top:7px; right:7px; width:24px; height:24px; padding:0; border-radius:50%; background:rgba(8,20,16,.55);
     color:#fff; font-size:16px; line-height:24px; text-align:center; z-index:2 }
   .frame.tiles .info .x:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
   .frame.tiles .leaflet-control-attribution{ background:rgba(8,20,16,.55)!important; color:#c9d6cf }
   .frame.tiles .leaflet-control-attribution a{ color:#fff }
-  /* 連線：說明卡固定在一側，跟正在介紹的圖釘可能隔很遠 → 從卡片邊緣拉一條黃線到圖釘（壓在地名與卡片下面） */
-  #tether{ position:absolute; inset:0; width:100%; height:100%; z-index:4; pointer-events:none; overflow:visible; transition:opacity .25s }
-  #tether line{ stroke:var(--gold); stroke-width:1.5; stroke-linecap:round }
-  #tether line.halo{ stroke:rgba(0,0,0,.45); stroke-width:4 }
-  #tether circle{ fill:var(--gold); stroke:rgba(0,0,0,.45); stroke-width:1 }
-  @media (prefers-reduced-motion:reduce){ .frame.tiles .pin-anchor.hi .pin{ animation:none } #tether{ transition:none } }
+  @media (prefers-reduced-motion:reduce){ .frame.tiles .pin, .frame.tiles .toplabel{ transition:none } }
   @media (max-width:719.98px){
     .frame.tiles .card{ padding:8px 9px 9px }
     .frame.tiles .card img.photo{ width:calc(100% + 18px); margin:-8px -9px 8px }
     .frame.tiles .card h3{ font-size:14px; margin-top:4px }
-    .frame.tiles .card .coord{ margin:2px 0 5px }
+    .frame.tiles .card .ja{ margin-bottom:5px }
   }
-  @media (max-width:527.98px){ .frame.tiles .card .coord{ display:none } .frame.tiles .card h3{ font-size:13.5px } }
+  @media (max-width:527.98px){ .frame.tiles .card h3{ font-size:13.5px } }
 </style>
 
 <div class=&quot;frame&quot;>
@@ -205,7 +194,7 @@
 <script>
 const BOUNDARIES = [];   // [0]=陸地(填色+粗界)，其餘=細界線
 const UNDERLAY = [];       // 陸地下面的淺色填色層（礁盤等），可為空
-const TILES = {&quot;url&quot;: &quot;https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}&quot;, &quot;attribution&quot;: &quot;Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community&quot;, &quot;maxNativeZoom&quot;: 18};             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
+const TILES = {&quot;url&quot;: &quot;https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg&quot;, &quot;attribution&quot;: &quot;Sentinel-2 cloudless – <a href=\&quot;https://s2maps.eu\&quot;>s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2024)&quot;, &quot;maxNativeZoom&quot;: 15, &quot;zoomOffset&quot;: 1, &quot;tileSize&quot;: 128};             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
 const ATTRIB = &quot;boundaries © <a href=\&quot;https://www.openstreetmap.org/copyright\&quot;>OpenStreetMap</a> contributors&quot;;
 
 const CAT = {&quot;adapt&quot;: {&quot;name&quot;: &quot;氣候調適&quot;, &quot;color&quot;: &quot;#f0b429&quot;, &quot;emo&quot;: &quot;🌊&quot;}, &quot;site&quot;: {&quot;name&quot;: &quot;環境現場&quot;, &quot;color&quot;: &quot;#ff7b5c&quot;, &quot;emo&quot;: &quot;📍&quot;}, &quot;life&quot;: {&quot;name&quot;: &quot;島上生活&quot;, &quot;color&quot;: &quot;#f6f3e7&quot;, &quot;emo&quot;: &quot;🏝&quot;}, &quot;tw&quot;: {&quot;name&quot;: &quot;台灣援助&quot;, &quot;color&quot;: &quot;#8fd0ff&quot;, &quot;emo&quot;: &quot;🤝&quot;}};
@@ -224,7 +213,10 @@ if (TILES){
   const initTile = L.GridLayer.prototype._initTile;
   L.GridLayer.include({ _initTile(tile){ initTile.call(this, tile); const s = this.getTileSize();
     tile.style.width = (s.x + 1) + 'px'; tile.style.height = (s.y + 1) + 'px'; } });
-  L.tileLayer(TILES.url, { attribution:TILES.attribution, maxNativeZoom:TILES.maxNativeZoom || 18, maxZoom:22 }).addTo(map);
+  // zoomOffset／tileSize：抓細 N 級的圖磚、縮小顯示（1 級＝128px、2 級＝64px），靜態全島圖才不會糊
+  L.tileLayer(TILES.url, { attribution:TILES.attribution, maxNativeZoom:TILES.maxNativeZoom || 18, maxZoom:22,
+    zoomOffset:TILES.zoomOffset || 0, tileSize:TILES.tileSize || 256 }).addTo(map);
+  if (TILES.filter) map.getPane('tilePane').style.filter = TILES.filter;   // 影像調色（例如海太暗時提亮），CSS filter 字串
   document.querySelector('.frame').classList.add('tiles');
 } else {
   UNDERLAY.forEach(g => L.geoJSON(g, { style:{ stroke:false, fillColor:'#d3e6ea', fillOpacity:1 }, interactive:false }).addTo(map));
@@ -242,13 +234,10 @@ const layers = {}; Object.keys(CAT).forEach(k => layers[k] = L.layerGroup());
 const bounds = [];
 const markers = {};    // 景點編號 → marker（offmap 的點 fit 完要搬到畫面邊緣）
 const cardHtml = {};   // 景點編號 → 資訊卡 HTML（給地名點擊委派用）
-// 經緯度 → 8°31′25″S 這種寫法（說明卡在衛星主題顯示；offmap 的點照樣寫真實位置）
-const dms = (v, pos, neg) => { const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a - d) * 60),
-  s = Math.floor(((a - d) * 60 - m) * 60); return `${d}°${String(m).padStart(2,'0')}′${String(s).padStart(2,'0')}″${v < 0 ? neg : pos}`; };
 for (const s of spots){
   const c = CAT[s.cat];
-  const icon = L.divIcon({
-    className:'', iconSize:[23,23], iconAnchor: TILES ? [11.5,11.5] : [11,23],   // 衛星主題的圖釘是圓點，中心對準座標；插畫風是水滴針，尖端對準
+  const icon = L.divIcon({   // 衛星主題的圖釘是 20px 圓點，中心對準座標；插畫風是 23px 水滴針，尖端對準
+    className:'', iconSize: TILES ? [20,20] : [23,23], iconAnchor: TILES ? [10,10] : [11,23],
     html:`<div class=&quot;pin-anchor&quot; data-spot=&quot;${s.n}&quot;>
             <div class=&quot;pin&quot; style=&quot;background:${c.color}&quot;><b>${s.n}</b></div>
             <span class=&quot;pin-name&quot; data-spot=&quot;${s.n}&quot;>${s.short||s.zh}</span>
@@ -263,7 +252,6 @@ for (const s of spots){
        <div class=&quot;meta&quot;><span class=&quot;tag&quot; style=&quot;--tag:${c.color};background:${c.color}&quot;><span class=&quot;emo&quot;>${c.emo}</span> ${c.name}</span> <span class=&quot;area&quot;>${s.area}</span></div>
        <img class=&quot;photo&quot; src=&quot;${photo}&quot; alt=&quot;${s.zh}&quot;>
        <h3>${s.zh}</h3><p class=&quot;ja&quot;>${s.ja}</p>
-       <p class=&quot;coord&quot;>${dms(s.lat,'N','S')}　${dms(s.lng,'E','W')}</p>
        <p class=&quot;desc&quot;>${s.desc}</p>
      </div>`;
   cardHtml[s.n] = html;
@@ -394,6 +382,9 @@ function liftPinNames(occ, frame){
       const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
       let pen = 0, ov = 0, a;
       for (const q of pins) if (q.spot !== spot){ a = overlapArea(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }); pen += a * 8; ov += a; }  // 壓別 pin＝重罰
+      // 名字離別的圖釘比離自己的近＝讀者會看錯是誰的名字（09-29：「TCap 2」排到 5 號正上方、貼著 2 號）→ 重罰但不禁止
+      const dist = q => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2));
+      for (const q of pins) if (q.spot !== spot &amp;&amp; dist(q) < dist(P)) pen += 400;
       for (const o of occ){ a = overlapArea(bx, o); pen += a * 8; ov += a; }   // 壓標題框／popup（occ 內障礙）＝重罰
       for (const b of placed){ a = overlapArea(bx, b); pen += a; ov += a; }    // 壓別名字＝輕罰
       pen += (Math.max(0,fr.left-bx.x1)+Math.max(0,bx.x2-fr.right)+Math.max(0,fr.top-bx.y1)+Math.max(0,bx.y2-fr.bottom)) * 1000;  // 出框＝字被切掉，比壓到別人更糟
@@ -508,46 +499,23 @@ function relayout(){
   pickPopupCorner();
   const occ = baseObstacles();     // popup + 標題框（pin 由 liftPinNames 自算）
   liftPinNames(occ, frame);        // pin 名 → #toplabels 浮層（壓在所有 pin 之上）
+  highlight(curSpot);              // 浮層是重建的，把「正在介紹」的標記補回去
   placeDistricts(frame);           // 行政區 cap-10 + farthest-spread（可被 pin/名蓋）
 }
 
 // 說明輪播：桌機自動輪播 6 景點說明、對應圖釘加脈動高亮；手機不輪播並收起說明
 function isSmall(){ return window.matchMedia('(max-width:719.98px)').matches; }
 let carTimer = null, curSpot = 0;
-function highlight(n){
-  document.querySelectorAll('.pin-anchor.hi').forEach(el => el.classList.remove('hi'));
-  const el = document.querySelector('.pin-anchor[data-spot=&quot;' + n + '&quot;]');
-  if (el) el.classList.add('hi');
+function highlight(n){   // 圖釘與浮層地名一起標 .hi（衛星主題靠地名變色表示正在介紹哪一點）
+  document.querySelectorAll('.pin-anchor.hi, .toplabel.hi').forEach(el => el.classList.remove('hi'));
+  document.querySelectorAll('[data-spot=&quot;' + n + '&quot;]').forEach(el => {
+    if (el.matches('.pin-anchor, .toplabel')) el.classList.add('hi'); });
 }
 function showSpot(n){
   curSpot = n;
   info.innerHTML = '<button class=&quot;x&quot; aria-label=&quot;關閉&quot;>×</button>' + cardHtml[n];
   info.classList.add('show'); highlight(n);
-  info.querySelector('.x').onclick = () => { stopCar(); info.classList.remove('show'); highlight(0); drawTether(); };
-  drawTether();
-  const im = info.querySelector('img.photo');   // 照片載入後卡片會變高，連線的起點要跟著重算
-  if (im &amp;&amp; !im.complete) im.onload = drawTether;
-}
-// 衛星主題的連線：從說明卡邊緣最近的一點，拉到正在介紹的圖釘外緣。卡片不開、圖釘就在卡片旁邊時不畫。
-function drawTether(){
-  if (!TILES) return;
-  let svg = document.getElementById('tether');
-  if (!svg){
-    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.id = 'tether';
-    document.querySelector('.frame').appendChild(svg);
-  }
-  const pin = document.querySelector('.pin-anchor.hi .pin');
-  if (!pin || !info.classList.contains('show')){ svg.innerHTML = ''; return; }
-  const fr = document.querySelector('.frame').getBoundingClientRect();
-  const p = pin.getBoundingClientRect(), c = info.getBoundingClientRect();
-  const px = (p.left + p.right) / 2 - fr.left, py = (p.top + p.bottom) / 2 - fr.top;
-  const cx = Math.min(Math.max(px, c.left - fr.left), c.right - fr.left);
-  const cy = Math.min(Math.max(py, c.top - fr.top), c.bottom - fr.top);
-  const dx = px - cx, dy = py - cy, len = Math.hypot(dx, dy), r = p.width / 2 + 5;
-  if (len < r + 16){ svg.innerHTML = ''; return; }
-  const ex = px - dx / len * r, ey = py - dy / len * r;   // 停在圖釘外緣，不壓到數字
-  const seg = `x1=&quot;${cx.toFixed(1)}&quot; y1=&quot;${cy.toFixed(1)}&quot; x2=&quot;${ex.toFixed(1)}&quot; y2=&quot;${ey.toFixed(1)}&quot;`;
-  svg.innerHTML = `<line class=&quot;halo&quot; ${seg}/><line ${seg}/><circle cx=&quot;${cx.toFixed(1)}&quot; cy=&quot;${cy.toFixed(1)}&quot; r=&quot;3&quot;/>`;
+  info.querySelector('.x').onclick = () => { stopCar(); info.classList.remove('show'); highlight(0); };
 }
 function carMs(){ return window.matchMedia('(max-width:527.98px)').matches ? 2750 : 4200; }   // 手機檔 2.75s、其餘 4.2s
 function carTick(){ showSpot(curSpot % spots.length + 1); }
