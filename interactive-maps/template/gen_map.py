@@ -533,7 +533,9 @@ function liftPinNames(occ, frame){
   top.querySelectorAll('.toplabel').forEach(lab => {
     const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
     const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
-    const cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
+    let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
+    const side = (spots.find(s => s.n === spot) || {}).label;   // spots.py 指定 "label": right／up／left／down 就只放那邊（owner 點名的）
+    if (side) cands = [cands[['right', 'up', 'left', 'down'].indexOf(side)]];
     let best = cands[0], bestPen = Infinity, bestOv = 0;
     for (const [ox,oy] of cands){
       const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
@@ -548,8 +550,8 @@ function liftPinNames(occ, frame){
       if (pen === 0){ best = [ox,oy]; bestOv = 0; break; }
       if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; }
     }
-    // 六個位置都會壓到別人超過一成（手機檔的密集區）→ 名字先藏，只留編號；點圖釘照樣開說明卡
-    if (bestOv > 0.1 * (4 * lw * lh)){ lab.style.display = 'none'; return; }
+    // 六個位置都會壓到別人超過一成（手機檔的密集區）→ 名字先藏，只留編號；點圖釘照樣開說明卡。指定邊的名字一律照放
+    if (!side && bestOv > 0.1 * (4 * lw * lh)){ lab.style.display = 'none'; return; }
     const [ox,oy] = best;
     placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
     // 錨點放在圖釘中心、偏移寫進 transform：放大時（衛星主題的按住／雙指）名字照錨點 --px/--py 跟著圖釘移動，偏移不會被放大
