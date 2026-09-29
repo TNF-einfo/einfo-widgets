@@ -13,20 +13,22 @@
 `spots.py` 每個點的行尾註解是出處的 node 編號。主島 Fongafale 照報導譯作「豐阿法萊」。
 
 ## 底圖
-- **定案：衛星影像**（Esri World Imagery，`spots.py` 的 `TILES`）。owner 09-29 要看真實底圖，看過兩版後選衛星版；
-  插畫版的對照檔已刪，要看在 git 歷史（commit `6fd3fdf`）。
-  影像拍得到 TCAP 1、TCAP 2 的新生地，這張圖要講的正是調適工程，所以選它；
-  代價是不同來源的影像拼接，全圖南端和潟湖左側看得到色塊分界。
-  Sentinel-2 無雲鑲嵌（EOX）顏色一致，但免費版是 2016／2020 年的影像，還沒有 TCAP，不採用。
-  ⚠ **發稿前要確認 Esri 圖磚用在新聞網站的授權條件，還沒查。**
-- 插畫風：拿掉 `spots.py` 的 `TILES` 就回到島嶼輪廓加礁盤。不用行政界，因為 Funafuti 的行政區多邊形
-  把整個潟湖包進去，照東京的做法畫會變成一整塊陸地。
+- **定案：Sentinel-2 無雲鑲嵌 2024**（EOX，`spots.py` 的 `TILES`，不調色）。owner 09-29 嫌衛星圖不夠清楚，
+  從四個比較選項（Esri 高解析、Esri 調色、Sentinel-2、Sentinel-2 調色）挑了這個。
+  Esri World Imagery 在吐瓦魯一帶拼了不同來源的影像，南端灰帶與左右暗塊換縮放層級、換 2026-08 的歷史版本都去不掉；
+  Sentinel-2 整片同一套處理、沒有拼接。解析度 10 公尺，全景的顯示比例一個像素約 15 公尺，抓細一級（`zoomOffset: 1`）就夠。
+  代價：房子看不到細節；影像是 2024 年的，TCAP 2（2025 年 10 月移交）那時還在施工。
+  ⚠ **授權是 CC BY-NC-SA 4.0（非商業使用）**，環資是非營利媒體，發稿前由 owner 判斷；署名照 EOX 要求的字樣。
+- 之前的版本在 git 歷史：Esri 衛星版（`d6d7516`）、插畫風對照檔（`6fd3fdf`）。拿掉 `TILES` 就回到插畫風的島嶼輪廓加礁盤
+  （不用行政界，因為 Funafuti 的行政區多邊形把整個潟湖包進去）。
 
-## 圖釘與說明卡的設計（09-29 改）
-owner 看了衛星版說「字體的白底怪怪的」：東京插畫風的白底膠囊和白卡片放在擬真影像上像貼紙。改成衛星主題（產生器共用，細節見
-`interactive-maps/README.md` 的 `TILES`），方向照 owner 說不錯的颱風短影音，以及路透〈Concrete and coral〉在衛星影像上的細白字標註。
-- 分類色改成在藍海、青綠潟湖、綠植被上跳得出來的黃、珊瑚紅、米白、天藍，圖釘數字一律深綠字（對比都在 6:1 以上）。
-- 說明卡固定在左側，跟圖釘常隔很遠，所以從卡片邊緣拉一條黃線到正在介紹的圖釘。
+## 圖釘與說明卡的設計（09-29 改了兩輪）
+- 第一輪：owner 說「字體的白底怪怪的」，東京插畫風的白底膠囊和白卡片放在擬真影像上像貼紙。改成衛星主題，
+  方向照 owner 說不錯的颱風短影音（深綠＋黃），以及路透〈Concrete and coral〉在衛星影像上的白字標註。
+- 第二輪：owner 要拿掉經緯度與卡片到圖釘的連線，並嫌圖示「包太多框線」。參考 pbakaus/impeccable 的 distill、quieter
+  兩份指引（能拿掉的框線、陰影、光暈都拿掉，效果只留一層），圖釘只剩實心圓點＋一層淡陰影，
+  正在介紹的點改成放大＋地名變黃；說明卡、標題框也拿掉細框。
+- 分類色：黃、珊瑚紅、米白、天藍，在藍海、青綠潟湖、綠植被上跳得出來，圖釘數字一律深綠字（對比都在 6:1 以上）。
 - 設計參考清單：母層 `logs/tuvalu-design-refs/design-refs-20260929.md`（本機）。
 
 ## 跟東京那張不一樣的地方
@@ -55,7 +57,7 @@ python interactive-maps/template/gen_map.py tuvalu   # 讀 spots.py 產地圖
 ```
 
 ## 資料來源與授權
-- 衛星影像：© Esri, Maxar, Earthstar Geographics, and the GIS User Community（用在新聞網站的條件待查）。
+- 衛星影像：Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2024)，CC BY-NC-SA 4.0。
 - 島嶼、礁盤（插畫風底圖）：© OpenStreetMap contributors（ODbL）。
 - 說明文字：改寫自環境資訊中心〈吐瓦魯：海浪帶不走的家〉專題報導。
 - 地點座標：採訪團隊整理的 Google 地圖連結，取地點本身的座標。
