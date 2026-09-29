@@ -28,16 +28,17 @@ json.dump(_gc, open(_gcp, "w", encoding="utf-8"), ensure_ascii=False)
 
 # 2) 界線＋地名：cfg.TILES（圖磚底圖，例如衛星影像）設了就不畫向量陸地、也不抓界線；
 #    否則 cfg.BOUNDARIES 有就用（如東京手調三層＋手列 PLACES），再否則自動抓
-tiles = getattr(cfg, "TILES", None)
-if tiles:
+image = getattr(cfg, "IMAGE", None)   # 一張地理對齊的影像當底圖（Web Mercator 靜態圖）；有它就不用 TILES
+tiles = None if image else getattr(cfg, "TILES", None)
+if tiles or image:
     boundary_files, places = [], getattr(cfg, "PLACES", [])
 elif getattr(cfg, "BOUNDARIES", None):
     boundary_files, places = cfg.BOUNDARIES, cfg.PLACES
 else:
     boundary_files, places = fb.ensure_boundaries(IDIR, cfg.SPOTS)
 boundaries = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in boundary_files]
-# 選用：UNDERLAY＝壓在陸地下面的填色層（例：環礁的礁盤）；有圖磚就用不到
-underlay = [] if tiles else [open(os.path.join(_bd, f), encoding="utf-8").read() for f in getattr(cfg, "UNDERLAY", [])]
+# 選用：UNDERLAY＝壓在陸地下面的填色層（例：環礁的礁盤）；有影像底圖就用不到
+underlay = [] if tiles or image else [open(os.path.join(_bd, f), encoding="utf-8").read() for f in getattr(cfg, "UNDERLAY", [])]
 
 def inset_data(conf, width=136):
     """小地圖：把 conf["layers"]（{geojson: 填色}）用跟主圖一樣的 Web Mercator 投影成寬 width 像素的 SVG，
@@ -73,9 +74,9 @@ frame_size = f"height:{cfg.HEIGHT}px" if getattr(cfg, "HEIGHT", None) else "aspe
 attrib = getattr(cfg, "ATTRIB", 'boundaries © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
 # 衛星主題的標題與說明卡標題用思源宋體：Google Fonts 的 text= 只下載用得到的字（標題＋各地點名），幾 KB；載不到就退回系統宋體
 font_link = ""
-if tiles:
+if tiles or image:
     glyphs = "".join(sorted(set(cfg.TITLE + "".join(s["zh"] for s in cfg.SPOTS))))
-    font_link = ('\n<link rel="preconnect" href="https://' + urllib.parse.urlsplit(tiles["url"]).netloc + '">'   # 圖磚主機趁 Leaflet 還在下載時先連線
+    font_link = (('\n<link rel="preconnect" href="https://' + urllib.parse.urlsplit(tiles["url"]).netloc + '">' if tiles else '')   # 圖磚主機趁 Leaflet 還在下載時先連線
                  + '\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
                  '\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&display=swap&text='
                  + urllib.parse.quote(glyphs) + '">')
@@ -301,6 +302,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
 const BOUNDARIES = __BOUNDARIES__;   // [0]=陸地(填色+粗界)，其餘=細界線
 const UNDERLAY = __UNDERLAY__;       // 陸地下面的淺色填色層（礁盤等），可為空
 const TILES = __TILES__;             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
+const IMAGE = __IMAGE__;             // null＝無；{url, bounds, attribution}＝一張地理對齊的影像當底圖（有它就不用 TILES）
 const ATTRIB = __ATTRIB__;
 
 const CAT = __CAT__;
@@ -317,7 +319,10 @@ const map = L.map('map', {
 });
 // 圖層：有 TILES 就只鋪圖磚（衛星影像等），拿掉紙紋；否則 BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
 let tileLayer = null;
-if (TILES){
+if (IMAGE){   // 一張 Web Mercator 靜態圖照四角拉伸就對得上，一個請求載完；衛星主題照用
+  L.imageOverlay(IMAGE.url, IMAGE.bounds, { attribution:IMAGE.attribution }).addTo(map);
+  document.querySelector('.frame').classList.add('tiles');
+} else if (TILES){
   // 小數縮放時圖磚之間會露出細縫：每張圖磚多畫 1px 疊住鄰居（Leaflet #3575 的通用解），配上面 CSS 的 mix-blend-mode:normal
   const initTile = L.GridLayer.prototype._initTile;
   L.GridLayer.include({ _initTile(tile){ initTile.call(this, tile); const s = this.getTileSize();
@@ -382,7 +387,7 @@ if (INSET){
     return d;
   };
   ctl.addTo(map);
-  if (TILES) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
+  if (TILES || IMAGE) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
 }
 // 點圖釘旁的地名也開資訊卡（事件委派：地名溢出 icon 框、冒泡接不到，改在容器上聽 .pin-name）
 map.getContainer().addEventListener('click', e => {
@@ -729,6 +734,7 @@ html = (TPL
         .replace("__BOUNDARIES__", "[" + ",".join(boundaries) + "]")
         .replace("__UNDERLAY__", "[" + ",".join(underlay) + "]")
         .replace("__TILES__", json.dumps(tiles, ensure_ascii=False))
+        .replace("__IMAGE__", json.dumps(image, ensure_ascii=False))
         .replace("__FONT_LINK__", font_link)
         .replace("__FRAME_SIZE__", frame_size)
         .replace("__POPUP_SIDE__", json.dumps(getattr(cfg, "POPUP_SIDE", None)))

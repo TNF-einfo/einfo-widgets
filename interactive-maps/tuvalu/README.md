@@ -6,6 +6,7 @@
 - `spots.py`：12 個地點、分類、照片、說明文字。要改內容只改這個檔。
 - `build_land.py`：抓富納富提環礁的島嶼與礁盤，寫成 `boundaries/land.geojson`、`boundaries/reef.geojson`（插畫風底圖用）。
 - `photos/`：12 張照片，縮成 800px 寬、不帶 EXIF。
+- `basemap/`：Sentinel-2 靜態底圖（見「底圖」）。
 - `tuvalu-map.html`（產出的地圖）、`article-preview.html`（桌機／平板／手機三檔寬度對照）。
 
 ## 說明文字
@@ -13,15 +14,20 @@
 `spots.py` 每個點的行尾註解是出處的 node 編號。主島 Fongafale 照報導譯作「豐阿法萊」。
 
 ## 底圖
-- **現行：Esri 歷史影像庫（Wayback）2024-11-18 版（#49849），高解析，看得到 TCAP 1 新生地**。
-  代價：北段潟湖上空有雲，中段海面有一大塊拼接的灰色色塊（2024-12 與 2026 版也有）。
-- 經過（09-29 同一天換了四次）：
+- **現行：Sentinel-2 2026-01-05 單景（`basemap/s2_20260105_2x.webp`）**，10 公尺影像放大兩倍並銳化成 Web Mercator 靜態圖，
+  範圍 lon 179.14–179.24、lat -8.575～-8.415，用 `IMAGE` 設定鋪上去（一個請求、280 KB）。看得到 TCAP 新生地、整片色調一致，
+  放大比 Esri 軟。影像由 Planetary Computer 的渲染 API 輸出，挑片與比較圖在母層 `logs/tuvalu-design-refs/s2/`。
+  owner 看了比較圖說「換銳化的看看」（09-29），還在試。
+- 拿掉 `spots.py` 的 `IMAGE` 就回到 Esri Wayback 2024-11-18 版（#49849）：高解析、看得到 TCAP 1 新生地，
+  但北段潟湖上空有雲，中段海面有一大塊拼接的灰色色塊（2024-12 與 2026 版也有）。
+- 經過（09-29 同一天換了五次）：
   1. Esri 最新版：南端灰帶與左右暗塊，是這一帶影像本身的拼接，換縮放層級也在。
   2. owner 從四張比較圖挑了 Sentinel-2 無雲鑲嵌 2024（EOX）：整片均勻，但 10 公尺解析度，owner 嫌「底圖太模糊」。
   3. 掃了 Wayback 25 個版本（10 種不同影像，截圖在母層 `logs/tuvalu-design-refs/`），用最乾淨的 2022-06 版（#44710）：
      沒有雲、沒有灰帶，但拍攝時間早於 TCAP 1 開工（2022-12），看不到新生地。2024-03 版有雲，2024-12 與 2026 版有大塊拼接。
   4. owner 說「Esri 有雲沒差」，改用 TCAP 1 新生地完整的 2024-11 版。要回 2022-06 版，把 `spots.py` 網址裡的 `49849` 改回 `44710`、
      出處日期改回 2022-06-08 就好（那版每張圖磚會先轉址一次，載入較慢）。
+  5. 查完授權（見下一點），owner 從 Sentinel-2 與 Esri 的比較圖選了 Sentinel-2 銳化版。
 - ⚠ **授權**（09-29 查證，原文與出處在母層 `logs/tuvalu-design-refs/license/license-findings.md`）：Esri 圖磚不能自己存成檔案，
   截圖用在新聞稿要先向 Esri 申請，非營利沒有免申請特例；像現在這樣不登入帳號直接串圖磚，條款沒寫清楚，要問 Esri。
   Sentinel-2 可散布，要標「Contains modified Copernicus Sentinel data [年份]」。發稿前要定案。
@@ -40,7 +46,7 @@
 | 手機 353、3 倍螢幕 | 192 張，12.0 秒 | 52 張，1.9 秒 |
 
 改前的 2022-06 版每張圖磚還會先轉址到它實際所在的版本（301），請求數是張數的兩倍。
-Esri 圖磚不能自己拼成一張靜態圖來加速（授權不允許，見上一節）。
+Esri 圖磚不能自己拼成一張靜態圖來加速（授權不允許，見上一節）。現行的 Sentinel-2 靜態圖只要一個請求（280 KB）。
 
 ## 圖釘與說明卡的設計（09-29 改了兩輪）
 - 第一輪：owner 說「字體的白底怪怪的」，東京插畫風的白底膠囊和白卡片放在擬真影像上像貼紙。改成衛星主題，
@@ -83,7 +89,8 @@ python interactive-maps/template/gen_map.py tuvalu   # 讀 spots.py 產地圖
 ```
 
 ## 資料來源與授權
-- 衛星影像：Imagery © Esri, Vantor, Earthstar Geographics, and the GIS User Community（World Imagery Wayback 2024-11-18；用在新聞網站的條件見「底圖」一節）。
+- 衛星影像：Contains modified Copernicus Sentinel data 2026（Sentinel-2，2026-01-05；裁切、重投影、放大銳化過，依 Copernicus 法律聲明標示）。
+  換回 Esri 時：Imagery © Esri, Vantor, Earthstar Geographics, and the GIS User Community（用在新聞網站的條件見「底圖」一節）。
 - 島嶼、礁盤（小地圖與插畫風底圖）：© OpenStreetMap contributors（ODbL）。
 - 說明文字：改寫自環境資訊中心〈吐瓦魯：海浪帶不走的家〉專題報導。
 - 地點座標：採訪團隊整理的 Google 地圖連結，取地點本身的座標。
