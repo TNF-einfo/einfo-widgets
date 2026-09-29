@@ -194,16 +194,17 @@
   .frame.tiles .info .x:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
   .frame.tiles .leaflet-control-attribution{ background:rgba(8,20,16,.55)!important; color:#c9d6cf }
   .frame.tiles .leaflet-control-attribution a{ color:#fff }
-  /* 放大（按住／雙指）：地圖圖層與圖釘名稱浮層用 CSS scale 放大（倍率 --zs、平移 --ztx/--zty、中心 --zox/--zoy），
-     圖釘、地名反向縮回原尺寸，像真的放大地圖；放手時變數照過渡彈回，手指移動中（.zooming）不過渡才跟得上 */
+  /* 放大（按住／雙指）：只有底圖（圖磚、影像）用 CSS scale 放大（倍率 --zs、平移 --ztx/--zty、中心 --zox/--zoy）；
+     圖釘、地名不放大、只照放大後的位置移動（各自的錨點 --px/--py），字才不會糊（owner 09-29：放大時地名糊掉）。
+     變數註冊成可過渡，彈回時底圖與圖釘同步；手指移動中（.zooming）不過渡才跟得上 */
   @property --zs { syntax:'<number>'; inherits:true; initial-value:1 }
   @property --ztx { syntax:'<length>'; inherits:true; initial-value:0px }
   @property --zty { syntax:'<length>'; inherits:true; initial-value:0px }
   .frame.tiles{ transition:--zs .3s ease-out, --ztx .3s ease-out, --zty .3s ease-out }
   .frame.tiles.zooming{ transition:none }
-  .frame.tiles .leaflet-map-pane, .frame.tiles #toplabels{ transform-origin:var(--zox, 0px) var(--zoy, 0px); scale:var(--zs); translate:var(--ztx) var(--zty) }
-  .frame.tiles .pin-anchor, .frame.tiles .rlabel{ scale:calc(1 / var(--zs)) }
-  .frame.tiles .toplabel{ transform-origin:0 0; scale:calc(1 / var(--zs)) }   /* 原點放左上，translate(-50%,-50%) 置中後才繞錨點縮 */
+  .frame.tiles .leaflet-tile-pane, .frame.tiles .leaflet-overlay-pane{ transform-origin:var(--zox, 0px) var(--zoy, 0px); scale:var(--zs); translate:var(--ztx) var(--zty) }
+  .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel{
+    translate:calc((var(--zs) - 1) * (var(--px, 0px) - var(--zox, 0px)) + var(--ztx)) calc((var(--zs) - 1) * (var(--py, 0px) - var(--zoy, 0px)) + var(--zty)) }
   .frame.tiles #map{ cursor:zoom-in; touch-action:pan-x pan-y }   /* 單指照樣捲文章，雙指捏開交給頁面自己放大 */
   .frame.tiles #map, .frame.tiles #toplabels{ -webkit-user-select:none; user-select:none }   /* 按住拖著看時不要反白地名 */
   @media (prefers-reduced-motion:reduce){ .frame.tiles, .frame.tiles .pin, .frame.tiles .toplabel, .frame.tiles .corner, .frame.tiles .info.float{ transition:none } }
@@ -242,6 +243,7 @@ const BOUNDARIES = [];   // [0]=陸地(填色+粗界)，其餘=細界線
 const UNDERLAY = [];       // 陸地下面的淺色填色層（礁盤等），可為空
 const TILES = null;             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
 const IMAGE = {&quot;url&quot;: &quot;basemap/s2_20260105_2x.webp&quot;, &quot;bounds&quot;: [[-8.575, 179.14], [-8.415, 179.24]], &quot;attribution&quot;: &quot;Contains modified Copernicus Sentinel data 2026&quot;};             // null＝無；{url, bounds, attribution}＝一張地理對齊的影像當底圖（有它就不用 TILES）
+const SAT = !!(TILES || IMAGE);      // 衛星主題（圖釘、署名、放大都看這個，不要只看 TILES）
 const ATTRIB = &quot;inset © <a href=\&quot;https://www.openstreetmap.org/copyright\&quot;>OpenStreetMap</a> contributors&quot;;
 
 const CAT = {&quot;adapt&quot;: {&quot;name&quot;: &quot;氣候調適&quot;, &quot;color&quot;: &quot;#f0b429&quot;, &quot;emo&quot;: &quot;🌊&quot;}, &quot;site&quot;: {&quot;name&quot;: &quot;環境現場&quot;, &quot;color&quot;: &quot;#ff7b5c&quot;, &quot;emo&quot;: &quot;📍&quot;}, &quot;life&quot;: {&quot;name&quot;: &quot;島上生活&quot;, &quot;color&quot;: &quot;#f6f3e7&quot;, &quot;emo&quot;: &quot;🏝&quot;}, &quot;tw&quot;: {&quot;name&quot;: &quot;台灣援助&quot;, &quot;color&quot;: &quot;#8fd0ff&quot;, &quot;emo&quot;: &quot;🤝&quot;}};
@@ -287,7 +289,7 @@ const cardHtml = {};   // 景點編號 → 資訊卡 HTML（給地名點擊委�
 for (const s of spots){
   const c = CAT[s.cat];
   const icon = L.divIcon({   // 衛星主題的圖釘是 20px 圓點，中心對準座標；插畫風是 23px 水滴針，尖端對準
-    className:'', iconSize: TILES ? [20,20] : [23,23], iconAnchor: TILES ? [10,10] : [11,23],
+    className:'', iconSize: SAT ? [20,20] : [23,23], iconAnchor: SAT ? [10,10] : [11,23],
     html:`<div class=&quot;pin-anchor&quot; data-spot=&quot;${s.n}&quot;>
             <div class=&quot;pin&quot; style=&quot;background:${c.color}&quot;><b>${s.n}</b></div>
             <span class=&quot;pin-name&quot; data-spot=&quot;${s.n}&quot;>${s.short||s.zh}</span>
@@ -326,7 +328,7 @@ if (INSET){
     return d;
   };
   ctl.addTo(map);
-  if (TILES || IMAGE) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
+  if (SAT) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
 }
 // 點圖釘旁的地名也開資訊卡（事件委派：地名溢出 icon 框、冒泡接不到，改在容器上聽 .pin-name）
 map.getContainer().addEventListener('click', e => {
@@ -471,8 +473,9 @@ function liftPinNames(occ, frame){
     if (bestOv > 0.1 * (4 * lw * lh)){ lab.style.display = 'none'; return; }
     const [ox,oy] = best;
     placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
-    // 錨點放在圖釘中心、偏移寫進 transform：放大時（衛星主題的按住／雙指）名字才會跟著圖釘，不會被一起放大拉遠
+    // 錨點放在圖釘中心、偏移寫進 transform：放大時（衛星主題的按住／雙指）名字照錨點 --px/--py 跟著圖釘移動，偏移不會被放大
     lab.style.left = (P.cx - fr.left) + 'px'; lab.style.top = (P.cy - fr.top) + 'px';
+    lab.style.setProperty('--px', lab.style.left); lab.style.setProperty('--py', lab.style.top);
     lab.style.transform = `translate(${ox}px,${oy}px) translate(-50%,-50%)`;
   });
 }
@@ -578,6 +581,9 @@ function relayout(){
   liftPinNames(occ, frame);        // pin 名 → #toplabels 浮層（壓在所有 pin 之上）
   highlight(curSpot);              // 浮層是重建的，把「正在介紹」的標記補回去
   placeDistricts(frame);           // 行政區 cap-10 + farthest-spread（可被 pin/名蓋）
+  // 衛星主題放大時，圖釘與海面地名只照放大後的位置移動：每個 marker 記下自己在畫框裡的座標（CSS 的 --px/--py）
+  map.eachLayer(l => { if (l._icon &amp;&amp; l.getLatLng){ const p = map.latLngToContainerPoint(l.getLatLng());
+    l._icon.style.setProperty('--px', p.x + 'px'); l._icon.style.setProperty('--py', p.y + 'px'); } });
 }
 
 // 說明輪播：桌機自動輪播 6 景點說明、對應圖釘加脈動高亮；手機不輪播並收起說明
@@ -665,41 +671,44 @@ for (const [key,c] of Object.entries(CAT)){
   legend.appendChild(chip);
 }
 
-// 放大（衛星主題）：桌機按住不放、手機雙指捏開就放大，一放手彈回原尺寸（owner 09-29）。
-// 只用 CSS scale 放大地圖圖層與圖釘名稱浮層（CSS 變數見 .frame.tiles），不動 Leaflet 的縮放級，放手不必重排；說明卡、標題、小地圖不跟著放大
-if (TILES || IMAGE){
-  const fr = document.querySelector('.frame'), mapEl = map.getContainer();
-  ensureTopLayer();
-  let zo = [0, 0];   // 放大中心（相對畫框的 px）
+// 放大（衛星主題）：桌機按住不放、手機雙指捏開就放大；放手後停 1.5 秒再彈回原尺寸（owner 09-29：手機放手就彈，手指擋著看不到）。
+// 只放大底圖（CSS 變數見 .frame.tiles），圖釘與地名只跟著移位置、字不糊；不動 Leaflet 的縮放級，彈回後不必重排。說明卡、標題、小地圖不動
+if (SAT){
+  const fr = document.querySelector('.frame'), mapEl = map.getContainer(), cur = { s:1, t:[0, 0] };
+  let zo = [0, 0], backT = null;   // zo＝放大中心（相對畫框的 px）
   const setZoom = (s, t = [0, 0], live = false) => {
-    fr.classList.toggle('zooming', live);   // 手指移動中不過渡；放手（live=false）才照 CSS 過渡彈回
+    Object.assign(cur, { s, t });
+    fr.classList.toggle('zooming', live);   // 手指移動中不過渡；其餘照 CSS 過渡
     [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px'], ['--zox', zo[0] + 'px'], ['--zoy', zo[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
   };
+  const springBack = () => { clearTimeout(backT); backT = setTimeout(() => setZoom(1), 1500); };
   const frameXY = (x, y) => { const r = fr.getBoundingClientRect(); return [x - r.left, y - r.top]; };
   // 桌機：按住 0.15 秒放大 2.5 倍，按著移動就看別處；點一下（圖釘、地名）照舊開說明卡
   let holdT = null, holding = false;
   mapEl.addEventListener('pointerdown', e => {
     if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.pin-anchor, .leaflet-control')) return;
-    zo = frameXY(e.clientX, e.clientY);
-    holdT = setTimeout(() => { holding = true; mapEl.setPointerCapture(e.pointerId); setZoom(2.5); }, 150);
+    holdT = setTimeout(() => { clearTimeout(backT); holding = true; zo = frameXY(e.clientX, e.clientY); mapEl.setPointerCapture(e.pointerId); setZoom(2.5); }, 150);
   });
   mapEl.addEventListener('pointermove', e => { if (holding){ zo = frameXY(e.clientX, e.clientY); setZoom(2.5); } });
-  const release = () => { clearTimeout(holdT); if (holding){ holding = false; setZoom(1); } };
+  const release = () => { clearTimeout(holdT); if (holding){ holding = false; springBack(); } };
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => mapEl.addEventListener(t, release));
-  // 手機：雙指捏開放大（最多 4 倍）、兩指一起移動可平移，手指離開就彈回；只有兩指時才擋瀏覽器預設，單指照樣捲文章
+  // 手機：雙指捏開放大（最多 4 倍）、兩指一起移動可平移，彈回前再捏就接著目前的倍率；只有兩指時才擋瀏覽器預設，單指照樣捲文章
   let pinch = null;
   const mid = ts => [(ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2];
   const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
   mapEl.addEventListener('touchstart', e => {
-    if (e.touches.length === 2){ pinch = { d:gap(e.touches), m:mid(e.touches) }; zo = frameXY(...pinch.m); }
+    if (e.touches.length !== 2) return;
+    clearTimeout(backT);
+    if (cur.s === 1) zo = frameXY(...mid(e.touches));
+    pinch = { d:gap(e.touches), m:mid(e.touches), s:cur.s, t:cur.t };
   }, { passive:true });
   mapEl.addEventListener('touchmove', e => {
     if (!pinch || e.touches.length !== 2) return;
     e.preventDefault();
     const m = mid(e.touches);
-    setZoom(Math.min(4, Math.max(1, gap(e.touches) / pinch.d)), [m[0] - pinch.m[0], m[1] - pinch.m[1]], true);
+    setZoom(Math.min(4, Math.max(1, pinch.s * gap(e.touches) / pinch.d)), [pinch.t[0] + m[0] - pinch.m[0], pinch.t[1] + m[1] - pinch.m[1]], true);
   }, { passive:false });
-  const unpinch = e => { if (pinch &amp;&amp; e.touches.length < 2){ pinch = null; setZoom(1); } };
+  const unpinch = e => { if (pinch &amp;&amp; e.touches.length < 2){ pinch = null; springBack(); } };
   mapEl.addEventListener('touchend', unpinch); mapEl.addEventListener('touchcancel', unpinch);
 }
 
