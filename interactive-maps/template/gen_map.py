@@ -86,6 +86,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
       repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 3px, rgba(150,120,80,.04) 3px 6px);
   }
   .leaflet-control-attribution{ font-size:9px; background:rgba(255,255,255,.7)!important }
+  .corner{ display:contents }   /* 標題框＋圖例的容器；預設不影響版面（插畫風各自定位），衛星主題才疊在右上 */
   .titlebar{
     position:absolute; left:12px; top:12px; z-index:6;
     background:rgba(255,255,255,.9); backdrop-filter:blur(3px);
@@ -186,7 +187,12 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles .titlebar, .frame.tiles .legend, .frame.tiles .info{
     background:var(--glass); border:0; box-shadow:0 8px 24px rgba(0,0,0,.4); color:var(--cream);
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
-  .frame.tiles .titlebar{ padding:10px 14px 11px; border-radius:12px }
+  .frame.tiles .corner{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; position:absolute; right:12px; top:12px; z-index:6 }
+  .frame.tiles .corner > .titlebar, .frame.tiles .corner > .legend{ position:static }   /* 標題疊在圖例上面、都靠右（owner 09-29） */
+  .frame.tiles .titlebar{ padding:10px 14px 11px; border-radius:12px; text-align:right }
+  .frame.tiles .info.float{ transition:top .3s ease-out; touch-action:none; cursor:grab }   /* 浮動卡片：可拖曳、跟著捲動 */
+  .frame.tiles .info.float.dragging{ transition:none; cursor:grabbing; box-shadow:0 14px 34px rgba(0,0,0,.5) }
+  .vstrip{ position:absolute; left:0; width:1px; opacity:0; pointer-events:none }
   .frame.tiles .titlebar .mark{ color:var(--gold); font-size:10.5px; letter-spacing:.22em }
   .frame.tiles .titlebar h1{ font-family:var(--serif); font-size:22px; letter-spacing:.08em; margin-top:3px }
   .frame.tiles .legend{ border-radius:12px; gap:7px }
@@ -203,7 +209,8 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles .rlabel.sea{ color:rgba(228,244,244,.9); font-weight:500; letter-spacing:.5em }
   .frame.tiles .info{ padding:0; border-radius:14px }
   .frame.tiles .card{ display:flex; flex-direction:column; padding:10px 13px 13px }
-  .frame.tiles .card img.photo{ order:-1; width:calc(100% + 26px); margin:-10px -13px 10px; border-radius:14px 14px 0 0; background:#1d3a30 }
+  .frame.tiles .card img.photo{ order:-1; width:calc(100% + 26px); margin:-10px -13px 10px; border-radius:14px 14px 0 0; background:#1d3a30;
+    height:auto; aspect-ratio:3/2; object-fit:cover }   /* 3:2＝相機原圖比例（owner：固定高度裁得太扁） */
   .frame.tiles .card .meta{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap }
   .frame.tiles .card .tag{ background:transparent!important; padding:0; border-radius:0; color:var(--cream);
     font-size:10.5px; font-weight:600; letter-spacing:.14em; display:inline-flex; align-items:center; gap:6px }
@@ -231,11 +238,13 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
 <div class="frame">
   <div id="map"></div>
   <div class="paper-wash"></div>
-  <div class="titlebar">
-    <div class="mark">__MARK__</div>
-    <h1>__TITLE__</h1>
+  <div class="corner">
+    <div class="titlebar">
+      <div class="mark">__MARK__</div>
+      <h1>__TITLE__</h1>
+    </div>
+    <div class="legend" id="legend"></div>
   </div>
-  <div class="legend" id="legend"></div>
   <div class="info" id="info"></div>
 </div>
 
@@ -249,6 +258,7 @@ const CAT = __CAT__;
 const spots = __SPOTS__;
 const places = __PLACES__;
 const POPUP_SIDE = __POPUP_SIDE__;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
+const POPUP_FLOAT = __POPUP_FLOAT__; // true＝說明卡可按住拖曳、文章往下捲時跟著停在看得到的那一段（長型地圖用）
 
 const map = L.map('map', {
   zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
@@ -262,8 +272,9 @@ if (TILES){
   L.GridLayer.include({ _initTile(tile){ initTile.call(this, tile); const s = this.getTileSize();
     tile.style.width = (s.x + 1) + 'px'; tile.style.height = (s.y + 1) + 'px'; } });
   // zoomOffset／tileSize：抓細 N 級的圖磚、縮小顯示（1 級＝128px、2 級＝64px），靜態全島圖才不會糊
+  // detectRetina：視網膜螢幕自動再抓細一級（tileSize 減半、zoomOffset＋1），一般螢幕不多載
   L.tileLayer(TILES.url, { attribution:TILES.attribution, maxNativeZoom:TILES.maxNativeZoom || 18, maxZoom:22,
-    zoomOffset:TILES.zoomOffset || 0, tileSize:TILES.tileSize || 256 }).addTo(map);
+    zoomOffset:TILES.zoomOffset || 0, tileSize:TILES.tileSize || 256, detectRetina:!!TILES.detectRetina }).addTo(map);
   if (TILES.filter) map.getPane('tilePane').style.filter = TILES.filter;   // 影像調色（例如海太暗時提亮），CSS filter 字串
   document.querySelector('.frame').classList.add('tiles');
 } else {
@@ -355,10 +366,10 @@ function baseObstacles(){
   const occ = [];
   try { stopCar(); } catch(e){}
   showSpot(1);
-  const ir = document.getElementById('info').getBoundingClientRect();
-  if (ir.width > 1) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
-  const tb = document.querySelector('.titlebar');   // 標題框也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
-  if (tb){ const tr = tb.getBoundingClientRect();
+  const ir = document.getElementById('info').getBoundingClientRect();   // 浮動卡片會被拖走、跟著捲動，不當障礙
+  if (ir.width > 1 && !POPUP_FLOAT) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  // 標題框、圖例也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
+  for (const el of document.querySelectorAll('.titlebar, .legend')){ const tr = el.getBoundingClientRect();
     if (tr.width > 1) occ.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
   return occ;
 }
@@ -477,11 +488,11 @@ function placeLabels(occ, frame){   // 原介面（make_video 依賴，勿改）
 function placeDistricts(frame){
   labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
   const cont = document.getElementById('map').getBoundingClientRect();
-  const avoid = [];   // 只避標題框＋popup（地名可被 pin／pin 名蓋）
-  const tb = document.querySelector('.titlebar');
-  if (tb){ const tr = tb.getBoundingClientRect(); if (tr.width > 1) avoid.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
+  const avoid = [];   // 只避標題框、圖例＋popup（地名可被 pin／pin 名蓋）；浮動卡片會移動，不避
+  for (const el of document.querySelectorAll('.titlebar, .legend')){ const tr = el.getBoundingClientRect();
+    if (tr.width > 1) avoid.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
   const ir = document.getElementById('info').getBoundingClientRect();
-  if (ir.width > 1) avoid.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  if (ir.width > 1 && !POPUP_FLOAT) avoid.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
   const cand = [];
   for (const p of places){
     const cp = map.latLngToContainerPoint([p.lat, p.lng]);
@@ -523,6 +534,7 @@ function placeDistricts(frame){
 // popup 自動選「圖釘最少」的角落（任意城市：spots 群聚時 popup 才不壓到 pin）
 function pickPopupCorner(){
   const info = document.getElementById('info');
+  if (POPUP_FLOAT){ placeFloat(); return; }
   if (POPUP_SIDE){   // 長型地圖：卡片放左／右側中段（潟湖、外海那片空白），不去擠南北兩端的點
     const off = (window.matchMedia('(max-width:719.98px)').matches ? 8 : 12) + 'px';
     info.style.left = POPUP_SIDE === 'left' ? off : 'auto'; info.style.right = POPUP_SIDE === 'right' ? off : 'auto';
@@ -564,18 +576,58 @@ function showSpot(n){
   info.innerHTML = '<button class="x" aria-label="關閉">×</button>' + cardHtml[n];
   info.classList.add('show'); highlight(n);
   info.querySelector('.x').onclick = () => { stopCar(); info.classList.remove('show'); highlight(0); };
+  if (POPUP_FLOAT){ placeFloat(); const im = info.querySelector('img.photo'); if (im && !im.complete) im.onload = placeFloat; }
 }
+// 浮動說明卡：讀者按住可拖到任何位置；文章往下捲時，卡片跟著停在地圖「看得到的那一段」的正中間（拖過就保留那個偏移）。
+// 看得到哪一段：沿地圖高度鋪 108 條看不見的細條、用 IntersectionObserver 看哪幾條在畫面裡。
+// 只觀察整張地圖不行：地圖比螢幕高時，捲到中段可見比例不變、不會通知。這招在跨網域 iframe 裡也拿得到，不必外頁配合。
+const flt = { x:null, dy:0, visTop:0, visBot:null };
+function floatBase(){   // 卡片置中於可見段落；可見段落比卡片矮時對齊上緣
+  const H = document.querySelector('.frame').clientHeight, bot = flt.visBot === null ? H : flt.visBot;
+  return flt.visTop + Math.max(0, (bot - flt.visTop - info.offsetHeight) / 2);
+}
+function placeFloat(){
+  const fr = document.querySelector('.frame'), W = fr.clientWidth, H = fr.clientHeight;
+  const m = window.matchMedia('(max-width:719.98px)').matches ? 8 : 12;
+  if (flt.x === null) flt.x = POPUP_SIDE === 'right' ? W - info.offsetWidth - m : m;
+  info.style.left = Math.min(Math.max(flt.x, m), W - info.offsetWidth - m) + 'px';
+  info.style.top = Math.min(Math.max(floatBase() + flt.dy, m), Math.max(m, H - info.offsetHeight - m)) + 'px';
+  info.style.right = info.style.bottom = 'auto'; info.style.transform = 'none';
+}
+function initFloat(){
+  const fr = document.querySelector('.frame'), N = 108, vis = new Set();
+  info.classList.add('float');
+  const io = new IntersectionObserver(es => {
+    for (const e of es) e.isIntersecting ? vis.add(+e.target.dataset.i) : vis.delete(+e.target.dataset.i);
+    flt.visTop = vis.size ? Math.min(...vis) * fr.clientHeight / N : 0;
+    flt.visBot = vis.size ? (Math.max(...vis) + 1) * fr.clientHeight / N : null;
+    if (!info.classList.contains('dragging')) placeFloat();
+  });
+  for (let i = 0; i < N; i++){
+    const s = document.createElement('div'); s.className = 'vstrip'; s.dataset.i = i;
+    s.style.top = (i * 100 / N) + '%'; s.style.height = (100 / N) + '%'; fr.appendChild(s); io.observe(s);
+  }
+  let start = null;   // 拖曳：按住卡片（關閉鈕除外）移動；拖曳中暫停輪播，放開後繼續
+  info.addEventListener('pointerdown', e => {
+    if (e.target.closest('.x, a')) return;
+    start = { px:e.clientX, py:e.clientY, x:info.offsetLeft, y:info.offsetTop };
+    info.setPointerCapture(e.pointerId); info.classList.add('dragging'); stopCar();
+  });
+  info.addEventListener('pointermove', e => { if (!start) return;
+    flt.x = start.x + e.clientX - start.px; flt.dy = start.y + e.clientY - start.py - floatBase(); placeFloat(); });
+  const end = () => { if (!start) return; start = null; info.classList.remove('dragging');
+    stopCar(); carTimer = setInterval(carTick, carMs()); };
+  info.addEventListener('pointerup', end); info.addEventListener('pointercancel', end);
+}
+if (POPUP_FLOAT) initFloat();
 function carMs(){ return window.matchMedia('(max-width:527.98px)').matches ? 2750 : 4200; }   // 手機檔 2.75s、其餘 4.2s
 function carTick(){ showSpot(curSpot % spots.length + 1); }
 function startCar(){ if (carTimer) return; carTick(); carTimer = setInterval(carTick, carMs()); }   // 桌機/手機都輪播
 function stopCar(){ if (carTimer){ clearInterval(carTimer); carTimer = null; } }
 function jump(n){ showSpot(n); stopCar(); carTimer = setInterval(carTick, carMs()); }   // 點某點：跳到它並重置輪播
 function syncCar(){ startCar(); }
-refit(); relayout(); syncCar();   // 初次：fit → 自動排標籤（此時 showSpot 已定義）→ 開輪播
 
-map.on('resize', () => { refit(); relayout(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
-
-// 圖例 + 篩選
+// 圖例 + 篩選（先建好再排標籤：圖例也是地名要避開的障礙）
 const legend = document.getElementById('legend');
 for (const [key,c] of Object.entries(CAT)){
   const chip = document.createElement('div');
@@ -588,6 +640,10 @@ for (const [key,c] of Object.entries(CAT)){
   });
   legend.appendChild(chip);
 }
+
+refit(); relayout(); syncCar();   // 初次：fit → 自動排標籤（此時 showSpot 已定義）→ 開輪播
+
+map.on('resize', () => { refit(); relayout(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
 </script>
 """
 
@@ -598,6 +654,7 @@ html = (TPL
         .replace("__FONT_LINK__", font_link)
         .replace("__FRAME_SIZE__", frame_size)
         .replace("__POPUP_SIDE__", json.dumps(getattr(cfg, "POPUP_SIDE", None)))
+        .replace("__POPUP_FLOAT__", json.dumps(bool(getattr(cfg, "POPUP_FLOAT", False))))
         .replace("__ATTRIB__", json.dumps(attrib, ensure_ascii=False))
         .replace("__CAT__", json.dumps(cfg.CAT, ensure_ascii=False))
         .replace("__SPOTS__", json.dumps(cfg.SPOTS, ensure_ascii=False))
