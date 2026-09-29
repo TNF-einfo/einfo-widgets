@@ -44,6 +44,8 @@ interactive-maps/
 - `TILES`：`{"url", "attribution", "maxNativeZoom"}`，改用圖磚底圖（例如衛星影像）。選用 `filter`（CSS filter 字串，影像調色）。
   抓哪一級圖磚由頁面自己算：一個圖磚像素對到 1～2 個螢幕實體像素，視網膜算到 2 倍為止（09-29 起；之前的 `zoomOffset`／`tileSize`／
   `detectRetina` 固定多抓一兩級，吐瓦魯在視網膜螢幕要載 247 張、改完 70 張）。頁首會先連線到圖磚主機（preconnect）。
+- `IMAGE`：`{"url", "bounds": [[南, 西], [北, 東]], "attribution"}`，改用一張地理對齊的靜態影像當底圖（Web Mercator 投影，
+  照四角拉伸就對得上），一個請求載完。設了它就不用 `TILES`，其餘跟 `TILES` 一樣換成衛星主題。
   衛星主題下標題框疊在圖例上面、都靠右。
   設了它就不畫向量陸地、不抓界線、拿掉紙紋，並換成「衛星主題」（CSS 都在 `.frame.tiles` 底下，插畫風地圖不受影響）：
   配色取自環資颱風短影音（深綠＋黃 `#f0b429`）；能拿掉的框線都拿掉：圖釘只剩 20px 實心圓點＋一層淡陰影，
