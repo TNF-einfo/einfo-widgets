@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>吐瓦魯・富納富提｜環境資訊中心</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="preconnect" href="https://wayback.maptiles.arcgis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&display=swap&text=%2012ACPTap%E3%83%BB%E4%B8%AD%E4%BD%BF%E5%8F%8B%E5%90%90%E5%9C%8B%E5%9C%BE%E5%9E%83%E5%A0%B4%E5%A4%A7%E5%AF%8C%E5%BA%9C%E6%89%80%E6%8B%89%E6%8F%90%E6%94%BF%E6%9C%80%E6%9C%83%E6%9F%AF%E6%A8%93%E6%A9%9F%E6%B0%91%E6%B3%95%E6%BC%94%E7%93%A6%E7%AA%84%E7%B4%8D%E8%8F%AF%E8%AA%BC%E8%AC%9B%E8%BE%B2%E9%9A%9B%E9%9B%86%E9%A3%9B%E9%A4%A8%E9%A7%90%E9%AD%AF%E9%BB%9E">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -221,7 +220,8 @@
 <script>
 const BOUNDARIES = [];   // [0]=陸地(填色+粗界)，其餘=細界線
 const UNDERLAY = [];       // 陸地下面的淺色填色層（礁盤等），可為空
-const TILES = {"url": "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/49849/{z}/{y}/{x}", "attribution": "Imagery © Esri, Vantor, Earthstar Geographics, and the GIS User Community (Wayback 2024-11-18)", "maxNativeZoom": 18};             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
+const TILES = null;             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
+const IMAGE = {"url": "basemap/s2_20260105_2x.webp", "bounds": [[-8.575, 179.14], [-8.415, 179.24]], "attribution": "Contains modified Copernicus Sentinel data 2026"};             // null＝無；{url, bounds, attribution}＝一張地理對齊的影像當底圖（有它就不用 TILES）
 const ATTRIB = "inset © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors";
 
 const CAT = {"adapt": {"name": "氣候調適", "color": "#f0b429", "emo": "🌊"}, "site": {"name": "環境現場", "color": "#ff7b5c", "emo": "📍"}, "life": {"name": "島上生活", "color": "#f6f3e7", "emo": "🏝"}, "tw": {"name": "台灣援助", "color": "#8fd0ff", "emo": "🤝"}};
@@ -238,7 +238,10 @@ const map = L.map('map', {
 });
 // 圖層：有 TILES 就只鋪圖磚（衛星影像等），拿掉紙紋；否則 BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
 let tileLayer = null;
-if (TILES){
+if (IMAGE){   // 一張 Web Mercator 靜態圖照四角拉伸就對得上，一個請求載完；衛星主題照用
+  L.imageOverlay(IMAGE.url, IMAGE.bounds, { attribution:IMAGE.attribution }).addTo(map);
+  document.querySelector('.frame').classList.add('tiles');
+} else if (TILES){
   // 小數縮放時圖磚之間會露出細縫：每張圖磚多畫 1px 疊住鄰居（Leaflet #3575 的通用解），配上面 CSS 的 mix-blend-mode:normal
   const initTile = L.GridLayer.prototype._initTile;
   L.GridLayer.include({ _initTile(tile){ initTile.call(this, tile); const s = this.getTileSize();
@@ -303,7 +306,7 @@ if (INSET){
     return d;
   };
   ctl.addTo(map);
-  if (TILES) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
+  if (TILES || IMAGE) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
 }
 // 點圖釘旁的地名也開資訊卡（事件委派：地名溢出 icon 框、冒泡接不到，改在容器上聽 .pin-name）
 map.getContainer().addEventListener('click', e => {

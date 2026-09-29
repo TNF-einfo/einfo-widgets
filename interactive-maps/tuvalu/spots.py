@@ -11,12 +11,14 @@ POPUP_FLOAT = True                        # 說明卡可按住拖曳；往下捲
 
 BOUNDARIES = ["land.geojson"]             # 設了就不自動抓行政界
 UNDERLAY = ["reef.geojson"]               # 礁盤，畫在陸地下面，環礁的形狀靠它看出來
-# 衛星影像底圖：Esri 歷史影像庫（Wayback）2024-11-18 版（#49849），高解析。
-# 經過：Esri 最新版在這一帶有灰帶與暗塊拼接 → owner 先挑 Sentinel-2 2024（均勻但 10 公尺解析度，嫌「太模糊」）→
-# 掃了 Wayback 25 個版本，先用最乾淨的 2022-06 版（#44710），但它早於 TCAP 1 開工（2022-12）、看不到新生地 →
-# owner 說 Esri 有雲沒關係，改用 TCAP 1 新生地完整的 2024-11 版。
-# 抓哪一級圖磚由 gen_map 依畫面縮放與螢幕密度自動決定。設了 TILES 就不畫向量底圖；拿掉這段回到插畫風。
-# ⚠ 發稿前要確認 Esri 影像用在新聞網站的授權條件。
+# 衛星影像底圖：Sentinel-2 2026-01-05 單景（S2B_MSIL2A_20260105T222759_R072_T60LYR），10 公尺、放大兩倍並銳化，
+# Web Mercator 靜態圖一張（WebP 280 KB），看得到 TCAP 新生地；授權可散布，要標 Copernicus 出處（見 README）。
+# 經過：Esri 最新版有灰帶與暗塊拼接 → Sentinel-2 2024 無雲鑲嵌（owner 嫌「太模糊」）→ Esri Wayback 2022-06（看不到新生地）→
+# Esri Wayback 2024-11（有雲、有拼接色塊，直接串 Esri 圖磚用在新聞網站的授權要問 Esri）→ owner 看了比較圖說「換銳化的看看」（09-29）。
+# 設了 IMAGE 就不用下面的 TILES；拿掉 IMAGE 回到 Esri 2024-11，兩個都拿掉回到插畫風。
+IMAGE = {"url": "basemap/s2_20260105_2x.webp", "bounds": [[-8.575, 179.14], [-8.415, 179.24]],
+         "attribution": "Contains modified Copernicus Sentinel data 2026"}
+# Esri 歷史影像庫（Wayback）2024-11-18 版（#49849）。抓哪一級圖磚由 gen_map 依畫面縮放與螢幕密度自動決定。
 TILES = {"url": "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/49849/{z}/{y}/{x}",
          "attribution": "Imagery © Esri, Vantor, Earthstar Geographics, and the GIS User Community (Wayback 2024-11-18)",
          "maxNativeZoom": 18}
