@@ -7,19 +7,22 @@ MARK = "環境資訊中心"
 MAP_FILE = "tuvalu-map.html"
 HEIGHT = 1080                             # 長型：固定 1080 高、寬度跟文章欄寬走；手機上比螢幕高，往下捲著看
 POPUP_SIDE = "left"                       # 說明卡一開始放左側（潟湖那片空白），不去擠南端那一群點
-POPUP_FLOAT = True                        # 說明卡可按住拖曳、往下捲時跟著停在看得到的那一段（owner 09-29）
+POPUP_FLOAT = True                        # 說明卡可按住拖曳；往下捲時說明卡、標題框、圖例跟著停在看得到的那一段（owner 09-29）
 
 BOUNDARIES = ["land.geojson"]             # 設了就不自動抓行政界
 UNDERLAY = ["reef.geojson"]               # 礁盤，畫在陸地下面，環礁的形狀靠它看出來
-# 衛星影像底圖：Esri 歷史影像庫（Wayback）2022-06-08 版（#44710），高解析。
+# 衛星影像底圖：Esri 歷史影像庫（Wayback）2024-11-18 版（#49849），高解析。
 # 經過：Esri 最新版在這一帶有灰帶與暗塊拼接 → owner 先挑 Sentinel-2 2024（均勻但 10 公尺解析度，嫌「太模糊」）→
-# 掃了 Wayback 25 個版本（10 種不同影像），2022-06 這版最乾淨：沒有雲、沒有灰帶。
-# 代價：拍攝時間早於 TCAP 1 開工（2022-12），看不到新生地；Sentinel-2 2024 看得到 TCAP 1 但模糊（見 README）。
-# zoomOffset 1＋detectRetina：一般螢幕抓細一級、視網膜螢幕抓細兩級。設了 TILES 就不畫向量底圖；拿掉這段回到插畫風。
-# ⚠ 發稿前要確認 Esri 影像用在新聞網站的授權條件，還沒查。
-TILES = {"url": "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/44710/{z}/{y}/{x}",
-         "attribution": "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community (World Imagery Wayback 2022-06-08)",
-         "maxNativeZoom": 18, "zoomOffset": 1, "tileSize": 128, "detectRetina": True}
+# 掃了 Wayback 25 個版本，先用最乾淨的 2022-06 版（#44710），但它早於 TCAP 1 開工（2022-12）、看不到新生地 →
+# owner 說 Esri 有雲沒關係，改用 TCAP 1 新生地完整的 2024-11 版。
+# 抓哪一級圖磚由 gen_map 依畫面縮放與螢幕密度自動決定。設了 TILES 就不畫向量底圖；拿掉這段回到插畫風。
+# ⚠ 發稿前要確認 Esri 影像用在新聞網站的授權條件。
+TILES = {"url": "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/49849/{z}/{y}/{x}",
+         "attribution": "Imagery © Esri, Vantor, Earthstar Geographics, and the GIS User Community (Wayback 2024-11-18)",
+         "maxNativeZoom": 18}
+# 小地圖（右下角）：整個環礁，框出主圖範圍；offmap 的點畫在這裡。layers＝{geojson: 填色}，依序疊畫
+INSET = {"title": "富納富提環礁", "layers": {"reef.geojson": "#4f8f88", "land.geojson": "#e9e3cc"}}
+ATTRIB = 'inset © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'   # 小地圖的礁盤與島嶼取自 OSM（ODbL）
 PLACES = [
     {"t": "太平洋", "lat": -8.49, "lng": 179.205, "big": 1, "sea": 1},      # 貼近主島，手機檔才不會落到框外被略過
     {"t": "富納富提潟湖", "lat": -8.455, "lng": 179.165, "big": 1, "sea": 1},   # 放高一點，避開說明卡預設停的潟湖中段
@@ -37,7 +40,7 @@ CAT = {   # 分類是暫定的，等 owner 確認。顏色挑在衛星影像（�
 # 照片：同一張表的雲端硬碟原檔，縮成 800px 寬放在 photos/（09-29 owner 要先看成果，已隨地圖推上公開 repo；託管方式未定）。
 # 敘述：只寫〈吐瓦魯：海浪帶不走的家〉專題（e-info.org.tw/feature/36）六篇報導寫過的事，行尾註解是出處的 node 編號；
 #       主島 Fongafale 照報導譯作「豐阿法萊」。
-# offmap：離主島太遠、框進來會把主島縮到擠成一團的點，畫在畫面邊緣、朝真實方位，說明卡照樣用真實位置。
+# offmap：離主島太遠、框進來會把主島縮到擠成一團的點，不畫在主圖，畫在右下角的小地圖（INSET）上，點了照樣開說明卡。
 SPOTS = [
     {"n": 1, "cat": "life", "lat": -8.5238844, "lng": 179.1969495, "area": "豐阿法萊島", "short": "國際機場",  # 243891
      "zh": "富納富提國際機場", "ja": "Funafuti International Airport", "img": "photos/DSC03594.jpg",
@@ -84,7 +87,7 @@ SPOTS = [
      "desc": "2021年聯合國氣候大會（COP26）期間，時任外交部長柯飛穿西裝站在海水中演講的地方。"
              "他身後的水泥設施是二戰時美軍的大型防空砲基座，漲潮時會泡在海水裡。"},
     {"n": 12, "cat": "life", "lat": -8.629211, "lng": 179.101125, "area": "富納富提環礁的離島", "offmap": 1,  # 243891、243896
-     "short": "↙ 富納法拉 16 公里", "zh": "富納法拉", "ja": "Funafala",
+     "zh": "富納法拉", "ja": "Funafala",
      "img": "photos/DJI_0258.MP4_000113911.jpg",
      "desc": "只有寥寥幾戶人家的離島。每逢大潮，海水會直接淹上陸地，房屋和器具都泡在水裡；"
              "隨丈夫移居這裡的斐濟籍婦女瓦萊布魯說，當地人總是說「沒事啦，很正常」。"},
