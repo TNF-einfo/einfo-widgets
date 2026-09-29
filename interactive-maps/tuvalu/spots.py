@@ -21,11 +21,12 @@ PLACES = [
     {"t": "富納富提潟湖", "lat": -8.47, "lng": 179.172, "big": 1, "sea": 1},
 ]
 
-CAT = {   # 分類是暫定的，等 owner 確認
-    "adapt": {"name": "氣候調適", "color": "#4a5ab0", "emo": "🌊"},
-    "site":  {"name": "環境現場", "color": "#c9803a", "emo": "📍"},
-    "life":  {"name": "島上生活", "color": "#5fae72", "emo": "🏝"},
-    "tw":    {"name": "台灣援助", "color": "#e07a9c", "emo": "🤝"},
+CAT = {   # 分類是暫定的，等 owner 確認。顏色挑在衛星影像（藍海、青綠潟湖、綠植被）上跳得出來的，
+          # 數字一律深綠字（對比都在 6:1 以上）；原本的藍、綠會跟海和植被融在一起
+    "adapt": {"name": "氣候調適", "color": "#f0b429", "emo": "🌊"},
+    "site":  {"name": "環境現場", "color": "#ff7b5c", "emo": "📍"},
+    "life":  {"name": "島上生活", "color": "#f6f3e7", "emo": "🏝"},
+    "tw":    {"name": "台灣援助", "color": "#8fd0ff", "emo": "🤝"},
 }
 
 # 座標：owner 的 Google 文件表格（2026-09-29 匯出）裡的 Google Map 連結，取地點本身的 !3d/!4d，不取畫面中心 @。
