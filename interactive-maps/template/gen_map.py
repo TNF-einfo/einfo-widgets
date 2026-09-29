@@ -759,15 +759,22 @@ if (SAT){
   const fr = document.querySelector('.frame'), mapEl = map.getContainer(), cur = { s:1, t:[0, 0] };
   let backT = null, drag = null, pinch = null;   // drag＝放大後單指拖 { p:起點, t:當時的平移 }；pinch＝雙指捏 { d:兩指距離, m:中點, s, t }
   const setZoom = (s, t = [0, 0], live = false) => {   // 畫面座標＝t＋s×原座標
-    // 夾住平移：左右拖不出地圖邊界；上下只能在「現在看得到的那一段」裡移動（IntersectionObserver 量的 flt.visTop～visBot），
-    // 彈回時才會原地縮回，不會回到最初放大的那一段（owner 09-29：放大移動後會彈回最初放大的地方）
-    const W = fr.clientWidth, H = fr.clientHeight, top = POPUP_FLOAT ? flt.visTop : 0, bot = POPUP_FLOAT && flt.visBot !== null ? flt.visBot : H;
-    t = [Math.min(0, Math.max(W * (1 - s), t[0])), Math.min(top * (1 - s), Math.max(bot * (1 - s), t[1]))];
+    const W = fr.clientWidth, H = fr.clientHeight;   // 夾住平移：放大後的底圖一直蓋滿畫框，拖不出地圖邊界
+    t = [Math.min(0, Math.max(W * (1 - s), t[0])), Math.min(0, Math.max(H * (1 - s), t[1]))];
     Object.assign(cur, { s, t });
     fr.classList.toggle('zooming', live);   // 拖曳、捏的當下不過渡；彈回照 CSS 過渡
     [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
   };
-  const springBack = () => { clearTimeout(backT); backT = setTimeout(() => setZoom(1), 500); };
+  // 彈回時頁面跟著捲：看得到那一段正中間現在顯示的那塊地圖，彈回後捲到畫面中間，停在移動後的地方
+  // （owner 09-29：放大移動後會彈回最初放大的地方）。用 scrollIntoView，嵌在文章的 iframe 裡也捲得動外頁
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute;left:0;width:1px;height:1px;pointer-events:none';
+  fr.appendChild(probe);
+  const springBack = () => { clearTimeout(backT); backT = setTimeout(() => {
+    const H = fr.clientHeight, c = POPUP_FLOAT && flt.visBot !== null ? (flt.visTop + flt.visBot) / 2 : H / 2, qy = (c - cur.t[1]) / cur.s;
+    if (Math.abs(qy - c) > 20){ probe.style.top = qy + 'px'; probe.scrollIntoView({ block:'center', behavior:'smooth' }); }
+    setZoom(1);
+  }, 500); };
   const frameXY = (x, y) => { const r = fr.getBoundingClientRect(); return [x - r.left, y - r.top]; };
   const mid = ts => frameXY((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
   const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
