@@ -6,22 +6,23 @@ TITLE = "吐瓦魯・富納富提"
 MARK = "環境資訊中心"
 MAP_FILE = "tuvalu-map.html"
 HEIGHT = 1080                             # 長型：固定 1080 高、寬度跟文章欄寬走；手機上比螢幕高，往下捲著看
-POPUP_SIDE = "left"                       # 說明卡固定在左側中段（潟湖那片空白），不去擠南端那一群點
+POPUP_SIDE = "left"                       # 說明卡一開始放左側（潟湖那片空白），不去擠南端那一群點
+POPUP_FLOAT = True                        # 說明卡可按住拖曳、往下捲時跟著停在看得到的那一段（owner 09-29）
 
 BOUNDARIES = ["land.geojson"]             # 設了就不自動抓行政界
 UNDERLAY = ["reef.geojson"]               # 礁盤，畫在陸地下面，環礁的形狀靠它看出來
-# 衛星影像底圖：EOX 的 Sentinel-2 無雲鑲嵌 2024（owner 09-29 從四個選項挑「3」，不調色）。
-# 選它的理由：Esri 在這一帶拼了不同來源的影像，灰帶與暗塊換級數、換歷史版本都去不掉；Sentinel-2 整片同一套處理、均勻。
-# 解析度 10 公尺，全島一屏的顯示比例一個像素約 15 公尺，所以抓細一級（zoomOffset 1）就夠清楚。
-# 設了 TILES，上面兩層向量底圖就不畫；拿掉這段就回到插畫風。
-# ⚠ 授權 CC BY-NC-SA 4.0（非商業），環資是非營利媒體，發稿前由 owner 判斷；署名照 EOX 要求的字樣。
-TILES = {"url": "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg",
-         "attribution": 'Sentinel-2 cloudless – <a href="https://s2maps.eu">s2maps.eu</a> by EOX IT Services GmbH '
-                        '(Contains modified Copernicus Sentinel data 2024)',
-         "maxNativeZoom": 15, "zoomOffset": 1, "tileSize": 128}
+# 衛星影像底圖：Esri 歷史影像庫（Wayback）2022-06-08 版（#44710），高解析。
+# 經過：Esri 最新版在這一帶有灰帶與暗塊拼接 → owner 先挑 Sentinel-2 2024（均勻但 10 公尺解析度，嫌「太模糊」）→
+# 掃了 Wayback 25 個版本（10 種不同影像），2022-06 這版最乾淨：沒有雲、沒有灰帶。
+# 代價：拍攝時間早於 TCAP 1 開工（2022-12），看不到新生地；Sentinel-2 2024 看得到 TCAP 1 但模糊（見 README）。
+# zoomOffset 1＋detectRetina：一般螢幕抓細一級、視網膜螢幕抓細兩級。設了 TILES 就不畫向量底圖；拿掉這段回到插畫風。
+# ⚠ 發稿前要確認 Esri 影像用在新聞網站的授權條件，還沒查。
+TILES = {"url": "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/44710/{z}/{y}/{x}",
+         "attribution": "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community (World Imagery Wayback 2022-06-08)",
+         "maxNativeZoom": 18, "zoomOffset": 1, "tileSize": 128, "detectRetina": True}
 PLACES = [
     {"t": "太平洋", "lat": -8.49, "lng": 179.205, "big": 1, "sea": 1},      # 貼近主島，手機檔才不會落到框外被略過
-    {"t": "富納富提潟湖", "lat": -8.47, "lng": 179.172, "big": 1, "sea": 1},
+    {"t": "富納富提潟湖", "lat": -8.455, "lng": 179.165, "big": 1, "sea": 1},   # 放高一點，避開說明卡預設停的潟湖中段
 ]
 
 CAT = {   # 分類是暫定的，等 owner 確認。顏色挑在衛星影像（藍海、青綠潟湖、綠植被）上跳得出來的，
