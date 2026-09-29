@@ -8,6 +8,8 @@
 <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
 <title>吐瓦魯・富納富提｜環境資訊中心</title>
 <link rel=&quot;stylesheet&quot; href=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.css&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link rel=&quot;stylesheet&quot; href=&quot;https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&amp;display=swap&amp;text=%2012ACPTap%E3%83%BB%E4%B8%AD%E4%BD%BF%E5%8F%8B%E5%90%90%E5%9C%8B%E5%9C%BE%E5%9E%83%E5%A0%B4%E5%A4%A7%E5%AF%8C%E5%BA%9C%E6%89%80%E6%8B%89%E6%8F%90%E6%94%BF%E6%9C%80%E6%9C%83%E6%9F%AF%E6%A8%93%E6%A9%9F%E6%B0%91%E6%B3%95%E6%BC%94%E7%93%A6%E7%AA%84%E7%B4%8D%E8%8F%AF%E8%AA%BC%E8%AC%9B%E8%BE%B2%E9%9A%9B%E9%9B%86%E9%A3%9B%E9%A4%A8%E9%A7%90%E9%AD%AF%E9%BB%9E&quot;>
 <script src=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.js&quot;></script>
 <style>
   :root{
@@ -98,6 +100,7 @@
   .card .ja{ margin:1px 0 5px; font-size:10.5px; color:#a2957f }
   .card p.desc{ margin:0 0 4px; color:#4a443b }
   .card a{ color:#4a5ab0; font-weight:800; font-size:12.5px; text-decoration:none; border-bottom:1.5px solid #c9cfea }
+  .card .coord{ display:none }   /* 經緯度只在衛星主題顯示（見檔尾 .frame.tiles） */
   /* 斷點依 e-info 三檔嵌入寬度對齊（桌機 720 / 平板 528 / 手機 352.8）；吃 iframe 自身寬度。
      小版（<720，即 e-info 平板＋手機）共用：拿掉標題/圖例、縮圖釘、地名先縮小 */
   @media (max-width:719.98px){
@@ -126,6 +129,66 @@
   @media (min-width:720px){
     .card[data-spot=&quot;6&quot;] img.photo{ object-position:50% 30% }
   }
+
+  /* ── 衛星主題（有 TILES 時 .frame 加 .tiles；插畫風地圖不受影響）──
+     配色取自環資颱風短影音：深綠毛玻璃＋黃色強調。白底膠囊在擬真影像上像貼紙，改成白字深色描邊；
+     圖釘改圓點（中心對座標），說明卡照片滿版、宋體標題、附經緯度。 */
+  .frame.tiles{ --glass:rgba(16,42,31,.82); --line:rgba(255,255,255,.14); --cream:#f6f3e7; --mute:#aebfb5;
+    --gold:#f0b429; --deep:#10231b; --serif:&quot;Noto Serif TC&quot;,&quot;Source Han Serif TC&quot;,&quot;Songti TC&quot;,&quot;PMingLiU&quot;,serif;
+    --mono:ui-monospace,&quot;SF Mono&quot;,Menlo,Consolas,monospace; background:#0f2a22 }
+  .frame.tiles #map, .frame.tiles .leaflet-container{ background:#0f2a22 }
+  .frame.tiles .titlebar, .frame.tiles .legend, .frame.tiles .info{
+    background:var(--glass); border:1px solid var(--line); box-shadow:0 10px 28px rgba(0,0,0,.42); color:var(--cream);
+    -webkit-backdrop-filter:blur(8px) saturate(1.2); backdrop-filter:blur(8px) saturate(1.2) }
+  .frame.tiles .titlebar{ padding:10px 14px 11px; border-radius:12px }
+  .frame.tiles .titlebar .mark{ color:var(--gold); font-size:10.5px; letter-spacing:.22em }
+  .frame.tiles .titlebar h1{ font-family:var(--serif); font-size:22px; letter-spacing:.08em; margin-top:3px }
+  .frame.tiles .legend{ border-radius:12px; gap:7px }
+  .frame.tiles .chip{ color:var(--cream); font-weight:600; font-size:12px; letter-spacing:.04em }
+  .frame.tiles .chip .dot{ width:10px; height:10px; font-size:0; box-shadow:0 0 0 2px var(--deep), 0 0 0 3px rgba(255,255,255,.5) }
+  .frame.tiles .pin{ border-radius:50%; transform:none; border:2px solid var(--deep);
+    box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 2px 6px rgba(0,0,0,.5) }   /* 深綠細框＋外圈淡白線：亮沙地與深海都分得出來 */
+  .frame.tiles .pin b{ transform:none; color:var(--deep); font-size:11px }
+  .frame.tiles .pin-anchor{ transform-origin:50% 50% }
+  .frame.tiles .pin-anchor.hi .pin{ transform:scale(1.3); animation:ping 1.6s ease-out infinite }
+  @keyframes ping{
+    0%  { box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 0 3px var(--gold), 0 0 0 3px rgba(240,180,41,.55), 0 2px 6px rgba(0,0,0,.5) }
+    100%{ box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 0 3px var(--gold), 0 0 0 15px rgba(240,180,41,0), 0 2px 6px rgba(0,0,0,.5) } }
+  .frame.tiles .toplabel{ background:none; border:0; box-shadow:none; padding:0 2px; color:#fff; font-weight:700; letter-spacing:.03em;
+    text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.6) }
+  .frame.tiles .rlabel.sea{ color:rgba(228,244,244,.92); font-weight:600; letter-spacing:.5em }
+  .frame.tiles .info{ padding:0; border-radius:14px }
+  .frame.tiles .card{ display:flex; flex-direction:column; padding:10px 13px 13px }
+  .frame.tiles .card img.photo{ order:-1; width:calc(100% + 26px); margin:-10px -13px 10px; border-radius:13px 13px 0 0; background:#1d3a30 }
+  .frame.tiles .card .meta{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap }
+  .frame.tiles .card .tag{ background:transparent!important; padding:0; border-radius:0; color:var(--cream);
+    font-size:10.5px; font-weight:700; letter-spacing:.14em; display:inline-flex; align-items:center; gap:6px }
+  .frame.tiles .card .tag::before{ content:&quot;&quot;; width:8px; height:8px; border-radius:50%; background:var(--tag);
+    box-shadow:0 0 0 1.5px var(--deep), 0 0 0 2.5px rgba(255,255,255,.5) }
+  .frame.tiles .card .emo{ display:none }
+  .frame.tiles .card .area{ margin:0; color:var(--mute) }
+  .frame.tiles .card h3{ font-family:var(--serif); font-size:18px; letter-spacing:.04em; color:#fff; margin:6px 0 0 }
+  .frame.tiles .card .ja{ color:var(--mute); margin:2px 0 0 }
+  .frame.tiles .card .coord{ display:block; font:500 10px/1.4 var(--mono); color:#86a295; letter-spacing:.02em; margin:3px 0 7px }
+  .frame.tiles .card p.desc{ color:#e3ebe6 }
+  .frame.tiles .info .x{ top:7px; right:7px; width:24px; height:24px; padding:0; border-radius:50%; background:rgba(8,20,16,.55);
+    color:#fff; font-size:16px; line-height:24px; text-align:center; z-index:2 }
+  .frame.tiles .info .x:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
+  .frame.tiles .leaflet-control-attribution{ background:rgba(8,20,16,.55)!important; color:#c9d6cf }
+  .frame.tiles .leaflet-control-attribution a{ color:#fff }
+  /* 連線：說明卡固定在一側，跟正在介紹的圖釘可能隔很遠 → 從卡片邊緣拉一條黃線到圖釘（壓在地名與卡片下面） */
+  #tether{ position:absolute; inset:0; width:100%; height:100%; z-index:4; pointer-events:none; overflow:visible; transition:opacity .25s }
+  #tether line{ stroke:var(--gold); stroke-width:1.5; stroke-linecap:round }
+  #tether line.halo{ stroke:rgba(0,0,0,.45); stroke-width:4 }
+  #tether circle{ fill:var(--gold); stroke:rgba(0,0,0,.45); stroke-width:1 }
+  @media (prefers-reduced-motion:reduce){ .frame.tiles .pin-anchor.hi .pin{ animation:none } #tether{ transition:none } }
+  @media (max-width:719.98px){
+    .frame.tiles .card{ padding:8px 9px 9px }
+    .frame.tiles .card img.photo{ width:calc(100% + 18px); margin:-8px -9px 8px }
+    .frame.tiles .card h3{ font-size:14px; margin-top:4px }
+    .frame.tiles .card .coord{ margin:2px 0 5px }
+  }
+  @media (max-width:527.98px){ .frame.tiles .card .coord{ display:none } .frame.tiles .card h3{ font-size:13.5px } }
 </style>
 
 <div class=&quot;frame&quot;>
@@ -145,7 +208,7 @@ const UNDERLAY = [];       // 陸地下面的淺色填色層（礁盤等），�
 const TILES = {&quot;url&quot;: &quot;https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}&quot;, &quot;attribution&quot;: &quot;Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community&quot;, &quot;maxNativeZoom&quot;: 18};             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
 const ATTRIB = &quot;boundaries © <a href=\&quot;https://www.openstreetmap.org/copyright\&quot;>OpenStreetMap</a> contributors&quot;;
 
-const CAT = {&quot;adapt&quot;: {&quot;name&quot;: &quot;氣候調適&quot;, &quot;color&quot;: &quot;#4a5ab0&quot;, &quot;emo&quot;: &quot;🌊&quot;}, &quot;site&quot;: {&quot;name&quot;: &quot;環境現場&quot;, &quot;color&quot;: &quot;#c9803a&quot;, &quot;emo&quot;: &quot;📍&quot;}, &quot;life&quot;: {&quot;name&quot;: &quot;島上生活&quot;, &quot;color&quot;: &quot;#5fae72&quot;, &quot;emo&quot;: &quot;🏝&quot;}, &quot;tw&quot;: {&quot;name&quot;: &quot;台灣援助&quot;, &quot;color&quot;: &quot;#e07a9c&quot;, &quot;emo&quot;: &quot;🤝&quot;}};
+const CAT = {&quot;adapt&quot;: {&quot;name&quot;: &quot;氣候調適&quot;, &quot;color&quot;: &quot;#f0b429&quot;, &quot;emo&quot;: &quot;🌊&quot;}, &quot;site&quot;: {&quot;name&quot;: &quot;環境現場&quot;, &quot;color&quot;: &quot;#ff7b5c&quot;, &quot;emo&quot;: &quot;📍&quot;}, &quot;life&quot;: {&quot;name&quot;: &quot;島上生活&quot;, &quot;color&quot;: &quot;#f6f3e7&quot;, &quot;emo&quot;: &quot;🏝&quot;}, &quot;tw&quot;: {&quot;name&quot;: &quot;台灣援助&quot;, &quot;color&quot;: &quot;#8fd0ff&quot;, &quot;emo&quot;: &quot;🤝&quot;}};
 const spots = [{&quot;n&quot;: 1, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.5238844, &quot;lng&quot;: 179.1969495, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;short&quot;: &quot;國際機場&quot;, &quot;zh&quot;: &quot;富納富提國際機場&quot;, &quot;ja&quot;: &quot;Funafuti International Airport&quot;, &quot;img&quot;: &quot;photos/DSC03594.jpg&quot;, &quot;desc&quot;: &quot;機場很小、跑道很短，卻是島上少數平坦的道路。航班少，居民平常就在跑道上通行、運動、休閒，只有飛機起降時才退到兩旁等待，像一座飛機版的平交道。&quot;}, {&quot;n&quot;: 2, &quot;cat&quot;: &quot;tw&quot;, &quot;lat&quot;: -8.5278107, &quot;lng&quot;: 179.1940009, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;zh&quot;: &quot;友誼農場&quot;, &quot;ja&quot;: &quot;Happy Friendship Garden&quot;, &quot;img&quot;: &quot;photos/DSC03660.jpg&quot;, &quot;desc&quot;: &quot;台灣技術團在機場旁經營的農場，每週兩天清晨開市，居民排隊採買蔬菜。珊瑚礁土壤缺乏養分，技術團用進口河沙混有機肥自己做土，作物墊高40至50公分，避開漲潮時從地面冒出的海水。&quot;}, {&quot;n&quot;: 3, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.5243806, &quot;lng&quot;: 179.194428, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;short&quot;: &quot;政府大樓&quot;, &quot;zh&quot;: &quot;吐瓦魯政府大樓&quot;, &quot;ja&quot;: &quot;The Parliament of Tuvalu&quot;, &quot;img&quot;: &quot;photos/IMG_8620.jpg&quot;, &quot;desc&quot;: &quot;台灣自2010年起推動「潔淨能源計畫」，富納富提的政府建築屋頂也鋪了來自台灣的光電板。台灣未來還將協助興建新的國會大樓。&quot;}, {&quot;n&quot;: 4, &quot;cat&quot;: &quot;adapt&quot;, &quot;lat&quot;: -8.5208195, &quot;lng&quot;: 179.1947881, &quot;area&quot;: &quot;瓦伊阿庫村西側&quot;, &quot;zh&quot;: &quot;TCap 1&quot;, &quot;ja&quot;: &quot;吐瓦魯海岸調適計畫（TCAP）第一階段&quot;, &quot;img&quot;: &quot;photos/DJI_0264.MP4_000337051.jpg&quot;, &quot;desc&quot;: &quot;吐瓦魯政府2017年展開的大型調適工程。第一階段在人口最密集的瓦伊阿庫村西側，2023年底完工，用潟湖砂土填出約7.3公頃新土地，依聯合國開發計劃署的設計標準，可抵禦2100年以前的海平面上升。&quot;}, {&quot;n&quot;: 5, &quot;cat&quot;: &quot;adapt&quot;, &quot;lat&quot;: -8.5294437, &quot;lng&quot;: 179.1903839, &quot;area&quot;: &quot;南側潟湖&quot;, &quot;zh&quot;: &quot;TCap 2&quot;, &quot;ja&quot;: &quot;吐瓦魯海岸調適計畫（TCAP）第二階段&quot;, &quot;img&quot;: &quot;photos/DSC04644.jpg&quot;, &quot;desc&quot;: &quot;第二階段選在南側潟湖，用高強度沙袋堆成防波堤，再以潟湖砂土填出長約800公尺、約8公頃的新生地，2025年10月由聯合國開發計劃署正式移交。&quot;}, {&quot;n&quot;: 6, &quot;cat&quot;: &quot;tw&quot;, &quot;lat&quot;: -8.5147958, &quot;lng&quot;: 179.2006125, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;short&quot;: &quot;大使館&quot;, &quot;zh&quot;: &quot;中華民國駐吐瓦魯大使館&quot;, &quot;ja&quot;: &quot;Embassy of the Republic of China (Taiwan)&quot;, &quot;img&quot;: &quot;photos/IMG_6593.jpg&quot;, &quot;desc&quot;: &quot;台吐建交已40餘年，大使為林東亨。兩國2025年底簽署《台吐團結共榮條約》，條約名稱的「Kaitasi」在吐瓦魯語是「至親家人」。&quot;}, {&quot;n&quot;: 7, &quot;cat&quot;: &quot;adapt&quot;, &quot;lat&quot;: -8.502527, &quot;lng&quot;: 179.195511, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;zh&quot;: &quot;TTCAP&quot;, &quot;ja&quot;: &quot;台吐海岸調適計畫&quot;, &quot;img&quot;: &quot;photos/DJI_0255.MP4_000013219.jpg&quot;, &quot;desc&quot;: &quot;台灣協助的海岸調適計畫，在富納富提更北端修築、加高防波堤，保護容易受浪潮衝擊的聚落。2026年完工，同年3月外交部長林佳龍以總統特使身分出席啟用典禮。&quot;}, {&quot;n&quot;: 8, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.516483, &quot;lng&quot;: 179.19898, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;zh&quot;: &quot;集會所&quot;, &quot;ja&quot;: &quot;Maneapa&quot;, &quot;img&quot;: &quot;photos/DSC03746.jpg&quot;, &quot;desc&quot;: &quot;吐瓦魯社群聚會、議事的地方。富納富提社群副首領提凱圖說，填海造陸、再把低窪土地墊高的氣候調適方案，長老們都在集會所討論過。&quot;}, {&quot;n&quot;: 9, &quot;cat&quot;: &quot;site&quot;, &quot;lat&quot;: -8.457374, &quot;lng&quot;: 179.183098, &quot;area&quot;: &quot;豐阿法萊島北端&quot;, &quot;zh&quot;: &quot;垃圾場&quot;, &quot;ja&quot;: &quot;&quot;, &quot;img&quot;: &quot;photos/DJI_0262.MP4_000208749.jpg&quot;, &quot;desc&quot;: &quot;全島的垃圾都集中在北端這座垃圾山，從汽機車殘骸到日常用品都有。當地沒有大型焚化爐，只能露天焚燒；台灣從2008年起協助推動環境教育，從垃圾分類、資源回收做起。&quot;}, {&quot;n&quot;: 10, &quot;cat&quot;: &quot;site&quot;, &quot;lat&quot;: -8.4717966, &quot;lng&quot;: 179.1894988, &quot;area&quot;: &quot;豐阿法萊島北段&quot;, &quot;short&quot;: &quot;最窄點&quot;, &quot;zh&quot;: &quot;吐瓦魯最窄點&quot;, &quot;ja&quot;: &quot;The narrowest point on Fongafale Island&quot;, &quot;img&quot;: &quot;photos/DJI_0264.jpg&quot;, &quot;desc&quot;: &quot;道路兩旁就是海水，浪花一波波拍打路基。在這裡遇到的青年基洛托努說，以前這裡有一片土地、還有椰子樹，現在全消失了，海岸線逼近了至少20公尺。&quot;}, {&quot;n&quot;: 11, &quot;cat&quot;: &quot;site&quot;, &quot;lat&quot;: -8.4482937, &quot;lng&quot;: 179.1779476, &quot;area&quot;: &quot;豐阿法萊島最北端&quot;, &quot;zh&quot;: &quot;柯飛演講點&quot;, &quot;ja&quot;: &quot;&quot;, &quot;img&quot;: &quot;photos/DSC06616.jpg&quot;, &quot;desc&quot;: &quot;2021年聯合國氣候大會（COP26）期間，時任外交部長柯飛穿西裝站在海水中演講的地方。他身後的水泥設施是二戰時美軍的大型防空砲基座，漲潮時會泡在海水裡。&quot;}, {&quot;n&quot;: 12, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.629211, &quot;lng&quot;: 179.101125, &quot;area&quot;: &quot;富納富提環礁的離島&quot;, &quot;offmap&quot;: 1, &quot;short&quot;: &quot;↙ 富納法拉 16 公里&quot;, &quot;zh&quot;: &quot;富納法拉&quot;, &quot;ja&quot;: &quot;Funafala&quot;, &quot;img&quot;: &quot;photos/DJI_0258.MP4_000113911.jpg&quot;, &quot;desc&quot;: &quot;只有寥寥幾戶人家的離島。每逢大潮，海水會直接淹上陸地，房屋和器具都泡在水裡；隨丈夫移居這裡的斐濟籍婦女瓦萊布魯說，當地人總是說「沒事啦，很正常」。&quot;}];
 const places = [{&quot;t&quot;: &quot;太平洋&quot;, &quot;lat&quot;: -8.49, &quot;lng&quot;: 179.205, &quot;big&quot;: 1, &quot;sea&quot;: 1}, {&quot;t&quot;: &quot;富納富提潟湖&quot;, &quot;lat&quot;: -8.47, &quot;lng&quot;: 179.172, &quot;big&quot;: 1, &quot;sea&quot;: 1}];
 const POPUP_SIDE = &quot;left&quot;;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
@@ -179,10 +242,13 @@ const layers = {}; Object.keys(CAT).forEach(k => layers[k] = L.layerGroup());
 const bounds = [];
 const markers = {};    // 景點編號 → marker（offmap 的點 fit 完要搬到畫面邊緣）
 const cardHtml = {};   // 景點編號 → 資訊卡 HTML（給地名點擊委派用）
+// 經緯度 → 8°31′25″S 這種寫法（說明卡在衛星主題顯示；offmap 的點照樣寫真實位置）
+const dms = (v, pos, neg) => { const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a - d) * 60),
+  s = Math.floor(((a - d) * 60 - m) * 60); return `${d}°${String(m).padStart(2,'0')}′${String(s).padStart(2,'0')}″${v < 0 ? neg : pos}`; };
 for (const s of spots){
   const c = CAT[s.cat];
   const icon = L.divIcon({
-    className:'', iconSize:[23,23], iconAnchor:[11,23],
+    className:'', iconSize:[23,23], iconAnchor: TILES ? [11.5,11.5] : [11,23],   // 衛星主題的圖釘是圓點，中心對準座標；插畫風是水滴針，尖端對準
     html:`<div class=&quot;pin-anchor&quot; data-spot=&quot;${s.n}&quot;>
             <div class=&quot;pin&quot; style=&quot;background:${c.color}&quot;><b>${s.n}</b></div>
             <span class=&quot;pin-name&quot; data-spot=&quot;${s.n}&quot;>${s.short||s.zh}</span>
@@ -194,10 +260,10 @@ for (const s of spots){
   // 而且 lazy 本來就沒必要——彈出視窗本身就是延遲機制，圖只有在使用者點開時才存在。
   const html =
     `<div class=&quot;card&quot; data-spot=&quot;${s.n}&quot;>
-       <span class=&quot;tag&quot; style=&quot;background:${c.color}&quot;>${c.emo} ${c.name}</span>
-       <span class=&quot;area&quot;>${s.area}</span>
+       <div class=&quot;meta&quot;><span class=&quot;tag&quot; style=&quot;--tag:${c.color};background:${c.color}&quot;><span class=&quot;emo&quot;>${c.emo}</span> ${c.name}</span> <span class=&quot;area&quot;>${s.area}</span></div>
        <img class=&quot;photo&quot; src=&quot;${photo}&quot; alt=&quot;${s.zh}&quot;>
        <h3>${s.zh}</h3><p class=&quot;ja&quot;>${s.ja}</p>
+       <p class=&quot;coord&quot;>${dms(s.lat,'N','S')}　${dms(s.lng,'E','W')}</p>
        <p class=&quot;desc&quot;>${s.desc}</p>
      </div>`;
   cardHtml[s.n] = html;
@@ -457,7 +523,31 @@ function showSpot(n){
   curSpot = n;
   info.innerHTML = '<button class=&quot;x&quot; aria-label=&quot;關閉&quot;>×</button>' + cardHtml[n];
   info.classList.add('show'); highlight(n);
-  info.querySelector('.x').onclick = () => { stopCar(); info.classList.remove('show'); highlight(0); };
+  info.querySelector('.x').onclick = () => { stopCar(); info.classList.remove('show'); highlight(0); drawTether(); };
+  drawTether();
+  const im = info.querySelector('img.photo');   // 照片載入後卡片會變高，連線的起點要跟著重算
+  if (im &amp;&amp; !im.complete) im.onload = drawTether;
+}
+// 衛星主題的連線：從說明卡邊緣最近的一點，拉到正在介紹的圖釘外緣。卡片不開、圖釘就在卡片旁邊時不畫。
+function drawTether(){
+  if (!TILES) return;
+  let svg = document.getElementById('tether');
+  if (!svg){
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.id = 'tether';
+    document.querySelector('.frame').appendChild(svg);
+  }
+  const pin = document.querySelector('.pin-anchor.hi .pin');
+  if (!pin || !info.classList.contains('show')){ svg.innerHTML = ''; return; }
+  const fr = document.querySelector('.frame').getBoundingClientRect();
+  const p = pin.getBoundingClientRect(), c = info.getBoundingClientRect();
+  const px = (p.left + p.right) / 2 - fr.left, py = (p.top + p.bottom) / 2 - fr.top;
+  const cx = Math.min(Math.max(px, c.left - fr.left), c.right - fr.left);
+  const cy = Math.min(Math.max(py, c.top - fr.top), c.bottom - fr.top);
+  const dx = px - cx, dy = py - cy, len = Math.hypot(dx, dy), r = p.width / 2 + 5;
+  if (len < r + 16){ svg.innerHTML = ''; return; }
+  const ex = px - dx / len * r, ey = py - dy / len * r;   // 停在圖釘外緣，不壓到數字
+  const seg = `x1=&quot;${cx.toFixed(1)}&quot; y1=&quot;${cy.toFixed(1)}&quot; x2=&quot;${ex.toFixed(1)}&quot; y2=&quot;${ey.toFixed(1)}&quot;`;
+  svg.innerHTML = `<line class=&quot;halo&quot; ${seg}/><line ${seg}/><circle cx=&quot;${cx.toFixed(1)}&quot; cy=&quot;${cy.toFixed(1)}&quot; r=&quot;3&quot;/>`;
 }
 function carMs(){ return window.matchMedia('(max-width:527.98px)').matches ? 2750 : 4200; }   // 手機檔 2.75s、其餘 4.2s
 function carTick(){ showSpot(curSpot % spots.length + 1); }
