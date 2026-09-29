@@ -675,41 +675,57 @@ for (const [key,c] of Object.entries(CAT)){
 // 只放大底圖（CSS 變數見 .frame.tiles），圖釘與地名只跟著移位置、字不糊；不動 Leaflet 的縮放級，彈回後不必重排。說明卡、標題、小地圖不動
 if (SAT){
   const fr = document.querySelector('.frame'), mapEl = map.getContainer(), cur = { s:1, t:[0, 0] };
-  let zo = [0, 0], backT = null;   // zo＝放大中心（相對畫框的 px）
+  let zo = [0, 0], backT = null, drag = null;   // zo＝放大中心（相對畫框的 px）；drag＝放大後拖曳中 { p0:起點, t0:當時的平移 }
   const setZoom = (s, t = [0, 0], live = false) => {
+    const W = fr.clientWidth, H = fr.clientHeight;   // 平移夾在放大後的底圖仍蓋滿畫框的範圍內，拖不出地圖邊界
+    t = [Math.min(zo[0] * (s - 1), Math.max(-(W - zo[0]) * (s - 1), t[0])), Math.min(zo[1] * (s - 1), Math.max(-(H - zo[1]) * (s - 1), t[1]))];
     Object.assign(cur, { s, t });
-    fr.classList.toggle('zooming', live);   // 手指移動中不過渡；其餘照 CSS 過渡
+    fr.classList.toggle('zooming', live);   // 拖曳、捏的當下不過渡；其餘照 CSS 過渡
     [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px'], ['--zox', zo[0] + 'px'], ['--zoy', zo[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
   };
   const springBack = () => { clearTimeout(backT); backT = setTimeout(() => setZoom(1), 1500); };
   const frameXY = (x, y) => { const r = fr.getBoundingClientRect(); return [x - r.left, y - r.top]; };
-  // 桌機：按住 0.15 秒放大 2.5 倍，按著移動就看別處；點一下（圖釘、地名）照舊開說明卡
-  let holdT = null, holding = false;
+  const startDrag = (x, y) => { clearTimeout(backT); drag = { p0:[x, y], t0:cur.t }; };
+  const moveDrag = (x, y) => setZoom(cur.s, [drag.t0[0] + x - drag.p0[0], drag.t0[1] + y - drag.p0[1]], true);
+  const endDrag = () => { if (drag){ drag = null; springBack(); } };
+  // 桌機：按住 0.15 秒放大 2.5 倍，按著拖就移動畫面（owner 09-29：放大後可以拖曳）；放開停 1.5 秒彈回，彈回前再按住可以接著拖。
+  // 點一下（圖釘、地名）照舊開說明卡
+  let holdT = null, last = [0, 0];
   mapEl.addEventListener('pointerdown', e => {
     if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.pin-anchor, .leaflet-control')) return;
-    holdT = setTimeout(() => { clearTimeout(backT); holding = true; zo = frameXY(e.clientX, e.clientY); mapEl.setPointerCapture(e.pointerId); setZoom(2.5); }, 150);
+    last = [e.clientX, e.clientY]; mapEl.setPointerCapture(e.pointerId);
+    if (cur.s > 1) return startDrag(...last);
+    holdT = setTimeout(() => { clearTimeout(backT); zo = frameXY(...last); setZoom(2.5); startDrag(...last); }, 150);
   });
-  mapEl.addEventListener('pointermove', e => { if (holding){ zo = frameXY(e.clientX, e.clientY); setZoom(2.5); } });
-  const release = () => { clearTimeout(holdT); if (holding){ holding = false; springBack(); } };
+  mapEl.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; last = [e.clientX, e.clientY]; if (drag) moveDrag(...last); });
+  const release = e => { if (e.pointerType !== 'mouse') return; clearTimeout(holdT); endDrag(); };
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => mapEl.addEventListener(t, release));
-  // 手機：雙指捏開放大（最多 4 倍）、兩指一起移動可平移，彈回前再捏就接著目前的倍率；只有兩指時才擋瀏覽器預設，單指照樣捲文章
+  // 手機：雙指捏開放大（最多 4 倍）、兩指一起移動可平移；放大中單指拖就移動畫面，彈回前再捏或拖都接著目前的狀態。
+  // 沒放大時單指照樣捲文章，只有捏、或放大中的拖才擋瀏覽器預設
   let pinch = null;
   const mid = ts => [(ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2];
   const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
   mapEl.addEventListener('touchstart', e => {
-    if (e.touches.length !== 2) return;
-    clearTimeout(backT);
-    if (cur.s === 1) zo = frameXY(...mid(e.touches));
-    pinch = { d:gap(e.touches), m:mid(e.touches), s:cur.s, t:cur.t };
+    if (e.touches.length === 2){
+      clearTimeout(backT); drag = null;
+      if (cur.s === 1) zo = frameXY(...mid(e.touches));
+      pinch = { d:gap(e.touches), m:mid(e.touches), s:cur.s, t:cur.t };
+    } else if (e.touches.length === 1 && cur.s > 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive:true });
   mapEl.addEventListener('touchmove', e => {
-    if (!pinch || e.touches.length !== 2) return;
-    e.preventDefault();
-    const m = mid(e.touches);
-    setZoom(Math.min(4, Math.max(1, pinch.s * gap(e.touches) / pinch.d)), [pinch.t[0] + m[0] - pinch.m[0], pinch.t[1] + m[1] - pinch.m[1]], true);
+    if (pinch && e.touches.length === 2){
+      e.preventDefault();
+      const m = mid(e.touches);
+      setZoom(Math.min(4, Math.max(1, pinch.s * gap(e.touches) / pinch.d)), [pinch.t[0] + m[0] - pinch.m[0], pinch.t[1] + m[1] - pinch.m[1]], true);
+    } else if (drag && e.touches.length === 1){ e.preventDefault(); moveDrag(e.touches[0].clientX, e.touches[0].clientY); }
   }, { passive:false });
-  const unpinch = e => { if (pinch && e.touches.length < 2){ pinch = null; springBack(); } };
-  mapEl.addEventListener('touchend', unpinch); mapEl.addEventListener('touchcancel', unpinch);
+  const untouch = e => {
+    if (pinch && e.touches.length < 2){   // 放開一指就接著用剩下那指拖
+      pinch = null;
+      if (e.touches.length === 1 && cur.s > 1) startDrag(e.touches[0].clientX, e.touches[0].clientY); else springBack();
+    } else if (!e.touches.length) endDrag();
+  };
+  mapEl.addEventListener('touchend', untouch); mapEl.addEventListener('touchcancel', untouch);
 }
 
 refit(); relayout(); syncCar();   // 初次：fit → 自動排標籤（此時 showSpot 已定義）→ 開輪播
