@@ -2,7 +2,7 @@
 """地圖產生器（template）。用法: python template/gen_map.py [instance]（預設 tokyo）。
    讀 {instance}/spots.py（地點＋敘述）＋ {instance}/boundaries/*.geojson → 產 {instance}/<MAP_FILE>。
    無圖磚（無道路），只留行政界線＋水域；瓦紙固定配色。座標/文案/照片/地名全在 {instance}/spots.py。"""
-import os, sys, json, base64, importlib.util, urllib.parse
+import os, sys, json, math, base64, importlib.util, urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fetch_boundaries as fb
 HERE = os.path.dirname(os.path.abspath(__file__))          # template/
@@ -38,6 +38,35 @@ else:
 boundaries = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in boundary_files]
 # 選用：UNDERLAY＝壓在陸地下面的填色層（例：環礁的礁盤）；有圖磚就用不到
 underlay = [] if tiles else [open(os.path.join(_bd, f), encoding="utf-8").read() for f in getattr(cfg, "UNDERLAY", [])]
+
+def inset_data(conf, width=136):
+    """小地圖：把 conf["layers"]（{geojson: 填色}）用跟主圖一樣的 Web Mercator 投影成寬 width 像素的 SVG，
+       連同頁面換算座標要用的參數（主圖範圍框、offmap 的點由頁面自己算位置）一起回傳。"""
+    merc = lambda lat: math.degrees(math.log(math.tan(math.pi / 4 + math.radians(lat) / 2)))
+    feats = {f: json.load(open(os.path.join(_bd, f), encoding="utf-8"))["features"] for f in conf["layers"]}
+    rings = lambda g: [r for poly in ([g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]) for r in poly]
+    pts = [p for fs in feats.values() for ft in fs for r in rings(ft["geometry"]) for p in r]
+    x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
+    m0, m1 = max(merc(p[1]) for p in pts), min(merc(p[1]) for p in pts)
+    pad = (x1 - x0) * 0.08                       # 四邊留白
+    x0, m0 = x0 - pad, m0 + pad
+    s = width / (x1 - x0 + pad)                  # 每度幾像素
+    xy = lambda lng, lat: (round((lng - x0) * s, 1), round((m0 - merc(lat)) * s, 1))
+    svg = ""
+    for f, fill in conf["layers"].items():
+        for ft in feats[f]:                      # 一個地物一條 path，evenodd 才挖得出礁盤中間的洞
+            d = ""
+            for r in rings(ft["geometry"]):
+                kept = [xy(*r[0])]
+                for p in r[1:]:
+                    q = xy(*p)
+                    if abs(q[0] - kept[-1][0]) + abs(q[1] - kept[-1][1]) >= 0.8: kept.append(q)   # 不到一個像素的點省掉
+                if len(kept) >= 3: d += "M" + "L".join(f"{x:g},{y:g}" for x, y in kept) + "Z"
+            if d: svg += f'<path fill="{fill}" fill-rule="evenodd" d="{d}"/>'
+    return {"svg": svg, "w": width, "h": round((m0 - m1 + pad) * s, 1), "lng0": x0, "m0": m0, "s": s, "title": conf.get("title", "")}
+inset = inset_data(cfg.INSET) if getattr(cfg, "INSET", None) else None
+if any(s.get("offmap") for s in cfg.SPOTS) and not inset:
+    raise SystemExit("offmap 的點畫在小地圖上，spots.py 要設 INSET")
 # 畫框尺寸：預設固定比例（東京 720/476，三檔寬度等比縮）；設 HEIGHT＝固定高度、寬度跟文章欄寬走
 # （長型地圖用：手機上照樣這麼高，讀者往下捲著看，不會整張縮小）。嵌入碼的外框要跟著用同一條。
 frame_size = f"height:{cfg.HEIGHT}px" if getattr(cfg, "HEIGHT", None) else "aspect-ratio:" + getattr(cfg, "ASPECT", "720/476")
@@ -46,7 +75,8 @@ attrib = getattr(cfg, "ATTRIB", 'boundaries © <a href="https://www.openstreetma
 font_link = ""
 if tiles:
     glyphs = "".join(sorted(set(cfg.TITLE + "".join(s["zh"] for s in cfg.SPOTS))))
-    font_link = ('\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    font_link = ('\n<link rel="preconnect" href="https://' + urllib.parse.urlsplit(tiles["url"]).netloc + '">'   # 圖磚主機趁 Leaflet 還在下載時先連線
+                 + '\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
                  '\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&display=swap&text='
                  + urllib.parse.quote(glyphs) + '">')
 
@@ -71,10 +101,12 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
     font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans TC","Noto Sans JP",
                 "PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     color:var(--ink); background:transparent;
-    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:0;
+    display:flex; min-height:100vh; padding:0;
   }
   .frame{
-    position:relative; width:720px; max-width:100%; __FRAME_SIZE__;
+    /* margin:auto 置中：畫面比地圖矮時（直接開網址看長型地圖）會貼齊頂端、往下捲；
+       用 align-items:center 的話，這頁沒有 doctype（quirks mode），上緣會被切掉、捲不回去 */
+    margin:auto; position:relative; width:720px; max-width:100%; __FRAME_SIZE__;
     border-radius:16px; overflow:hidden; background:var(--paper);   /* 不要框線/陰影，但保留圓角 */
   }
   #map{ position:absolute; inset:0; width:100%; height:100%; background:var(--water); z-index:1 }
@@ -187,11 +219,26 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles .titlebar, .frame.tiles .legend, .frame.tiles .info{
     background:var(--glass); border:0; box-shadow:0 8px 24px rgba(0,0,0,.4); color:var(--cream);
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
-  .frame.tiles .corner{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; position:absolute; right:12px; top:12px; z-index:6 }
+  .frame.tiles .corner{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; position:absolute; right:12px; top:12px; z-index:6;
+    transition:top .3s ease-out }   /* POPUP_FLOAT 時跟著捲動（不能拖） */
   .frame.tiles .corner > .titlebar, .frame.tiles .corner > .legend{ position:static }   /* 標題疊在圖例上面、都靠右（owner 09-29） */
   .frame.tiles .titlebar{ padding:10px 14px 11px; border-radius:12px; text-align:right }
-  .frame.tiles .info.float{ transition:top .3s ease-out; touch-action:none; cursor:grab }   /* 浮動卡片：可拖曳、跟著捲動 */
+  .frame.tiles .info.float{ transition:top .3s ease-out; touch-action:none; cursor:grab; -webkit-user-select:none; user-select:none }   /* 浮動卡片：可拖曳、跟著捲動 */
+  .frame.tiles .info.float img{ -webkit-touch-callout:none }   /* iOS 長按照片不跳「儲存圖片」選單，按住照片也能拖 */
   .frame.tiles .info.float.dragging{ transition:none; cursor:grabbing; box-shadow:0 14px 34px rgba(0,0,0,.5) }
+  /* 小地圖（INSET）：Leaflet 右下角、自動疊在出處上面；框＝主圖範圍，點＝離主圖太遠的地點 */
+  .frame.tiles .inset{ position:relative; width:136px; border-radius:12px; background:var(--glass); box-shadow:0 8px 24px rgba(0,0,0,.4);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
+  .frame.tiles .inset svg{ display:block; width:100%; height:auto }
+  .frame.tiles .inset .view{ fill:rgba(255,255,255,.12); stroke:#fff; stroke-width:1.2; vector-effect:non-scaling-stroke }
+  .frame.tiles .inset .cap{ position:absolute; left:9px; top:7px; color:var(--mute); font-size:10px; letter-spacing:.12em }
+  .frame.tiles .ipin{ position:absolute; display:flex; align-items:center; gap:4px; transform:translate(-8px,-50%); cursor:pointer }
+  .frame.tiles .ipin .pin{ width:16px; height:16px; flex:none }
+  .frame.tiles .ipin .pin b{ font-size:9.5px }
+  .frame.tiles .ipin span{ color:#fff; font-size:11.5px; font-weight:600; white-space:nowrap; transition:color .2s;
+    text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85) }
+  .frame.tiles .ipin.hi .pin{ transform:scale(1.35) }
+  .frame.tiles .ipin.hi span{ color:var(--gold) }
   .vstrip{ position:absolute; left:0; width:1px; opacity:0; pointer-events:none }
   .frame.tiles .titlebar .mark{ color:var(--gold); font-size:10.5px; letter-spacing:.22em }
   .frame.tiles .titlebar h1{ font-family:var(--serif); font-size:22px; letter-spacing:.08em; margin-top:3px }
@@ -225,8 +272,10 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles .info .x:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
   .frame.tiles .leaflet-control-attribution{ background:rgba(8,20,16,.55)!important; color:#c9d6cf }
   .frame.tiles .leaflet-control-attribution a{ color:#fff }
-  @media (prefers-reduced-motion:reduce){ .frame.tiles .pin, .frame.tiles .toplabel{ transition:none } }
+  @media (prefers-reduced-motion:reduce){ .frame.tiles .pin, .frame.tiles .toplabel, .frame.tiles .corner, .frame.tiles .info.float{ transition:none } }
   @media (max-width:719.98px){
+    .frame.tiles .inset{ width:100px } .frame.tiles .inset .cap{ left:7px; top:5px; font-size:9px; letter-spacing:0 }
+    .frame.tiles .ipin span{ font-size:10.5px }
     .frame.tiles .card{ padding:8px 9px 9px }
     .frame.tiles .card img.photo{ width:calc(100% + 18px); margin:-8px -9px 8px }
     .frame.tiles .card h3{ font-size:14px; margin-top:4px }
@@ -258,7 +307,8 @@ const CAT = __CAT__;
 const spots = __SPOTS__;
 const places = __PLACES__;
 const POPUP_SIDE = __POPUP_SIDE__;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
-const POPUP_FLOAT = __POPUP_FLOAT__; // true＝說明卡可按住拖曳、文章往下捲時跟著停在看得到的那一段（長型地圖用）
+const POPUP_FLOAT = __POPUP_FLOAT__; // true＝說明卡可按住拖曳；文章往下捲時說明卡、標題框＋圖例跟著停在看得到的那一段（長型地圖用）
+const INSET = __INSET__;             // null＝沒有小地圖；有的話 offmap 的點畫在它上面
 
 const map = L.map('map', {
   zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
@@ -266,15 +316,13 @@ const map = L.map('map', {
   touchZoom:false, boxZoom:false, keyboard:false, tap:false,
 });
 // 圖層：有 TILES 就只鋪圖磚（衛星影像等），拿掉紙紋；否則 BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
+let tileLayer = null;
 if (TILES){
   // 小數縮放時圖磚之間會露出細縫：每張圖磚多畫 1px 疊住鄰居（Leaflet #3575 的通用解），配上面 CSS 的 mix-blend-mode:normal
   const initTile = L.GridLayer.prototype._initTile;
   L.GridLayer.include({ _initTile(tile){ initTile.call(this, tile); const s = this.getTileSize();
     tile.style.width = (s.x + 1) + 'px'; tile.style.height = (s.y + 1) + 'px'; } });
-  // zoomOffset／tileSize：抓細 N 級的圖磚、縮小顯示（1 級＝128px、2 級＝64px），靜態全島圖才不會糊
-  // detectRetina：視網膜螢幕自動再抓細一級（tileSize 減半、zoomOffset＋1），一般螢幕不多載
-  L.tileLayer(TILES.url, { attribution:TILES.attribution, maxNativeZoom:TILES.maxNativeZoom || 18, maxZoom:22,
-    zoomOffset:TILES.zoomOffset || 0, tileSize:TILES.tileSize || 256, detectRetina:!!TILES.detectRetina }).addTo(map);
+  tileLayer = L.tileLayer(TILES.url, { attribution:TILES.attribution, maxZoom:22 }).addTo(map);   // 抓哪一級由 refit() 決定
   if (TILES.filter) map.getPane('tilePane').style.filter = TILES.filter;   // 影像調色（例如海太暗時提亮），CSS filter 字串
   document.querySelector('.frame').classList.add('tiles');
 } else {
@@ -291,7 +339,6 @@ const info = document.getElementById('info');
 // 圖釘
 const layers = {}; Object.keys(CAT).forEach(k => layers[k] = L.layerGroup());
 const bounds = [];
-const markers = {};    // 景點編號 → marker（offmap 的點 fit 完要搬到畫面邊緣）
 const cardHtml = {};   // 景點編號 → 資訊卡 HTML（給地名點擊委派用）
 for (const s of spots){
   const c = CAT[s.cat];
@@ -309,17 +356,34 @@ for (const s of spots){
   const html =
     `<div class="card" data-spot="${s.n}">
        <div class="meta"><span class="tag" style="--tag:${c.color};background:${c.color}"><span class="emo">${c.emo}</span> ${c.name}</span> <span class="area">${s.area}</span></div>
-       <img class="photo" src="${photo}" alt="${s.zh}">
+       <img class="photo" src="${photo}" alt="${s.zh}" draggable="false">
        <h3>${s.zh}</h3><p class="ja">${s.ja}</p>
        <p class="desc">${s.desc}</p>
      </div>`;
   cardHtml[s.n] = html;
-  markers[s.n] = L.marker([s.lat, s.lng], { icon, keyboard:false, zIndexOffset:1000 })
+  if (s.offmap) continue;   // 太遠的點不進主圖（框進來會把其他點縮成一團），畫在小地圖上
+  L.marker([s.lat, s.lng], { icon, keyboard:false, zIndexOffset:1000 })
     .on('click', () => jump(s.n))
     .addTo(layers[s.cat]);
-  if (!s.offmap) bounds.push([s.lat, s.lng]);   // offmap 不參與 fit，免得把其他點縮成一團
+  bounds.push([s.lat, s.lng]);
 }
 Object.values(layers).forEach(l => l.addTo(map));
+// 小地圖（INSET）：整個環礁＋主圖範圍框（refit 時畫）＋offmap 的點，點了照樣開說明卡。投影跟主圖一樣（Web Mercator）
+const insetXY = (lat, lng) => [(lng - INSET.lng0) * INSET.s, (INSET.m0 - Math.log(Math.tan(Math.PI/4 + lat*Math.PI/360)) * 180/Math.PI) * INSET.s];
+if (INSET){
+  const ctl = L.control({ position:'bottomright' });
+  ctl.onAdd = () => {
+    const d = L.DomUtil.create('div', 'inset');
+    d.innerHTML = `<svg viewBox="0 0 ${INSET.w} ${INSET.h}">${INSET.svg}<rect class="view"/></svg><span class="cap">${INSET.title}</span>`
+      + spots.filter(s => s.offmap).map(s => `<div class="ipin" data-spot="${s.n}" data-cat="${s.cat}">`   // 位置在 refit 算
+          + `<div class="pin" style="background:${CAT[s.cat].color}"><b>${s.n}</b></div><span>${s.zh}</span></div>`).join('');
+    L.DomEvent.disableClickPropagation(d);
+    d.addEventListener('click', e => { const p = e.target.closest('.ipin'); if (p) jump(+p.dataset.spot); });
+    return d;
+  };
+  ctl.addTo(map);
+  if (TILES) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
+}
 // 點圖釘旁的地名也開資訊卡（事件委派：地名溢出 icon 框、冒泡接不到，改在容器上聽 .pin-name）
 map.getContainer().addEventListener('click', e => {
   const nm = e.target.closest && e.target.closest('.pin-name');
@@ -337,20 +401,22 @@ function refit(){
   } else {
     P = { tl:[124,114], br:[104,56] };   // 桌機：四邊留白＝縮小、左多＝右移、上避標題、右給 BOUSAI
   }
+  // 圖磚只抓剛好夠清楚的那一級：一個圖磚像素對到 1～2 個螢幕實體像素（視網膜算到 2 倍為止）。
+  // 之前固定多抓一兩級，視網膜螢幕一次要載近 500 張；Leaflet 預設把縮放級四捨五入、最多放大 1.4 倍會糊，所以自己算
+  if (tileLayer){
+    const z = map.getBoundsZoom(L.latLngBounds(bounds), false, L.point(P.tl).add(P.br));
+    tileLayer.options.minNativeZoom = tileLayer.options.maxNativeZoom =
+      Math.min(TILES.maxNativeZoom || 18, Math.ceil(z + Math.log2(Math.min(window.devicePixelRatio || 1, 2)) - 0.1));
+  }
   map.fitBounds(bounds, { paddingTopLeft:P.tl, paddingBottomRight:P.br, animate:false });
-  placeOffmap();
-}
-// offmap 的點：從畫面中心朝真實位置拉一條線，停在內縮 OFF_M 的邊框上（方向是真的，距離寫在 short 名稱裡）
-const OFF_M = 40;
-function placeOffmap(){
-  const sz = map.getSize(), c = L.point(sz.x/2, sz.y/2);
-  for (const s of spots){
-    if (!s.offmap) continue;
-    const p = map.latLngToContainerPoint([s.lat, s.lng]), dx = p.x - c.x, dy = p.y - c.y;
-    const kx = dx ? ((dx > 0 ? sz.x - OFF_M : OFF_M) - c.x) / dx : Infinity;
-    const ky = dy ? ((dy > 0 ? sz.y - OFF_M : OFF_M) - c.y) / dy : Infinity;
-    const k = Math.min(kx, ky, 1);   // 本來就在框內（k≥1）就不動
-    markers[s.n].setLatLng(map.containerPointToLatLng(L.point(c.x + dx*k, c.y + dy*k)));
+  if (INSET){   // 小地圖框出主圖現在的範圍；主圖比環礁寬（桌機）就把小地圖的視窗放大，框才不會被切掉
+    const b = map.getBounds(), [x1, y1] = insetXY(b.getNorth(), b.getWest()), [x2, y2] = insetXY(b.getSouth(), b.getEast());
+    const vx = Math.min(0, x1 - 3), vy = Math.min(0, y1 - 3), vw = Math.max(INSET.w, x2 + 3) - vx, vh = Math.max(INSET.h, y2 + 3) - vy;
+    const svg = document.querySelector('.inset svg'), r = svg.querySelector('.view');
+    svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+    r.setAttribute('x', x1); r.setAttribute('y', y1); r.setAttribute('width', x2 - x1); r.setAttribute('height', y2 - y1);
+    document.querySelectorAll('.ipin').forEach(p => { const s = spots.find(s => s.n === +p.dataset.spot), [x, y] = insetXY(s.lat, s.lng);
+      p.style.left = (x - vx) / vw * 100 + '%'; p.style.top = (y - vy) / vh * 100 + '%'; });
   }
 }
 
@@ -360,6 +426,14 @@ const overlap = (a,b) => a.x1<b.x2 && a.x2>b.x1 && a.y1<b.y2 && a.y2>b.y1;
 const overlapArea = (a,b) => Math.max(0, Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1)) * Math.max(0, Math.min(a.y2,b.y2)-Math.max(a.y1,b.y1));
 const asBox = r => ({ x1:r.left, y1:r.top, x2:r.right, y2:r.bottom });
 let labelMarkers = [];
+// 標題框、圖例、小地圖的框（地名要避開），各向外擴 pad。浮動的標題框＋圖例量它回到頂端（top 12px）時的位置，
+// 捲到一半重排（篩選分類、轉向）才不會避錯地方
+function fixedRects(pad){
+  const fr = document.querySelector('.frame').getBoundingClientRect(), cr = document.querySelector('.corner').getBoundingClientRect();
+  const dy = POPUP_FLOAT ? cr.top - fr.top - 12 : 0;
+  return [...document.querySelectorAll('.titlebar, .legend, .inset')].map(el => ({ r:el.getBoundingClientRect(), d:el.closest('.corner') ? dy : 0 }))
+    .filter(o => o.r.width > 1).map(({ r, d }) => ({ x1:r.left-pad, y1:r.top-d-pad, x2:r.right+pad, y2:r.bottom-d+pad }));
+}
 
 // 障礙基底（非 pin）：popup（先秀 spot1＝敘述最長那張、量其框）＋標題框。pin 由 layoutPinNames 自算，不在此重複放。
 function baseObstacles(){
@@ -368,9 +442,8 @@ function baseObstacles(){
   showSpot(1);
   const ir = document.getElementById('info').getBoundingClientRect();   // 浮動卡片會被拖走、跟著捲動，不當障礙
   if (ir.width > 1 && !POPUP_FLOAT) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
-  // 標題框、圖例也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
-  for (const el of document.querySelectorAll('.titlebar, .legend')){ const tr = el.getBoundingClientRect();
-    if (tr.width > 1) occ.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
+  // 標題框、圖例（＋小地圖）也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
+  occ.push(...fixedRects(6));
   return occ;
 }
 
@@ -488,9 +561,7 @@ function placeLabels(occ, frame){   // 原介面（make_video 依賴，勿改）
 function placeDistricts(frame){
   labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
   const cont = document.getElementById('map').getBoundingClientRect();
-  const avoid = [];   // 只避標題框、圖例＋popup（地名可被 pin／pin 名蓋）；浮動卡片會移動，不避
-  for (const el of document.querySelectorAll('.titlebar, .legend')){ const tr = el.getBoundingClientRect();
-    if (tr.width > 1) avoid.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
+  const avoid = fixedRects(6);   // 只避標題框、圖例、小地圖＋popup（地名可被 pin／pin 名蓋）；浮動卡片會移動，不避
   const ir = document.getElementById('info').getBoundingClientRect();
   if (ir.width > 1 && !POPUP_FLOAT) avoid.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
   const cand = [];
@@ -566,10 +637,10 @@ function relayout(){
 // 說明輪播：桌機自動輪播 6 景點說明、對應圖釘加脈動高亮；手機不輪播並收起說明
 function isSmall(){ return window.matchMedia('(max-width:719.98px)').matches; }
 let carTimer = null, curSpot = 0;
-function highlight(n){   // 圖釘與浮層地名一起標 .hi（衛星主題靠地名變色表示正在介紹哪一點）
-  document.querySelectorAll('.pin-anchor.hi, .toplabel.hi').forEach(el => el.classList.remove('hi'));
+function highlight(n){   // 圖釘、浮層地名、小地圖上的點一起標 .hi（衛星主題靠地名變色表示正在介紹哪一點）
+  document.querySelectorAll('.pin-anchor.hi, .toplabel.hi, .ipin.hi').forEach(el => el.classList.remove('hi'));
   document.querySelectorAll('[data-spot="' + n + '"]').forEach(el => {
-    if (el.matches('.pin-anchor, .toplabel')) el.classList.add('hi'); });
+    if (el.matches('.pin-anchor, .toplabel, .ipin')) el.classList.add('hi'); });
 }
 function showSpot(n){
   curSpot = n;
@@ -594,6 +665,11 @@ function placeFloat(){
   info.style.top = Math.min(Math.max(floatBase() + flt.dy, m), Math.max(m, H - info.offsetHeight - m)) + 'px';
   info.style.right = info.style.bottom = 'auto'; info.style.transform = 'none';
 }
+const corner = document.querySelector('.corner');
+function placeCorner(){   // 標題框＋圖例：停在看得到那一段的上緣，跟著捲動但不能拖（owner 09-29）；手機檔本來就藏起來
+  const H = document.querySelector('.frame').clientHeight;
+  corner.style.top = Math.max(12, Math.min(flt.visTop + 12, H - corner.offsetHeight - 12)) + 'px';
+}
 function initFloat(){
   const fr = document.querySelector('.frame'), N = 108, vis = new Set();
   info.classList.add('float');
@@ -602,6 +678,7 @@ function initFloat(){
     flt.visTop = vis.size ? Math.min(...vis) * fr.clientHeight / N : 0;
     flt.visBot = vis.size ? (Math.max(...vis) + 1) * fr.clientHeight / N : null;
     if (!info.classList.contains('dragging')) placeFloat();
+    placeCorner();
   });
   for (let i = 0; i < N; i++){
     const s = document.createElement('div'); s.className = 'vstrip'; s.dataset.i = i;
@@ -636,6 +713,7 @@ for (const [key,c] of Object.entries(CAT)){
   chip.addEventListener('click', () => {
     const on = chip.dataset.on === '1'; chip.dataset.on = on ? '0' : '1';
     if (on) map.removeLayer(layers[key]); else layers[key].addTo(map);
+    document.querySelectorAll('.ipin[data-cat="' + key + '"]').forEach(p => p.style.display = on ? 'none' : '');   // 小地圖上的點一起藏
     relayout();   // 篩選後重排標籤
   });
   legend.appendChild(chip);
@@ -655,6 +733,7 @@ html = (TPL
         .replace("__FRAME_SIZE__", frame_size)
         .replace("__POPUP_SIDE__", json.dumps(getattr(cfg, "POPUP_SIDE", None)))
         .replace("__POPUP_FLOAT__", json.dumps(bool(getattr(cfg, "POPUP_FLOAT", False))))
+        .replace("__INSET__", json.dumps(inset, ensure_ascii=False))
         .replace("__ATTRIB__", json.dumps(attrib, ensure_ascii=False))
         .replace("__CAT__", json.dumps(cfg.CAT, ensure_ascii=False))
         .replace("__SPOTS__", json.dumps(cfg.SPOTS, ensure_ascii=False))
