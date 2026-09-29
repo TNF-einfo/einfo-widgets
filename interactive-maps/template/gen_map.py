@@ -684,16 +684,18 @@ function showSpot(n){
 // 看得到哪一段：沿地圖高度鋪 108 條看不見的細條、用 IntersectionObserver 看哪幾條在畫面裡。
 // 只觀察整張地圖不行：地圖比螢幕高時，捲到中段可見比例不變、不會通知。這招在跨網域 iframe 裡也拿得到，不必外頁配合。
 const flt = { x:null, dy:0, visTop:0, visBot:null };
-function floatBase(){   // 卡片置中於可見段落；可見段落比卡片矮時對齊上緣
+function floatBase(){   // 卡片置中於可見段落（可見段落比卡片矮時對齊上緣）；手機檔貼可見段落的下緣（owner 09-29：手機預設出現在左下角）
   const H = document.querySelector('.frame').clientHeight, bot = flt.visBot === null ? H : flt.visBot;
+  if (window.matchMedia('(max-width:527.98px)').matches) return Math.max(flt.visTop, bot - info.offsetHeight - 22);   // 可見下緣會多算一條細條（10px），實際離底約 12px
   return flt.visTop + Math.max(0, (bot - flt.visTop - info.offsetHeight) / 2);
 }
 function placeFloat(){
   const fr = document.querySelector('.frame'), W = fr.clientWidth, H = fr.clientHeight;
   const m = window.matchMedia('(max-width:719.98px)').matches ? 8 : 12;
+  const ab = (document.querySelector('.leaflet-control-attribution') || {}).offsetHeight || 0;   // 捲到底時停在出處上面、不蓋住它
   if (flt.x === null) flt.x = POPUP_SIDE === 'right' ? W - info.offsetWidth - m : m;
   info.style.left = Math.min(Math.max(flt.x, m), W - info.offsetWidth - m) + 'px';
-  info.style.top = Math.min(Math.max(floatBase() + flt.dy, m), Math.max(m, H - info.offsetHeight - m)) + 'px';
+  info.style.top = Math.min(Math.max(floatBase() + flt.dy, m), Math.max(m, H - info.offsetHeight - m - ab)) + 'px';
   info.style.right = info.style.bottom = 'auto'; info.style.transform = 'none';
 }
 const corner = document.querySelector('.corner');
