@@ -10,12 +10,15 @@ POPUP_SIDE = "left"                       # 說明卡固定在左側中段（潟
 
 BOUNDARIES = ["land.geojson"]             # 設了就不自動抓行政界
 UNDERLAY = ["reef.geojson"]               # 礁盤，畫在陸地下面，環礁的形狀靠它看出來
-# 衛星影像底圖（owner 09-29：「底圖換成真實的看看」，看過兩版後選衛星版）。設了 TILES，上面兩層向量底圖就不畫；
-# 拿掉這段就回到插畫風。
-# ⚠ 發稿前要確認 Esri 圖磚用在新聞網站的授權條件，還沒查。
-TILES = {"url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-         "attribution": "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community",
-         "maxNativeZoom": 18}
+# 衛星影像底圖：EOX 的 Sentinel-2 無雲鑲嵌 2024（owner 09-29 從四個選項挑「3」，不調色）。
+# 選它的理由：Esri 在這一帶拼了不同來源的影像，灰帶與暗塊換級數、換歷史版本都去不掉；Sentinel-2 整片同一套處理、均勻。
+# 解析度 10 公尺，全島一屏的顯示比例一個像素約 15 公尺，所以抓細一級（zoomOffset 1）就夠清楚。
+# 設了 TILES，上面兩層向量底圖就不畫；拿掉這段就回到插畫風。
+# ⚠ 授權 CC BY-NC-SA 4.0（非商業），環資是非營利媒體，發稿前由 owner 判斷；署名照 EOX 要求的字樣。
+TILES = {"url": "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg",
+         "attribution": 'Sentinel-2 cloudless – <a href="https://s2maps.eu">s2maps.eu</a> by EOX IT Services GmbH '
+                        '(Contains modified Copernicus Sentinel data 2024)',
+         "maxNativeZoom": 15, "zoomOffset": 1, "tileSize": 128}
 PLACES = [
     {"t": "太平洋", "lat": -8.49, "lng": 179.205, "big": 1, "sea": 1},      # 貼近主島，手機檔才不會落到框外被略過
     {"t": "富納富提潟湖", "lat": -8.47, "lng": 179.172, "big": 1, "sea": 1},
