@@ -284,13 +284,13 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles .leaflet-tile-pane, .frame.tiles .leaflet-overlay-pane{ transform-origin:var(--zox, 0px) var(--zoy, 0px); scale:var(--zs); translate:var(--ztx) var(--zty) }
   .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel{
     translate:calc((var(--zs) - 1) * (var(--px, 0px) - var(--zox, 0px)) + var(--ztx)) calc((var(--zs) - 1) * (var(--py, 0px) - var(--zoy, 0px)) + var(--zty)) }
-  .frame.tiles #map{ cursor:zoom-in; touch-action:pan-x pan-y }   /* 單指照樣捲文章，雙指捏開交給頁面自己放大 */
+  .frame.tiles #map{ touch-action:pan-x pan-y }   /* 單指照樣捲文章，雙指捏開交給頁面自己放大 */
   .frame.tiles #map, .frame.tiles #toplabels{ -webkit-user-select:none; user-select:none }   /* 按住拖著看時不要反白地名 */
   @media (prefers-reduced-motion:reduce){ .frame.tiles, .frame.tiles .pin, .frame.tiles .toplabel, .frame.tiles .corner, .frame.tiles .info.float{ transition:none } }
   @media (max-width:719.98px){
-    .frame.tiles .titlebar{ display:block; padding:7px 10px 8px }   /* 手機、平板也放標題（owner 09-29），縮小一號；圖例照樣藏 */
-    .frame.tiles .titlebar .mark{ font-size:9px; letter-spacing:.18em }
-    .frame.tiles .titlebar h1{ font-size:16px; margin-top:2px }
+    .frame.tiles .titlebar{ display:block; padding:8px 12px 9px }   /* 手機、平板也放標題（owner 09-29），比桌機小一點；圖例照樣藏 */
+    .frame.tiles .titlebar .mark{ font-size:10px; letter-spacing:.2em }
+    .frame.tiles .titlebar h1{ font-size:19px; margin-top:2px }   /* 16px 太小（owner：「手機版標題大點」） */
     .frame.tiles .inset{ width:100px } .frame.tiles .inset .cap{ left:7px; top:5px; font-size:9px; letter-spacing:0 }
     .frame.tiles .ipin span{ font-size:10.5px }
     .frame.tiles .card{ padding:8px 9px 9px }
@@ -752,7 +752,7 @@ for (const [key,c] of Object.entries(CAT)){
   legend.appendChild(chip);
 }
 
-// 放大（衛星主題）：桌機按住不放、手機雙指捏開就放大；放手後停 1.5 秒再彈回原尺寸（owner 09-29：手機放手就彈，手指擋著看不到）。
+// 放大（衛星主題、觸控）：雙指捏開就放大；放手後停 1.5 秒再彈回原尺寸（owner 09-29：手機放手就彈，手指擋著看不到）。
 // 只放大底圖（CSS 變數見 .frame.tiles），圖釘與地名只跟著移位置、字不糊；不動 Leaflet 的縮放級，彈回後不必重排。說明卡、標題、小地圖不動
 if (SAT){
   const fr = document.querySelector('.frame'), mapEl = map.getContainer(), cur = { s:1, t:[0, 0] };
@@ -769,18 +769,7 @@ if (SAT){
   const startDrag = (x, y) => { clearTimeout(backT); drag = { p0:[x, y], t0:cur.t }; };
   const moveDrag = (x, y) => setZoom(cur.s, [drag.t0[0] + x - drag.p0[0], drag.t0[1] + y - drag.p0[1]], true);
   const endDrag = () => { if (drag){ drag = null; springBack(); } };
-  // 桌機：按住 0.15 秒放大 2.5 倍，按著拖就移動畫面（owner 09-29：放大後可以拖曳）；放開停 1.5 秒彈回，彈回前再按住可以接著拖。
-  // 點一下（圖釘、地名）照舊開說明卡
-  let holdT = null, last = [0, 0];
-  mapEl.addEventListener('pointerdown', e => {
-    if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.pin-anchor, .leaflet-control')) return;
-    last = [e.clientX, e.clientY]; mapEl.setPointerCapture(e.pointerId);
-    if (cur.s > 1) return startDrag(...last);
-    holdT = setTimeout(() => { clearTimeout(backT); zo = frameXY(...last); setZoom(2.5); startDrag(...last); }, 150);
-  });
-  mapEl.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; last = [e.clientX, e.clientY]; if (drag) moveDrag(...last); });
-  const release = e => { if (e.pointerType !== 'mouse') return; clearTimeout(holdT); endDrag(); };
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => mapEl.addEventListener(t, release));
+  // 只做觸控（owner 09-29 晚：桌機不要放大；桌機按住放大的版本在 git 歷史 8ebbddb）。
   // 手機：雙指捏開放大（最多 4 倍）、兩指一起移動可平移；放大中單指拖就移動畫面，彈回前再捏或拖都接著目前的狀態。
   // 沒放大時單指照樣捲文章，只有捏、或放大中的拖才擋瀏覽器預設
   let pinch = null;
