@@ -536,8 +536,8 @@ function liftPinNames(occ, frame){
     const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
     const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
     let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
-    const side = (spots.find(s => s.n === spot) || {}).label;   // spots.py 指定 "label": right／up／left／down 就只放那邊（owner 點名的）
-    if (side) cands = [cands[['right', 'up', 'left', 'down'].indexOf(side)]];
+    const sp = spots.find(s => s.n === spot) || {}, side = sp.label;   // spots.py 指定 "label": right／up／left／down 就只放那邊（owner 點名的）
+    if (side){ const [ox, oy] = cands[['right', 'up', 'left', 'down'].indexOf(side)]; cands = [[ox, oy + (sp.label_dy || 0)]]; }   // label_dy：再上下微調幾 px，負＝往上
     let best = cands[0], bestPen = Infinity, bestOv = 0;
     for (const [ox,oy] of cands){
       const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
@@ -688,7 +688,6 @@ function showSpot(n){
 // 看得到哪一段：沿地圖高度鋪 108 條看不見的細條、用 IntersectionObserver 看哪幾條在畫面裡。
 // 只觀察整張地圖不行：地圖比螢幕高時，捲到中段可見比例不變、不會通知。這招在跨網域 iframe 裡也拿得到，不必外頁配合。
 const flt = { x:null, dy:0, visTop:0, visBot:null, dragged:false };
-let lastInput = 0, autoUntil = 0;   // 讀者最後一次動作（捲動、觸控、放大）的時間；autoUntil 之前的可見範圍變化是自己捲的，不算讀者動作
 function floatBase(){   // 卡片置中於可見段落（可見段落比卡片矮時對齊上緣）；手機檔貼可見段落的下緣（owner 09-29：手機預設出現在左下角）
   const H = document.querySelector('.frame').clientHeight, bot = flt.visBot === null ? H : flt.visBot;
   if (!window.matchMedia('(max-width:527.98px)').matches) return flt.visTop + Math.max(0, (bot - flt.visTop - info.offsetHeight) / 2);
@@ -728,7 +727,6 @@ function initFloat(){
     for (const e of es) e.isIntersecting ? vis.add(+e.target.dataset.i) : vis.delete(+e.target.dataset.i);
     flt.visTop = vis.size ? Math.min(...vis) * fr.clientHeight / N : 0;
     flt.visBot = vis.size ? (Math.max(...vis) + 1) * fr.clientHeight / N : null;
-    if (performance.now() > autoUntil) lastInput = performance.now();   // 可見範圍變了＝讀者在捲（跨網域 iframe 裡只量得到這個）
     if (!info.classList.contains('dragging')) placeFloat();
     placeCorner();
   });
@@ -750,39 +748,18 @@ function initFloat(){
   info.addEventListener('pointerup', end); info.addEventListener('pointercancel', end);
 }
 if (POPUP_FLOAT) initFloat();
-// 輪播時把正在介紹的點捲進畫面（owner 09-29）：讀者一有動作（捲動、觸控、放大）就先不捲，動作停了 0.5 秒再捲；
-// 地圖只露出一小塊（嵌在文章裡、讀者在看文字）時不捲，免得把讀者拉回地圖。已經在畫面裡、沒被標題或說明卡擋到就不動
-let pressing = 0;   // 手指／滑鼠還按著的數量：按著的時候一律不捲，放開才開始算 0.5 秒
-['touchstart', 'touchmove', 'touchend', 'touchcancel', 'pointerdown', 'pointerup', 'pointercancel', 'wheel', 'keydown'].forEach(t => window.addEventListener(t, e => {
-  lastInput = performance.now();
-  if (e.touches) pressing = e.touches.length; else if (t === 'pointerdown' && e.pointerType === 'mouse') pressing = 1; else if (t.startsWith('pointer') && e.pointerType === 'mouse') pressing = 0;
-}, { passive:true, capture:true }));
-let followT = null;
-// 把地圖裡高度 y（畫框座標）的地方平滑捲到畫面中間。探針一定要放在 body 底下：放在 overflow:hidden 的地圖裡，
+// 輪播時頁面跟著捲到正在介紹的點：owner 09-30 說不需要了，拿掉；做法留在 git 歷史 7c17240 的 followSpot。
+// 把地圖裡高度 y（畫框座標）的地方平滑捲到畫面中間（放大彈回時用）。探針一定要放在 body 底下：放在 overflow:hidden 的地圖裡，
 // scrollIntoView 會連地圖容器本身一起捲，整張圖內部被捲走。嵌在文章的 iframe 裡也捲得動外頁
 const probe = document.createElement('div');
 probe.style.cssText = 'position:absolute;left:0;width:1px;height:1px;visibility:hidden;pointer-events:none';
 document.body.appendChild(probe);
 function scrollFrameY(y){
   probe.style.top = (document.querySelector('.frame').getBoundingClientRect().top + scrollY + y) + 'px';
-  autoUntil = performance.now() + 1500;   // 接下來的可見範圍變化是自己捲的，不算讀者動作
   probe.scrollIntoView({ block:'center', behavior:'smooth' });
 }
-function followSpot(n){
-  clearTimeout(followT);
-  if (!POPUP_FLOAT) return;
-  if (flt.visBot === null){ followT = setTimeout(() => followSpot(n), 500); return; }   // 剛載入還沒量到可見範圍：等一下再試（手機一打開就捲到第一個點）
-  if (flt.visBot - flt.visTop < 0.6 * Math.min(screen.availHeight || innerHeight, innerHeight)) return;
-  const wait = lastInput + 500 - performance.now();
-  if (wait > 0 || pressing || document.querySelector('.frame').classList.contains('zoomed')){ followT = setTimeout(() => followSpot(n), Math.max(wait, 150)); return; }
-  const el = document.querySelector('.pin-anchor[data-spot="' + n + '"], .ipin[data-spot="' + n + '"]');
-  if (!el || n !== curSpot) return;
-  const fr = document.querySelector('.frame').getBoundingClientRect(), r = el.getBoundingClientRect(), y = (r.top + r.bottom) / 2 - fr.top;
-  if (y > flt.visTop + 90 && y < flt.visBot - 90) return;
-  scrollFrameY(y);
-}
 function carMs(){ return window.matchMedia('(max-width:527.98px)').matches ? 2750 : 4200; }   // 手機檔 2.75s、其餘 4.2s
-function carTick(){ showSpot(curSpot % spots.length + 1); followSpot(curSpot); }
+function carTick(){ showSpot(curSpot % spots.length + 1); }
 function startCar(){ if (carTimer) return; carTick(); carTimer = setInterval(carTick, carMs()); }   // 桌機/手機都輪播
 function stopCar(){ if (carTimer){ clearInterval(carTimer); carTimer = null; } }
 function jump(n){ showSpot(n); stopCar(); carTimer = setInterval(carTick, carMs()); }   // 點某點：跳到它並重置輪播
