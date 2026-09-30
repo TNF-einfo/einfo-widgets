@@ -34,7 +34,8 @@
   .row > a { color: var(--accent); font-weight: 600; text-decoration: none; }
   .row > a:hover, .row > a:focus-visible { text-decoration: underline; }
   .row .desc { color: var(--muted); font-size: 14px; flex: 1 1 auto; }
-  .row.wip > a { color: var(--muted); font-weight: 500; }
+  .row .used { flex-basis: 100%; margin-top: -8px; font-size: 13px; color: var(--muted); }   /* 用了這張地圖的文章，發稿後補上 */
+  .row .used a { color: var(--accent); }
 
   button.copy {
     font: inherit; font-size: 13px; color: var(--ink);
@@ -56,24 +57,22 @@
     <a href="interactive-maps/tokyo-map-stable/tokyo-bousai-map.html">東京・防災・生態 另類旅遊地圖 →</a>
     <span class="desc">六個防災與自然生態景點</span>
     <button type="button" class="copy" data-title="東京・防災・生態 另類旅遊地圖">複製嵌入碼</button>
+    <span class="used">使用的文章：<a href="https://www.e-info.org.tw/node/243698">互動地圖｜環資記者帶路 解鎖東京新玩法</a></span>
   </div>
 
-  <div class="row wip">
-    <a href="interactive-maps/tokyo-autolayout-test/tokyo-bousai-map.html">東京・防災・生態 另類旅遊地圖（自動排版測試）→</a>
-    <span class="desc">同一份內容、標籤改由程式自動排；測試中，還不要拿去發稿</span>
-  </div>
-
-  <div class="row wip">
-    <a href="interactive-maps/tuvalu/tuvalu-map.html">吐瓦魯，富納富提（測試中）→</a>
-    <span class="desc">長型衛星地圖、十二個地點，固定 1080 高，手機上往下捲著看；還不要拿去發稿</span>
+  <div class="row">
+    <a href="interactive-maps/tuvalu/tuvalu-map.html">吐瓦魯，富納富提 →</a>
+    <span class="desc">長型衛星地圖、十二個地點，手機上往下捲著看</span>
     <button type="button" class="copy" data-title="吐瓦魯，富納富提" data-frame="height:1080px">複製嵌入碼</button>
+    <span class="used">使用的文章：尚未刊出</span>
   </div>
 
-  <div class="row wip">
-    <a href="interactive-maps/tuvalu/wide/tuvalu-map-wide.html">吐瓦魯，富納富提 橫版（測試中）→</a>
-    <span class="desc">同一份內容，整張圖轉 90 度（北朝右）排成橫幅；嵌入碼在畫面 700px 以下自動換成長型；還不要拿去發稿</span>
+  <div class="row">
+    <a href="interactive-maps/tuvalu/wide/tuvalu-map-wide.html">吐瓦魯，富納富提 橫版 →</a>
+    <span class="desc">同一份內容轉 90 度排成橫幅，手機自動換成長型</span>
     <button type="button" class="copy" data-title="吐瓦魯，富納富提" data-frame="aspect-ratio:720/480"
             data-narrow="interactive-maps/tuvalu/tuvalu-map.html" data-narrow-frame="height:1080px">複製嵌入碼</button>
+    <span class="used">使用的文章：尚未刊出</span>
   </div>
 
   <p class="said" id="said" role="status" aria-live="polite"></p>
