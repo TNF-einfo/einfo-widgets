@@ -165,7 +165,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:14px; font-weight:800;
     color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
     border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12); pointer-events:auto }
-  /* 擠不下的名字平常藏著，輪到那個點或滑鼠移到圖釘上才出現（見 unveil）；出現的位置另外找不壓別人的空地，找不到才淡掉疊到的名字 */
+  /* 擠不下、連附近空地都找不到的名字平常藏著，輪到那個點或滑鼠移到圖釘上才出現，疊到的名字淡掉（見 liftPinNames 的空地、unveil） */
   .toplabel.crowd, .toplabel.dim{ opacity:0; pointer-events:none }
   .toplabel.crowd.hi, .toplabel.crowd.peek{ opacity:1 }
   .rlabel{
@@ -563,8 +563,9 @@ function liftPinNames(occ, frame){
   const placed = [], crowd = [];
   top.querySelectorAll('.toplabel').forEach(lab => {
     const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
-    const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
-    let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
+    const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12, D = P.hw + 4;
+    // 右→上→左→下→右上→左上；斜角的名字框角貼近圖釘（D），跟上下左右一樣離圖釘約 10px，不會飄在半空（09-30 橫版集會所飄到潟湖裡）
+    let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[D+lw,-(D+lh)],[-(D+lw),-(D+lh)]];
     const sp = spots.find(s => s.n === spot) || {}, side = sp.label;   // spots.py 指定 "label": right／up／left／down 就只放那邊（owner 點名的）
     if (side){ const [ox, oy] = cands[['right', 'up', 'left', 'down'].indexOf(side)]; cands = [[ox, oy + (sp.label_dy || 0)]]; }   // label_dy：再上下微調幾 px，負＝往上
     let best = cands[0], bestPen = Infinity, bestOv = 0;
@@ -581,8 +582,7 @@ function liftPinNames(occ, frame){
       if (pen === 0){ best = [ox,oy]; bestOv = 0; break; }
       if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; }
     }
-    // 六個位置都會壓到別人超過一成（密集區）→ 名字先藏（.crowd），只留編號，照樣排在壓最少的位置但不佔位；
-    // 輪播或點到那個點、滑鼠移到圖釘上時才出現（unveil）。指定邊的名字一律照放
+    // 六個位置都會壓到別人超過一成（密集區）→ 先標 .crowd、不佔位，等其他名字都排好再替它找空地（見迴圈後）。指定邊的名字一律照放
     const [ox,oy] = best;
     if (!side && bestOv > 0.1 * (4 * lw * lh)){ lab.classList.add('crowd'); crowd.push({ lab, P, lw, lh }); }
     else placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
@@ -591,20 +591,26 @@ function liftPinNames(occ, frame){
     lab.style.setProperty('--px', lab.style.left); lab.style.setProperty('--py', lab.style.top);
     lab.style.transform = `translate(${ox}px,${oy}px) translate(-50%,-50%)`;
   });
-  // 藏著的名字出現時的位置：等其他名字都排好，再往外找一塊不壓圖釘、不壓別的名字的空地，出現時別的名字就不必淡掉
-  // （owner 09-30：友誼農場出現時政府大樓不見了）。找不到才照上面壓最少的位置，出現時淡掉疊到的名字（unveil）
+  // 擠不下的名字：等其他名字都排好，再往外找一塊不壓圖釘、不壓別的名字的空地，放在那裡、平常就顯示
+  // （owner 09-30：輪到才出現的話「農場還是會消失」、「地名拉遠點」；拉線也不要）。
+  // 連空地都找不到才維持藏著，輪到才出現在上面壓最少的位置、淡掉疊到的名字（unveil）
   for (const { lab, P, lw, lh } of crowd){
     const o = openSpot(P, lw, lh, pins, occ, placed, fr);
     if (!o) continue;
+    lab.classList.remove('crowd');
     lab.style.transform = `translate(${o[0]}px,${o[1]}px) translate(-50%,-50%)`;
     placed.push({ x1:P.cx+o[0]-lw, y1:P.cy+o[1]-lh, x2:P.cx+o[0]+lw, y2:P.cy+o[1]+lh });
   }
 }
 // 圖釘周圍由近而遠（離圖釘邊 6～90px）、沿 24 個方向找空地：不壓別的圖釘、名字、標題框，不出框；
-// 同一圈裡挑離別的圖釘最遠的方向（比較不會看錯是誰的）。回傳名字中心相對圖釘的偏移，找不到回 null
+// 空地離自己的圖釘要比離別的圖釘近（不然會看成別人的名字，09-30 平板的政府大樓曾被放到 ① 旁邊），
+// 同一圈裡挑離自己比離別人近最多的方向。到 90px 都找不到這種空地，才退而求其次用最近的一塊空地。回傳名字中心相對圖釘的偏移，找不到回 null
 function openSpot(P, lw, lh, pins, occ, placed, fr){
+  const others = pins.filter(q => q.spot !== P.spot);
+  const dist = (bx, q) => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2));
+  let fallback = null;
   for (let R = 6; R <= 90; R += 6){
-    let best = null, far = -1;
+    let best = null, far = -Infinity;
     for (let k = 0; k < 24; k++){
       const c = Math.cos(k * Math.PI / 12), s = Math.sin(k * Math.PI / 12);
       const e = Math.min(Math.abs(c) > 1e-6 ? lw / Math.abs(c) : Infinity, Math.abs(s) > 1e-6 ? lh / Math.abs(s) : Infinity);   // 名字中心沿這方向到框邊
@@ -612,14 +618,14 @@ function openSpot(P, lw, lh, pins, occ, placed, fr){
       const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
       if (bx.x1 < fr.left + 2 || bx.x2 > fr.right - 2 || bx.y1 < fr.top + 2 || bx.y2 > fr.bottom - 2) continue;
       if (occ.some(o => overlap(bx, o)) || placed.some(o => overlap(bx, o))) continue;
-      const others = pins.filter(q => q.spot !== P.spot);
       if (others.some(q => overlap(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }))) continue;
-      const d = Math.min(...others.map(q => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2))));
-      if (d > far){ far = d; best = [ox, oy]; }
+      const d = Math.min(...others.map(q => dist(bx, q))), margin = d - dist(bx, P);
+      if (!fallback) fallback = [ox, oy];
+      if (margin > 0 && margin > far){ far = margin; best = [ox, oy]; }
     }
     if (best) return best;
   }
-  return null;
+  return fallback;
 }
 
 // RCAND：地名候選位移（原點→上下→左右）——make_video 的 placeLabels 與 gen_map 的 placeDistricts 共用
