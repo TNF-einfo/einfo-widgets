@@ -71,6 +71,11 @@ if any(s.get("offmap") for s in cfg.SPOTS) and not inset:
 # 畫框尺寸：預設固定比例（東京 720/476，三檔寬度等比縮）；設 HEIGHT＝固定高度、寬度跟文章欄寬走
 # （長型地圖用：手機上照樣這麼高，讀者往下捲著看，不會整張縮小）。嵌入碼的外框要跟著用同一條。
 frame_size = f"height:{cfg.HEIGHT}px" if getattr(cfg, "HEIGHT", None) else "aspect-ratio:" + getattr(cfg, "ASPECT", "720/476")
+# 橫版地圖用（都選用，不設就照舊）：FIT_PAD＝自訂 fit 的四邊留白；CARD="row"＝說明卡照片在左、文字在右（卡片矮）；
+# NORTH＝指北箭頭指的角度（順時針，地圖轉過才需要）
+frame_class = " cardrow" if getattr(cfg, "CARD", None) == "row" else ""
+north = getattr(cfg, "NORTH", None)
+north_html = f'\n  <div class="north" style="--r:{north}deg" aria-label="北方"><span>北</span><b>↑</b></div>' if north is not None else ""
 attrib = getattr(cfg, "ATTRIB", 'boundaries © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
 # 衛星主題的標題與說明卡標題用思源宋體：Google Fonts 的 text= 只下載用得到的字（標題＋各地點名），幾 KB；載不到就退回系統宋體
 font_link = ""
@@ -304,9 +309,18 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
     .frame.tiles .info{ width:50%; max-width:none }
     .frame.tiles .card h3{ font-size:15px }
   }
+  /* CARD="row"（橫版地圖）：照片在左、文字在右，卡片矮，才放得進島上方那條潟湖、不蓋到島 */
+  .frame.tiles.cardrow .info{ width:440px; max-width:62% }
+  .frame.tiles.cardrow .card{ position:relative; min-height:150px; padding:11px 14px 12px calc(42% + 14px) }
+  .frame.tiles.cardrow .card img.photo{ position:absolute; left:0; top:0; width:42%; height:100%; margin:0; aspect-ratio:auto;
+    border-radius:14px 0 0 14px }
+  /* NORTH：指北箭頭（地圖轉過才畫），白字描邊、不加框 */
+  .north{ position:absolute; left:12px; bottom:12px; z-index:6; display:flex; align-items:center; gap:5px; pointer-events:none;
+    color:#fff; font-size:13px; font-weight:600; letter-spacing:.08em; text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85) }
+  .north b{ display:inline-block; font-size:16px; transform:rotate(var(--r)) }
 </style>
 
-<div class="frame">
+<div class="frame__FRAME_CLASS__">
   <div id="map"></div>
   <div class="paper-wash"></div>
   <div class="corner">
@@ -316,7 +330,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
     </div>
     <div class="legend" id="legend"></div>
   </div>
-  <div class="info" id="info"></div>
+  <div class="info" id="info"></div>__NORTH__
 </div>
 
 <script>
@@ -333,6 +347,7 @@ const places = __PLACES__;
 const POPUP_SIDE = __POPUP_SIDE__;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
 const POPUP_FLOAT = __POPUP_FLOAT__; // true＝說明卡可按住拖曳；文章往下捲時說明卡、標題框＋圖例跟著停在看得到的那一段（長型地圖用）
 const INSET = __INSET__;             // null＝沒有小地圖；有的話 offmap 的點畫在它上面
+const FIT_PAD = __FIT_PAD__;         // null＝照下面 refit 的預設留白；{desk:[左,上,右,下], small:[…]}＝自訂（橫版把上方留給說明卡與標題）
 
 const map = L.map('map', {
   zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
@@ -422,7 +437,10 @@ function refit(){
   const small = window.matchMedia('(max-width:719.98px)').matches;   // 跟 CSS 斷點一致（非桌機＝<720）
   const phone = window.matchMedia('(max-width:527.98px)').matches;   // 手機檔（純寬度、與 CSS 一致）
   let P;
-  if (small){
+  if (FIT_PAD){
+    const [l, t, r, b] = FIT_PAD[small ? 'small' : 'desk'];
+    P = { tl:[l, t], br:[r, b] };
+  } else if (small){
     const shift = phone ? map.getSize().x / 6 : 0;   // 手機檔：地圖往右移 1/6
     P = { tl:[36 + shift, 44], br:[64, 36] };
   } else {
@@ -458,7 +476,7 @@ let labelMarkers = [];
 function fixedRects(pad){
   const fr = document.querySelector('.frame').getBoundingClientRect(), cr = document.querySelector('.corner').getBoundingClientRect();
   const dy = POPUP_FLOAT ? cr.top - fr.top - 12 : 0;
-  return [...document.querySelectorAll('.titlebar, .legend, .inset')].map(el => ({ r:el.getBoundingClientRect(), d:el.closest('.corner') ? dy : 0 }))
+  return [...document.querySelectorAll('.titlebar, .legend, .inset, .north')].map(el => ({ r:el.getBoundingClientRect(), d:el.closest('.corner') ? dy : 0 }))
     .filter(o => o.r.width > 1).map(({ r, d }) => ({ x1:r.left-pad, y1:r.top-d-pad, x2:r.right+pad, y2:r.bottom-d+pad }));
 }
 
@@ -851,6 +869,8 @@ html = (TPL
         .replace("__IMAGE__", json.dumps(image, ensure_ascii=False))
         .replace("__FONT_LINK__", font_link)
         .replace("__FRAME_SIZE__", frame_size)
+        .replace("__FRAME_CLASS__", frame_class).replace("__NORTH__", north_html)
+        .replace("__FIT_PAD__", json.dumps(getattr(cfg, "FIT_PAD", None)))
         .replace("__POPUP_SIDE__", json.dumps(getattr(cfg, "POPUP_SIDE", None)))
         .replace("__POPUP_FLOAT__", json.dumps(bool(getattr(cfg, "POPUP_FLOAT", False))))
         .replace("__INSET__", json.dumps(inset, ensure_ascii=False))

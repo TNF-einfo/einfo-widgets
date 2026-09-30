@@ -1,0 +1,783 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>吐瓦魯・富納富提｜iframe 嵌入</title>
+<div style="position:relative;max-width:720px;margin:auto;aspect-ratio:720/480">
+  <iframe loading="lazy" allowfullscreen srcdoc="<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中心
+     Leaflet + 內嵌行政區 GeoJSON（都縣界＋東京23區界＋鄰縣市町村界；無圖磚＝無道路，只留行政交界＋水域）。
+     繁中地名（自動位移避讓、移太多才刪）、圖釘旁名稱、瓦紙固定配色、鎖死靜態、可 <iframe> 內嵌。
+     界線/pin/地名皆以 Python 算圖核對。座標/文案/照片在 spots、地名在 places。 -->
+<meta charset=&quot;utf-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+<title>吐瓦魯・富納富提｜環境資訊中心</title>
+<link rel=&quot;stylesheet&quot; href=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.css&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link rel=&quot;stylesheet&quot; href=&quot;https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&amp;display=swap&amp;text=%2012ACPTap%E3%83%BB%E4%B8%AD%E4%BD%BF%E5%8F%8B%E5%90%90%E5%9C%8B%E5%9C%BE%E5%9E%83%E5%A0%B4%E5%A4%A7%E5%AF%8C%E5%BA%9C%E6%89%80%E6%8B%89%E6%8F%90%E6%94%BF%E6%9C%80%E6%9C%83%E6%9F%AF%E6%A8%93%E6%A9%9F%E6%B0%91%E6%B3%95%E6%BC%94%E7%93%A6%E7%AA%84%E7%B4%8D%E8%8F%AF%E8%AA%BC%E8%AC%9B%E8%BE%B2%E9%9A%9B%E9%9B%86%E9%A3%9B%E9%A4%A8%E9%A7%90%E9%AD%AF%E9%BB%9E&quot;>
+<script src=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.js&quot;></script>
+<style>
+  :root{
+    --ink:#4a4038; --line:#e6d9c4;
+    --paper:#f7efe0; --water:#b6d3df; --bodybg:#ece2cf;
+    --label:#9a8b70; --labelbig:#83765f; --sealbl:#5a8ea0; --accent:#e07a9c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:&quot;Hiragino Maru Gothic ProN&quot;,&quot;Hiragino Sans&quot;,&quot;Noto Sans TC&quot;,&quot;Noto Sans JP&quot;,
+                &quot;PingFang TC&quot;,&quot;Microsoft JhengHei&quot;,system-ui,sans-serif;
+    color:var(--ink); background:transparent;
+    display:flex; min-height:100vh; padding:0;
+  }
+  .frame{
+    /* margin:auto 置中：畫面比地圖矮時（直接開網址看長型地圖）會貼齊頂端、往下捲；
+       用 align-items:center 的話，這頁沒有 doctype（quirks mode），上緣會被切掉、捲不回去 */
+    margin:auto; position:relative; width:720px; max-width:100%; aspect-ratio:720/480;
+    border-radius:16px; overflow:hidden; background:var(--paper);   /* 不要框線/陰影，但保留圓角 */
+  }
+  #map{ position:absolute; inset:0; width:100%; height:100%; background:var(--water); z-index:1 }
+  .leaflet-container{ background:var(--water) }
+  .paper-wash{
+    position:absolute; inset:0; z-index:2; pointer-events:none; mix-blend-mode:multiply;
+    background:
+      radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(120,90,50,.13) 100%),
+      repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 3px, rgba(150,120,80,.04) 3px 6px);
+  }
+  .leaflet-control-attribution{ font-size:9px; background:rgba(255,255,255,.7)!important }
+  .corner{ display:contents }   /* 標題框＋圖例的容器；預設不影響版面（插畫風各自定位），衛星主題才疊在右上 */
+  .titlebar{
+    position:absolute; left:12px; top:12px; z-index:6;
+    background:rgba(255,255,255,.9); backdrop-filter:blur(3px);
+    padding:8px 13px; border-radius:13px; border:1.5px solid #fff; box-shadow:0 4px 12px rgba(90,70,40,.14);
+  }
+  .titlebar .mark{ font-size:11px; letter-spacing:.15em; color:var(--accent); font-weight:800 }
+  .titlebar h1{ margin:1px 0 0; font-size:18.5px; font-weight:800; letter-spacing:.02em }
+  .legend{
+    position:absolute; right:14px; top:14px; z-index:6; display:flex; flex-direction:column; gap:6px;
+    background:rgba(255,255,255,.9); backdrop-filter:blur(3px);
+    padding:10px 12px; border-radius:14px; border:2px solid #fff; box-shadow:0 5px 16px rgba(90,70,40,.16);
+  }
+  .chip{ display:flex; align-items:center; gap:7px; cursor:pointer; user-select:none; font-size:12.5px; font-weight:700 }
+  .chip .dot{ width:13px; height:13px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-size:8px }
+  .chip[data-on=&quot;0&quot;]{ opacity:.35; text-decoration:line-through }
+  .pin-anchor{ position:relative; width:23px; height:23px; transform-origin:11px 23px }
+  .pin{
+    width:23px; height:23px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+    border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.3);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pin b{ transform:rotate(45deg); font-size:11px; color:#fff; font-weight:800; line-height:1 }
+  .pin-anchor.hi .pin{ transform:rotate(-45deg) scale(1.25); animation:hipulse 1.6s ease-in-out infinite }
+  @keyframes hipulse{
+    0%,100%{ box-shadow:0 0 0 3px #fff, 0 0 0 6px rgba(224,122,156,.6), 0 5px 14px rgba(0,0,0,.35) }
+    50%{ box-shadow:0 0 0 3px #fff, 0 0 0 10px rgba(224,122,156,.22), 0 5px 14px rgba(0,0,0,.35) }
+  }
+  .pin-name{
+    position:absolute; left:27px; top:0; white-space:nowrap; font-size:14px; font-weight:800;
+    color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
+    border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12);
+  }
+  /* pin 名浮層（影片版規則寫回）：抽到獨立層 → 永遠壓在所有 pin(z1)＋紙紋(z2) 之上、標題/圖例(z6)/popup(z8) 之下 */
+  #toplabels{ position:absolute; inset:0; z-index:5; pointer-events:none; overflow:hidden }
+  .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:14px; font-weight:800;
+    color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
+    border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12); pointer-events:auto }
+  .rlabel{
+    font-weight:800; letter-spacing:1px; font-size:12px; color:var(--label); opacity:.92; text-align:center;
+    white-space:nowrap; pointer-events:none; text-shadow:0 1px 2px #fff,0 0 5px #fff,0 0 5px #fff;
+  }
+  .rlabel.big{ font-size:16px; letter-spacing:3px; color:var(--labelbig) }
+  .rlabel.sea{ color:var(--sealbl) }
+  /* 圖磚（衛星影像）底圖：拿掉紙紋；地名改白字深陰影，壓在深色影像上才讀得到 */
+  .frame.tiles .paper-wash{ display:none }
+  /* 圖磚多畫 1px 疊住鄰居（見下方 _initTile）；Leaflet 1.9 預設的 plus-lighter 會把疊住的那條加亮成白線，改回一般混色 */
+  .frame.tiles .leaflet-container img.leaflet-tile{ mix-blend-mode:normal }
+  .frame.tiles .rlabel{ color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.75), 0 0 8px rgba(0,0,0,.45) }
+  .info{ position:absolute; left:12px; bottom:12px; z-index:8; width:282px; max-width:54%;
+    max-height:75%; overflow:auto;   /* 上限＝地圖高的 3/4，超過就內部捲動不爆邊 */
+    background:#fff; border-radius:13px; border:1.5px solid #fff; box-shadow:0 8px 24px rgba(90,70,40,.28);
+    padding:13px; display:none; font-size:13px; line-height:1.6 }
+  .info.show{ display:block }
+  .info .x{ position:absolute; right:7px; top:4px; cursor:pointer; border:0; background:none;
+    font-size:17px; color:#b3a894; line-height:1; padding:0 4px }
+  .card .tag{ display:inline-block; font-size:10px; font-weight:800; color:#fff; padding:2px 8px; border-radius:20px }
+  .card .area{ font-size:10.5px; color:#a2957f; margin-left:6px }
+  .card img.photo{ width:100%; height:108px; object-fit:cover; border-radius:8px; margin:7px 0; display:block; background:#eee }   /* 照片裁切格式回到最初：固定高 108px、cover */
+  .card h3{ margin:2px 0 0; font-size:15.5px }
+  .card .ja{ margin:1px 0 5px; font-size:10.5px; color:#a2957f }
+  .card p.desc{ margin:0 0 4px; color:#4a443b }
+  .card a{ color:#4a5ab0; font-weight:800; font-size:12.5px; text-decoration:none; border-bottom:1.5px solid #c9cfea }
+  /* 斷點依 e-info 三檔嵌入寬度對齊（桌機 720 / 平板 528 / 手機 352.8）；吃 iframe 自身寬度。
+     小版（<720，即 e-info 平板＋手機）共用：拿掉標題/圖例、縮圖釘、地名先縮小 */
+  @media (max-width:719.98px){
+    .titlebar, .legend{ display:none }
+    .rlabel{ font-size:11px; letter-spacing:0 } .rlabel.big{ font-size:13px; letter-spacing:1px }
+    .pin-name, .toplabel{ font-size:11px }
+    .info{ left:8px; bottom:8px; width:auto; max-width:44%; padding:8px; font-size:11px }
+    .card img.photo{ height:64px; margin:5px 0 } .card h3{ font-size:12.5px }
+  }
+  /* 平板檔（對齊 e-info 528；區間 528–719.98）：地名 16、照片不裁切（原比例，popup 寬度維持、只有高度隨圖變） */
+  @media (min-width:528px) and (max-width:719.98px){
+    .pin-name, .toplabel{ font-size:16px }
+    .card img.photo{ height:auto }
+    .card[data-spot=&quot;1&quot;] img.photo{ aspect-ratio:800/600 }   /* 地下神殿(①)原圖近正方，平板裁成 4:3、跟其他一樣大 */
+  }
+  /* 手機檔（對齊 e-info 352.8；≤527.98）：只留分類/照片/名稱、地名 15、popup 放大一點 */
+  @media (max-width:527.98px){
+    .card p.desc{ display:none }
+    .card .area{ display:none }
+    .pin-name, .toplabel{ font-size:15px }
+    .pin-anchor{ transform:scale(.72) }   /* 手機：圖釘縮小免互相重疊（繞底尖縮放、尖點仍對準座標；量測法會吃到縮放後尺寸） */
+    .info{ max-width:40%; padding:9px; font-size:12px; max-height:none; overflow:visible }   /* 手機 popup 縮小一點（寬 40%）；不要 scroll */
+    .card img.photo{ height:70px } .card h3{ font-size:13px }
+  }
+  /* 桌機：防災商品專賣店(⑥)照片裁切範圍往上移一點 */
+  @media (min-width:720px){
+    .card[data-spot=&quot;6&quot;] img.photo{ object-position:50% 30% }
+  }
+
+  /* ── 衛星主題（有 TILES 時 .frame 加 .tiles；插畫風地圖不受影響）──
+     配色取自環資颱風短影音（深綠＋黃）。原則是能拿掉的框線都拿掉（owner 09-29：圖示包太多框線）：
+     圖釘只剩實心圓點＋一層淡陰影；地名白字深色描邊、不用底；卡片與標題框只靠陰影分邊。 */
+  .frame.tiles{ --glass:rgba(16,42,31,.84); --cream:#f6f3e7; --mute:#aebfb5; --gold:#f0b429; --deep:#10231b;
+    --serif:&quot;Noto Serif TC&quot;,&quot;Source Han Serif TC&quot;,&quot;Songti TC&quot;,&quot;PMingLiU&quot;,serif; background:#0f2a22 }
+  .frame.tiles #map, .frame.tiles .leaflet-container{ background:#0f2a22 }
+  .frame.tiles .titlebar, .frame.tiles .legend, .frame.tiles .info{
+    background:var(--glass); border:0; box-shadow:0 8px 24px rgba(0,0,0,.4); color:var(--cream);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
+  .frame.tiles .corner{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; position:absolute; right:12px; top:12px; z-index:6;
+    transition:top .3s ease-out }   /* POPUP_FLOAT 時跟著捲動（不能拖） */
+  .frame.tiles .corner > .titlebar, .frame.tiles .corner > .legend{ position:static }   /* 標題疊在圖例上面、都靠右（owner 09-29） */
+  .frame.tiles .titlebar{ padding:10px 14px 11px; border-radius:12px; text-align:right }
+  .frame.tiles .info.float{ transition:top .3s ease-out; touch-action:none; cursor:grab; -webkit-user-select:none; user-select:none }   /* 浮動卡片：可拖曳、跟著捲動 */
+  .frame.tiles .info.float img{ -webkit-touch-callout:none }   /* iOS 長按照片不跳「儲存圖片」選單，按住照片也能拖 */
+  .frame.tiles .info.float.dragging{ transition:none; cursor:grabbing; box-shadow:0 14px 34px rgba(0,0,0,.5) }
+  /* 小地圖（INSET）：Leaflet 右下角、自動疊在出處上面；框＝主圖範圍，點＝離主圖太遠的地點 */
+  .frame.tiles .inset{ position:relative; width:136px; border-radius:12px; background:var(--glass); box-shadow:0 8px 24px rgba(0,0,0,.4);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
+  .frame.tiles .inset svg{ display:block; width:100%; height:auto }
+  .frame.tiles .inset{ transition:opacity .2s }
+  .frame.tiles.zoomed .inset{ opacity:0; pointer-events:none }   /* 放大中淡出：不擋地名、也不擋拖曳，彈回後再出現 */
+  .frame.tiles .inset .view{ fill:rgba(255,255,255,.12); stroke:#fff; stroke-width:1.2; vector-effect:non-scaling-stroke }
+  .frame.tiles .inset .cap{ position:absolute; left:9px; top:7px; color:var(--mute); font-size:10px; letter-spacing:.12em }
+  .frame.tiles .ipin{ position:absolute; display:flex; align-items:center; gap:4px; transform:translate(-8px,-50%); cursor:pointer }
+  .frame.tiles .ipin .pin{ width:16px; height:16px; flex:none }
+  .frame.tiles .ipin .pin b{ font-size:9.5px }
+  .frame.tiles .ipin span{ color:#fff; font-size:11.5px; font-weight:600; white-space:nowrap; transition:color .2s;
+    text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85) }
+  .frame.tiles .ipin.hi .pin{ transform:scale(1.35) }
+  .frame.tiles .ipin.hi span{ color:var(--gold) }
+  .vstrip{ position:absolute; left:0; width:1px; opacity:0; pointer-events:none }
+  .frame.tiles .titlebar .mark{ color:var(--gold); font-size:10.5px; letter-spacing:.22em }
+  .frame.tiles .titlebar h1{ font-family:var(--serif); font-size:22px; letter-spacing:.08em; margin-top:3px }
+  .frame.tiles .legend{ border-radius:12px; gap:7px }
+  .frame.tiles .chip{ color:var(--cream); font-weight:500; font-size:12px; letter-spacing:.04em }
+  .frame.tiles .chip .dot{ width:10px; height:10px; font-size:0 }
+  .frame.tiles .pin{ width:20px; height:20px; border-radius:50%; transform:none; border:0; box-shadow:0 1px 4px rgba(0,0,0,.55);
+    transition:transform .2s ease-out }
+  .frame.tiles .pin b{ transform:none; color:var(--deep); font-size:11px }
+  .frame.tiles .pin-anchor{ width:20px; height:20px; transform-origin:50% 50% }
+  .frame.tiles .pin-anchor.hi .pin{ transform:scale(1.35); animation:none }   /* 正在介紹的點：放大＋地名變黃，不加框 */
+  .frame.tiles .toplabel{ background:none; border:0; box-shadow:none; padding:0 2px; color:#fff; font-weight:600; letter-spacing:.02em;
+    text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.6); transition:color .2s }
+  .frame.tiles .toplabel.hi{ color:var(--gold) }
+  .frame.tiles .rlabel.sea{ color:rgba(228,244,244,.9); font-weight:500; letter-spacing:.5em }
+  .frame.tiles .info{ padding:0; border-radius:14px }
+  .frame.tiles .card{ display:flex; flex-direction:column; padding:10px 13px 13px }
+  .frame.tiles .card img.photo{ order:-1; width:calc(100% + 26px); margin:-10px -13px 10px; border-radius:14px 14px 0 0; background:#1d3a30;
+    height:auto; aspect-ratio:3/2; object-fit:cover }   /* 3:2＝相機原圖比例（owner：固定高度裁得太扁） */
+  .frame.tiles .card .meta{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap }
+  .frame.tiles .card .tag{ background:transparent!important; padding:0; border-radius:0; color:var(--cream);
+    font-size:10.5px; font-weight:600; letter-spacing:.14em; display:inline-flex; align-items:center; gap:6px }
+  .frame.tiles .card .tag::before{ content:&quot;&quot;; width:8px; height:8px; border-radius:50%; background:var(--tag) }
+  .frame.tiles .card .emo{ display:none }
+  .frame.tiles .card .area{ margin:0; color:var(--mute) }
+  .frame.tiles .card h3{ font-family:var(--serif); font-size:18px; letter-spacing:.04em; color:#fff; margin:6px 0 0 }
+  .frame.tiles .card .ja{ color:var(--mute); margin:2px 0 8px }
+  .frame.tiles .card p.desc{ color:#e3ebe6 }
+  .frame.tiles .info .x{ top:7px; right:7px; width:24px; height:24px; padding:0; border-radius:50%; background:rgba(8,20,16,.55);
+    color:#fff; font-size:16px; line-height:24px; text-align:center; z-index:2 }
+  .frame.tiles .info .x:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
+  .frame.tiles .leaflet-control-attribution{ background:rgba(8,20,16,.55)!important; color:#c9d6cf }
+  .frame.tiles .leaflet-control-attribution a{ color:#fff }
+  /* 放大（雙指）：只有底圖（圖磚、影像）用 CSS scale 放大，畫面座標＝平移 (--ztx,--zty)＋倍率 --zs × 原座標（原點在畫框左上）；
+     圖釘、地名不放大、只照放大後的位置移動（各自的錨點 --px/--py），字才不會糊（owner 09-29：放大時地名糊掉）。
+     變數註冊成可過渡，彈回時底圖與圖釘同步；手指移動中（.zooming）不過渡才跟得上 */
+  @property --zs { syntax:'<number>'; inherits:true; initial-value:1 }
+  @property --ztx { syntax:'<length>'; inherits:true; initial-value:0px }
+  @property --zty { syntax:'<length>'; inherits:true; initial-value:0px }
+  .frame.tiles{ transition:--zs .3s ease-out, --ztx .3s ease-out, --zty .3s ease-out }
+  .frame.tiles.zooming{ transition:none }
+  .frame.tiles .leaflet-tile-pane, .frame.tiles .leaflet-overlay-pane{ transform-origin:0 0; scale:var(--zs); translate:var(--ztx) var(--zty) }
+  .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel{
+    translate:calc((var(--zs) - 1) * var(--px, 0px) + var(--ztx)) calc((var(--zs) - 1) * var(--py, 0px) + var(--zty)) }
+  .frame.tiles #map{ touch-action:pan-x pan-y }   /* 單指照樣捲文章，雙指捏開交給頁面自己放大 */
+  .frame.tiles #map, .frame.tiles #toplabels{ -webkit-user-select:none; user-select:none }   /* 按住拖著看時不要反白地名 */
+  @media (prefers-reduced-motion:reduce){ .frame.tiles, .frame.tiles .pin, .frame.tiles .toplabel, .frame.tiles .corner, .frame.tiles .info.float{ transition:none } }
+  @media (max-width:719.98px){
+    .frame.tiles .titlebar{ display:block; padding:8px 12px 9px }   /* 手機、平板也放標題（owner 09-29），比桌機小一點；圖例照樣藏 */
+    .frame.tiles .titlebar .mark{ font-size:10px; letter-spacing:.2em }
+    .frame.tiles .titlebar h1{ font-size:19px; margin-top:2px }   /* 16px 太小（owner：「手機版標題大點」） */
+    .frame.tiles .inset{ width:100px } .frame.tiles .inset .cap{ left:7px; top:5px; font-size:9px; letter-spacing:0 }
+    .frame.tiles .ipin span{ font-size:10.5px }
+    .frame.tiles .card{ padding:8px 9px 9px }
+    .frame.tiles .card img.photo{ width:calc(100% + 18px); margin:-8px -9px 8px }
+    .frame.tiles .card h3{ font-size:14px; margin-top:4px }
+    .frame.tiles .card .ja{ margin-bottom:5px }
+  }
+  @media (max-width:527.98px){   /* 手機說明卡放大一點（owner 09-29）：寬 40% → 50%，名稱加大 */
+    .frame.tiles .info{ width:50%; max-width:none }
+    .frame.tiles .card h3{ font-size:15px }
+  }
+  /* CARD=&quot;row&quot;（橫版地圖）：照片在左、文字在右，卡片矮，才放得進島上方那條潟湖、不蓋到島 */
+  .frame.tiles.cardrow .info{ width:440px; max-width:62% }
+  .frame.tiles.cardrow .card{ position:relative; min-height:150px; padding:11px 14px 12px calc(42% + 14px) }
+  .frame.tiles.cardrow .card img.photo{ position:absolute; left:0; top:0; width:42%; height:100%; margin:0; aspect-ratio:auto;
+    border-radius:14px 0 0 14px }
+  /* NORTH：指北箭頭（地圖轉過才畫），白字描邊、不加框 */
+  .north{ position:absolute; left:12px; bottom:12px; z-index:6; display:flex; align-items:center; gap:5px; pointer-events:none;
+    color:#fff; font-size:13px; font-weight:600; letter-spacing:.08em; text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85) }
+  .north b{ display:inline-block; font-size:16px; transform:rotate(var(--r)) }
+</style>
+
+<div class=&quot;frame cardrow&quot;>
+  <div id=&quot;map&quot;></div>
+  <div class=&quot;paper-wash&quot;></div>
+  <div class=&quot;corner&quot;>
+    <div class=&quot;titlebar&quot;>
+      <div class=&quot;mark&quot;>環境資訊中心</div>
+      <h1>吐瓦魯・富納富提</h1>
+    </div>
+    <div class=&quot;legend&quot; id=&quot;legend&quot;></div>
+  </div>
+  <div class=&quot;info&quot; id=&quot;info&quot;></div>
+  <div class=&quot;north&quot; style=&quot;--r:90deg&quot; aria-label=&quot;北方&quot;><span>北</span><b>↑</b></div>
+</div>
+
+<script>
+const BOUNDARIES = [];   // [0]=陸地(填色+粗界)，其餘=細界線
+const UNDERLAY = [];       // 陸地下面的淺色填色層（礁盤等），可為空
+const TILES = null;             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
+const IMAGE = {&quot;url&quot;: &quot;basemap/s2_20260105_2x_rot.webp&quot;, &quot;bounds&quot;: [[-8.544456585322848, 179.10911253694664], [-8.445553723638842, 179.27088746305338]], &quot;attribution&quot;: &quot;Contains modified Copernicus Sentinel data 2026&quot;};             // null＝無；{url, bounds, attribution}＝一張地理對齊的影像當底圖（有它就不用 TILES）
+const SAT = !!(TILES || IMAGE);      // 衛星主題（圖釘、署名、放大都看這個，不要只看 TILES）
+const ATTRIB = &quot;inset © <a href=\&quot;https://www.openstreetmap.org/copyright\&quot;>OpenStreetMap</a> contributors&quot;;
+
+const CAT = {&quot;adapt&quot;: {&quot;name&quot;: &quot;氣候調適&quot;, &quot;color&quot;: &quot;#f0b429&quot;, &quot;emo&quot;: &quot;🌊&quot;}, &quot;site&quot;: {&quot;name&quot;: &quot;環境現場&quot;, &quot;color&quot;: &quot;#ff7b5c&quot;, &quot;emo&quot;: &quot;📍&quot;}, &quot;life&quot;: {&quot;name&quot;: &quot;島上生活&quot;, &quot;color&quot;: &quot;#f6f3e7&quot;, &quot;emo&quot;: &quot;🏝&quot;}, &quot;tw&quot;: {&quot;name&quot;: &quot;台灣援助&quot;, &quot;color&quot;: &quot;#8fd0ff&quot;, &quot;emo&quot;: &quot;🤝&quot;}};
+const spots = [{&quot;n&quot;: 1, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.501881535557523, &quot;lng&quot;: 179.1608025206034, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;short&quot;: &quot;國際機場&quot;, &quot;zh&quot;: &quot;富納富提國際機場&quot;, &quot;ja&quot;: &quot;Funafuti International Airport&quot;, &quot;img&quot;: &quot;../photos/DSC03594.jpg&quot;, &quot;desc&quot;: &quot;機場很小、跑道很短。因為航班少，居民平常就在跑道上通行、運動、休閒，只有飛機起降時才退到兩旁等待，像一座飛機版的平交道。&quot;}, {&quot;n&quot;: 2, &quot;cat&quot;: &quot;tw&quot;, &quot;lat&quot;: -8.498965326604134, &quot;lng&quot;: 179.1568323465354, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;zh&quot;: &quot;友誼農場&quot;, &quot;ja&quot;: &quot;Happy Friendship Garden&quot;, &quot;img&quot;: &quot;../photos/DSC03660.jpg&quot;, &quot;desc&quot;: &quot;台灣技術團在機場旁經營的農場，每週兩天清晨舉辦市集販售蔬果，居民排隊採買。吐瓦魯的環境完全不適合種植蔬果，技術團需要自己做土，並將作物墊高40至50公分，避開漲潮時從地面冒出的海水。&quot;}, {&quot;n&quot;: 3, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.499387736186655, &quot;lng&quot;: 179.16030077811482, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;short&quot;: &quot;政府大樓&quot;, &quot;zh&quot;: &quot;吐瓦魯政府大樓&quot;, &quot;ja&quot;: &quot;The Parliament of Tuvalu&quot;, &quot;img&quot;: &quot;../photos/IMG_8620.jpg&quot;, &quot;desc&quot;: &quot;這是當地最高建築物。台灣自2010年起推動「潔淨能源計畫」，富納富提的政府建築屋頂也鋪了來自台灣的光電板。&quot;}, {&quot;n&quot;: 4, &quot;cat&quot;: &quot;adapt&quot;, &quot;lat&quot;: -8.4997438812024, &quot;lng&quot;: 179.16390164069918, &quot;area&quot;: &quot;瓦伊阿庫村西側&quot;, &quot;zh&quot;: &quot;TCap 1&quot;, &quot;ja&quot;: &quot;吐瓦魯海岸調適計畫（TCAP）第一階段&quot;, &quot;img&quot;: &quot;../photos/DJI_0264.MP4_000337051.jpg&quot;, &quot;desc&quot;: &quot;在聯合國支援下，吐瓦魯政府2017年展開的大型填海造陸工程。第一階段在人口最密集的瓦伊阿庫村西側，2023年底完工，用潟湖砂土填出約7.3公頃新土地，可抵禦2100年以前的海平面上升。&quot;}, {&quot;n&quot;: 5, &quot;cat&quot;: &quot;adapt&quot;, &quot;lat&quot;: -8.495388029886884, &quot;lng&quot;: 179.15518108672038, &quot;area&quot;: &quot;南側潟湖&quot;, &quot;zh&quot;: &quot;TCap 2&quot;, &quot;ja&quot;: &quot;吐瓦魯海岸調適計畫（TCAP）第二階段&quot;, &quot;img&quot;: &quot;../photos/DSC04644.jpg&quot;, &quot;desc&quot;: &quot;第二階段填海造陸選在南側潟湖，用高強度沙袋堆成防波堤，再以潟湖砂土填出長約800公尺、約8公頃的新生地，2025年10月由聯合國開發計劃署正式移交。未來這裡會蓋台灣援助的國會大樓。&quot;}, {&quot;n&quot;: 6, &quot;cat&quot;: &quot;tw&quot;, &quot;lat&quot;: -8.505504265760216, &quot;lng&quot;: 179.16999252389832, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;short&quot;: &quot;大使館&quot;, &quot;zh&quot;: &quot;中華民國駐吐瓦魯大使館&quot;, &quot;ja&quot;: &quot;Embassy of the Republic of China (Taiwan)&quot;, &quot;img&quot;: &quot;../photos/IMG_6593.jpg&quot;, &quot;desc&quot;: &quot;台吐建交已40餘年，現任大使為林東亨。兩國2025年底簽署《台吐團結共榮條約》，條約名稱的「Kaitasi」在吐瓦魯語是「至親家人」。&quot;}, {&quot;n&quot;: 7, &quot;cat&quot;: &quot;tw&quot;, &quot;lat&quot;: -8.50045884058097, &quot;lng&quot;: 179.182397863194, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;zh&quot;: &quot;TTCAP&quot;, &quot;ja&quot;: &quot;台吐海岸調適計畫&quot;, &quot;img&quot;: &quot;../photos/DJI_0255.MP4_000013219.jpg&quot;, &quot;desc&quot;: &quot;台灣協助的海岸調適計畫，在富納富提更北端，修築、加高防波堤，保護容易受浪潮衝擊的聚落。2026年完工，同年3月外交部長林佳龍以總統特使身分出席啟用典禮。&quot;}, {&quot;n&quot;: 8, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.503889717149956, &quot;lng&quot;: 179.16828651598092, &quot;area&quot;: &quot;豐阿法萊島&quot;, &quot;zh&quot;: &quot;集會所&quot;, &quot;ja&quot;: &quot;Maneapa&quot;, &quot;img&quot;: &quot;../photos/DSC03746.jpg&quot;, &quot;desc&quot;: &quot;吐瓦魯社群聚會、議事的地方，是該國文化的精神建築。富納富提社群副首領提凱圖說，當地的氣候調適方案，長老們都在集會所討論過。&quot;}, {&quot;n&quot;: 9, &quot;cat&quot;: &quot;site&quot;, &quot;lat&quot;: -8.488182004879244, &quot;lng&quot;: 179.22804995473075, &quot;area&quot;: &quot;豐阿法萊島北端&quot;, &quot;zh&quot;: &quot;垃圾場&quot;, &quot;ja&quot;: &quot;&quot;, &quot;img&quot;: &quot;../photos/DJI_0262.MP4_000208749.jpg&quot;, &quot;desc&quot;: &quot;首都全島的垃圾都集中在北端這座垃圾山，從汽機車殘骸到日常用品都有。當地沒有大型焚化爐，只能露天焚燒。&quot;}, {&quot;n&quot;: 10, &quot;cat&quot;: &quot;site&quot;, &quot;lat&quot;: -8.494512640419542, &quot;lng&quot;: 179.21346851964185, &quot;area&quot;: &quot;豐阿法萊島北段&quot;, &quot;short&quot;: &quot;最窄點&quot;, &quot;zh&quot;: &quot;吐瓦魯最窄點&quot;, &quot;ja&quot;: &quot;The narrowest point on Fongafale Island&quot;, &quot;img&quot;: &quot;../photos/DJI_0264.jpg&quot;, &quot;desc&quot;: &quot;一眼望去，道路兩旁就是海水，一側是相對平靜的潟湖，另一側是洶湧的浪花，一波波拍打路基。&quot;}, {&quot;n&quot;: 11, &quot;cat&quot;: &quot;site&quot;, &quot;lat&quot;: -8.483087986873498, &quot;lng&quot;: 179.23722997541776, &quot;area&quot;: &quot;豐阿法萊島最北端&quot;, &quot;zh&quot;: &quot;柯飛演講點&quot;, &quot;ja&quot;: &quot;&quot;, &quot;img&quot;: &quot;../photos/DSC06616.jpg&quot;, &quot;desc&quot;: &quot;2021年聯合國氣候大會（COP26）期間，時任外交部長柯飛穿西裝站在海水中演講的地方。他身後的水泥設施是二戰時美軍的大型防空砲基座，漲潮時會泡在海水裡。&quot;}, {&quot;n&quot;: 12, &quot;cat&quot;: &quot;life&quot;, &quot;lat&quot;: -8.407098375863232, &quot;lng&quot;: 179.05428477100241, &quot;area&quot;: &quot;富納富提環礁的離島&quot;, &quot;offmap&quot;: 1, &quot;zh&quot;: &quot;富納法拉&quot;, &quot;ja&quot;: &quot;Funafala&quot;, &quot;img&quot;: &quot;../photos/DJI_0258.MP4_000113911.jpg&quot;, &quot;desc&quot;: &quot;只有寥寥幾戶人家的離島，有潔淨的沙灘，還有台灣技術團的農場。每逢大潮，海水會直接淹上陸地，房屋和器具都泡在水裡；隨丈夫移居這裡的斐濟籍婦女瓦萊布魯說，當地人對此總說「沒事啦，很正常」。&quot;}];
+const places = [{&quot;t&quot;: &quot;太平洋&quot;, &quot;lat&quot;: -8.509843485962415, &quot;lng&quot;: 179.19506386626398, &quot;big&quot;: 1, &quot;sea&quot;: 1}, {&quot;t&quot;: &quot;富納富提潟湖&quot;, &quot;lat&quot;: -8.4868, &quot;lng&quot;: 179.2115, &quot;big&quot;: 1, &quot;sea&quot;: 1}];
+const POPUP_SIDE = null;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
+const POPUP_FLOAT = false; // true＝說明卡可按住拖曳；文章往下捲時說明卡、標題框＋圖例跟著停在看得到的那一段（長型地圖用）
+const INSET = {&quot;svg&quot;: &quot;<path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M80.9,69.5L81.6,69.8L81.8,70.5L80.8,69.9Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M75.1,91.1L75.4,90.6L75.4,91.4Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M76.4,91.1L77.1,90.9L76.9,91.6L76.4,91.1Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M77.8,90.2L77.1,90.1L77.8,90.2Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M126.6,58.5L126.1,61.5L125.4,63.5L125.3,65.9L125.6,68.9L125.3,71.2L123.8,77.6L123,78.9L122.3,80L121.6,80.8L120.9,81.4L119.3,82.2L118.1,82.5L117.4,82.8L116.7,83.5L116,84.3L115,85.1L111.2,87.1L108.5,88.5L106.9,89.2L105.2,89.7L103.4,90.1L102.4,90.6L101.3,91.5L100,92.1L98.1,92.8L97.1,92.9L95.7,92.8L94.8,92.9L93.5,92.8L92.5,92.8L91.1,93.1L89.1,93.7L86,94.4L83.5,95.3L81.7,96.1L79.3,97L76.7,98.2L75.4,98.1L74.7,97.8L71.9,94.3L70.2,92.2L68.4,90.2L66.2,87.7L65.5,86.3L65.2,85.2L65.1,84.3L64.9,82.8L64.5,81.9L64,80.8L62.8,79.5L61.5,78.2L60.9,77.2L60.1,75.7L59.3,74L58.8,73.1L58.2,72.3L56.9,70.9L55.9,69.8L55.2,68.7L54.9,67.2L54.6,66.2L53.9,65.2L53.3,64.8L52.3,63.9L51.9,63.4L51.5,62.6L51.3,60.6L50.9,59.7L51,58.8L51.7,59L52.1,59.5L52.7,60.7L53,61.7L53.7,63L54.3,63.8L55.4,65.1L58,68L58.3,70L60.4,73L61.3,74.6L62.2,75.7L63.2,76.9L63.9,78.6L64.4,79.4L65.2,80.4L65.4,81.4L65.9,82.9L67.4,85.4L67.6,86.2L70.2,89.6L70.8,90.5L71.5,91.3L72.6,91.8L73.9,92.3L75.1,92.3L75.7,92.5L76.5,93.1L77,93.9L77.6,94.5L78,94.9L79.8,94.8L81.1,94.8L82.4,94.5L84.7,93.7L85.5,93.5L86.7,93.1L88.2,92.6L90.6,92.1L91.9,91.7L93.2,91.5L97.5,91L99.2,90.6L100.3,90.2L104.1,88.2L107.6,86.9L109.6,86L111.5,85L112.6,84.4L113.2,83.8L113.6,83.3L115,82.7L116,82.3L117.1,81.4L117.8,80.8L118.4,81L118.3,80.3L119.1,78.9L119.7,78.1L120.3,77.6L121,76.7L121.6,75.4L122.5,74.1L123.1,72.5L123.8,68.4L123.8,66.4L123.8,63.6L124.1,62.4L124.5,61.3L124.1,59.5L123.6,58.8L123.1,57.8L122.4,56.3L122.3,55.2L122.7,53.6L122.7,50.7L122.5,49.7L122.8,48.6L123.4,48.3L124.3,48.6L124.9,49.3L126,52.7L126.6,56L126.6,58.5ZM65.2,81.9L65.4,83.1L65.6,84L65.7,85.2L66.1,86.3L66.5,86.9L67.1,87.7L68,88.9L68.4,89.4L69,90.1L70.4,91.8L71.2,92.8L72.4,94.3L74.2,96.7L74.8,97.3L75.6,97.7L76.5,97.7L78,97.2L79.7,96.4L82,95.5L83.1,95.1L84.3,94.6L86.2,93.9L88.1,93.5L89.2,93.3L91.1,92.7L92.1,92.5L93.2,92.4L94.4,92.4L96.4,92.5L97.6,92.4L98.6,92.2L99.7,91.8L100.7,91.3L101.3,91L101.8,90.6L102.7,90.1L103.3,89.7L104.3,89.4L105.8,88.9L106.4,88.7L107.4,88.3L108.1,88L109.5,87.4L110.8,86.8L112.1,86.2L113.7,85.3L114.1,84.7L113.5,85L112.4,85.6L111.6,86L110.6,86.5L108.8,87.3L108.2,87.6L107.6,87.8L106.8,88.1L106,88.4L105.2,88.7L104.1,89L103.3,89.3L102.4,89.8L101.8,90.3L101.3,90.8L100.6,91.1L99.5,91.5L98.4,91.7L96.5,91.9L95.4,92L94.2,91.9L93.3,92L92,92.2L90.9,92.4L89.7,92.7L89,92.9L88.2,93.1L87.4,93.2L86.6,93.5L85.8,93.7L84.7,94L83.9,94.3L82.8,94.7L82.2,95L81.2,95.4L80.1,95.5L79.4,95.8L78.5,95.7L77.7,95.4L77.2,95.1L75.9,93.7L74.8,93.1L74,92.8L73.4,92.4L72.7,92.3L72,92L71.3,91.6L70.6,90.9L70,90.4L69.3,89.6L68.8,89.1L68.3,88.5L67.6,87.8L66.7,86.5L66.3,85.7L66.1,85L66,84.1L65.9,83.3L65.5,82.7L65.2,81.9ZM119.6,79.9L119.2,80.5L118.8,80.9L118.2,81.6L117.5,82.1L117,82.4L116.4,82.7L117.1,82.5L117.7,82.2L118.3,81.9L119.1,81.6L119.9,81.3L119.5,80.8L119.8,80.1L120.3,79.6L119.6,79.9ZM120.7,79.1L121.4,79.3L121.7,78.5L121.3,78.1L120.9,78.6ZM60.4,74.6L60.7,75.8L61.7,77.4L62.2,78L61.9,77.1L61.1,75.7L60.7,75.3L60.4,74.6ZM54.8,66L55.4,67.7L55.9,68.9L56.4,69.6L57,70.1L57.7,70.2L57.1,69.6L56.8,68.9L56.3,67.8L56,67.2L55.7,66.5L55.3,66L55,65.4L54.4,65.1L54.7,65.9ZM52.9,63L52.4,62.2L52.3,61.3L52.1,60.5L51.7,59.6L51.8,60.7L51.9,61.7L52.2,62.5L52.7,62.9ZM124.2,53.5L124.2,54.7L124.3,55.5L124.1,56.1L125,56.2L125.4,55.7L125.2,55.1L124.7,54.7L124.4,54ZM124.4,53.3L124.9,52.9L124.8,52.2L124.4,52.7ZM94.9,73.7L95.3,73L96.1,73.3L96.4,74.2L96.1,75.1L95.4,75.3L95,74.3ZM109.5,73.8L110.2,73.9L109.5,73.8ZM102.8,65.9L103.1,65.1L103.8,66.3L103.3,66.8L102.8,65.9ZM90.8,61.3L91.3,60.8L91.7,61.6L91.5,62.5L90.8,62.6L90.8,61.3ZM46.6,54.6L45.2,54.1L44.2,53.9L43.2,53.4L42.3,51.9L42.3,50.9L43.3,50.9L43.7,51.3L44.1,52L45.1,52.6L46.1,53.3L46.6,53.7L46.6,54.6ZM61.3,24.5L60.3,25.8L59.7,25.5L59.8,24.5L59.1,24L59.4,22.9L59,21.6L58.3,20.2L57.4,19.5L56.5,19L54.9,19.6L54,20.4L52.9,21.1L51.8,22.1L50.1,23.5L49.7,24.2L49.5,25L49.2,25.9L48.5,26.8L48.2,28.1L47.9,29L47.3,29.9L46.7,30.2L46,29.6L45.5,28.8L44.9,28L43.7,27.9L41.9,28.7L40,29.2L39.2,29.4L38.4,28.9L37.4,28.7L36.5,29.1L35,29.9L34.3,30.4L33.3,30.4L32.5,30.5L31.6,30.4L30.7,30.8L30.1,31.6L29.1,32.9L27.4,33.9L26,34.6L25.6,35.2L25.3,36.3L24.5,36.6L24.1,37.1L23.8,37.7L23.1,38.3L22.4,38.5L22.3,39.3L22.5,39.9L22.8,40.7L23,41.4L24.9,41.6L26.1,41.7L26.8,42L27.6,42.3L29.5,43.5L30.1,43.7L31.2,43.7L32.1,43.5L33,43.5L33.9,43.5L34.9,43.8L37.6,45.2L38.6,46L39.1,46.5L38.7,47.1L36.1,45.5L35.3,45L34.4,44.7L33.2,44.6L31.7,44.8L30.5,45L29.7,45L29,44.6L28.2,43.9L27.1,43.2L26.5,42.9L25.5,42.8L24.1,42.9L23.3,43.2L22.2,43.7L20.2,45L18.4,46L16.9,46.4L16.2,46.5L15.4,45.9L15,43.6L14.6,42.4L14,41.1L12.9,39.4L11.2,37L10.1,35.4L9.5,34.4L9.4,33.3L9.7,32.5L9.9,31.7L10.2,30.8L10.7,30.2L11.3,29.7L11.8,29.4L13,29.3L14.1,29.5L16.4,30.1L18.1,30.7L20.5,32L21.4,32L22.7,31.6L23.8,31.5L25.8,30.8L27.6,30.1L29.3,29.8L30.4,29.7L31.1,29.4L32.4,28.5L34.6,27.6L37.2,26.8L38.9,26.4L41.5,25.9L43.3,25.2L44.8,24.5L48,22.5L51.9,19.2L53.9,17.8L55.7,17L57.3,16.4L58.3,16.4L59.5,17.1L60.3,18.4L60.6,19.7L61.4,22.1L61.9,23.1L61.3,24.5ZM27.8,42.6L27.2,42.4L26.1,42L25.4,41.9L24.3,42L23.5,42.1L22.6,42.4L21.9,42.7L21.2,43.1L20.4,43.4L19.8,43.9L19.2,44.3L18.3,44.2L17.9,43.5L17.7,44.3L17.6,45L17,45.2L17.8,45.7L18.5,45.4L19.6,44.8L20.6,44.2L21.2,43.7L22.6,42.9L23.3,42.6L24.4,42.4L25.6,42.3L26.8,42.5L27.9,43.1L28.8,43.9L29.6,44.3L30.7,44.4L31.5,44.4L32.4,44.3L34.7,44.2L34.1,43.9L32.9,43.7L32.1,43.8L31.4,44L30.7,44.1L30,44.2L29.4,43.8L28.6,43.2L28.1,42.8ZM16.4,45.4L16.7,44.8L16.1,45ZM16.7,43.8L17,43.1L16.2,43.3L15.5,42.5L15.2,42L15,41.4L14.7,40.9L14.1,40L13.7,39.3L13.1,38.6L14.1,40.6L14.6,41.5L15.1,42.6L15.3,43.3L15.5,44L15.7,44.6L16.1,44L16.7,43.8ZM12.8,38.4L12.4,37.3L11.4,35.9L11,35.1L10.8,34.5L10.6,35.3L11.2,36.3L12.5,38.1ZM10.5,34L11.2,34.1L11.6,33.6L11,33.9L11.3,33.3L10.9,33.7ZM20.4,33.2L20.7,32.7L20,32.9ZM18.9,32.9L19.6,32.8L19.3,32.2L18.8,32.7ZM16.5,31.1L15.7,31L15.3,30.5L14.6,30.4L13.7,30L13,30.2L12.1,30.5L12.3,31.1L12.8,31.5L13.4,31.2L14.5,30.8L15.2,31.2L16,31.3ZM46.4,26.5L47.3,26L47.7,25.3L47.3,25.7L46.6,26.1ZM116,33.1L116.9,32L118.2,31.8L119.1,32.4L119.7,34L120.2,34.9L120.6,36.2L120.9,37.4L120.9,38.8L121.1,39.8L121.4,40.6L121.5,41.5L121.7,42.3L121.5,43.4L120.5,43.4L120.1,42.5L119.9,41.2L119.6,40.2L119.5,38.1L118.9,36.5L118.4,35.8L117.5,35.2L116.7,34.9L116.3,34.2L116,33.1ZM101,40.1L100.1,39.9L100.2,39.1L101.2,39.3L101.6,40ZM98.3,37.5L99,36.9L99.4,36.5L99.4,35.5L100.4,35.3L100.8,36.5L100.6,37.7L99.4,38.2L98.6,38.1L98.3,37.5ZM102.2,37.6L101.5,37.3L101.6,36.3L102.3,36.8L102.5,37.4ZM112.7,32.8L112.1,33.1L110.8,32.7L109.9,32.8L108.9,33.2L108.5,34.4L108.2,36.1L107.9,36.9L106.3,36.1L105.1,35.7L103.8,34.5L102.8,34.5L103.3,33.5L104.3,32.6L105.6,31.9L107,30.4L108.5,29.7L109.6,29.3L110.5,29.3L111.3,29.2L112.1,29.3L113.2,30.2L113.5,30.8L113.2,32.2L112.7,32.8ZM105,33.6L105.7,34.2L106.4,34.5L107,34.2L107.4,33.4L107.2,32.7L106.4,32.9L105.7,33.2L105,33.6ZM103.2,30.9L102.7,31.2L102.1,31.4L102,30.5L102.4,30.1L103,29.8L103.4,30.2L103.2,30.9ZM97.2,30.4L96.4,30L96.6,29.3L97.4,29.5L97.7,30.2ZM99.8,28.6L99.5,29.4L98.1,29.3L97.3,29.2L96.6,28.4L95.7,27.9L93.9,27.6L93.1,27.2L92.5,26.4L92.3,25.5L92.8,24L93.3,23.4L94.1,23.6L94.9,24.8L95.8,25.9L96.6,26.6L97.8,27.2L98.8,27.4L99.4,27.7L99.8,28.6ZM88.1,28.5L88.8,27.7L89.5,28L88.7,28.4ZM63.8,25.3L64,26.8L63.6,27.7L62.7,27.4L62.8,26.3L63.1,25.5L63.1,24L63,23.3L63.6,23.6L63.8,24.4L63.8,25.3ZM80.9,9.4L82.5,9.4L83.9,9.8L84.8,10.2L85.2,10.7L86.5,12.7L86.9,13.1L88,14.5L89.5,15.9L90.7,17.1L91.7,18.4L92.5,19.8L93,20.7L93,21.7L93,22.5L92.5,23.3L91.6,24.8L90.6,26L90.7,26.9L90.1,26.7L89.6,26L89.6,25.1L89.8,24.1L90.4,23.3L90.3,22.3L90.2,21.5L90.6,20.7L90.5,19.9L89.9,19.3L89.3,18.2L88.7,17.9L88.1,16.9L87.2,15.8L85.8,15.5L84.7,15.8L83.5,15.8L82.6,15.2L82.1,14.8L81.2,15.1L80.5,15.4L79.4,15L78.4,15L77,15.7L76.1,16.3L76,17.3L75.1,17.4L75,18.3L74.9,19.2L74.4,19.6L73.2,20L72.7,19.7L72,19.1L71.3,19L70.2,18.8L69.7,18.1L70,17.5L71.3,17L72.6,16.6L73.5,16.2L75.2,15L76.9,14L77.8,12.8L79.1,10.7L80.2,9.6L80.9,9.4ZM91.1,22.8L91,23.6L91.1,24.5L91.6,24.2L91.8,23.5L91.6,22.8ZM81,11.9L80.9,11.1L80.5,10.7L80,11L80.4,11.6L81,11.9ZM67.7,18.7L67.1,18.9L66.4,19.7L65.9,20L65.3,20.5L65.1,21.4L65,22.3L65.2,23L64.6,23.3L63.9,22.9L64.4,22.6L63.6,22.1L62.8,22L62.2,21.6L61.7,20L61.7,19.1L62.6,17.8L64,17.7L65.1,17.5L66.1,17.2L67.2,17.5L67.7,17.8L67.7,18.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M81.1,12L80.6,11.7L80.1,11.2L80.5,10.7L80.9,11.1L81.4,11.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M35.1,28.8L34.6,28.4L35.2,28.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M20.5,33.3L19.9,33L20.4,32.6L20.9,33Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M19,33L18.9,32.3L19.5,32.5L19,33Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M16.5,31L16.2,31.5L15.7,31.1L14.5,30.8L13.5,31.1L12.8,31.5L12.3,31.2L11.8,30.9L12.4,30.3L13.2,30.2L14.1,30.1L14.9,30.3L15.5,30.7L16,31.1Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M12.9,38.5L11.2,36.3L10.8,35.6L10.6,34.9L11.2,35.5L12.1,36.9L12.7,37.9L13,38.4Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M16.9,43.7L16.1,44L15.8,44.6L15.5,44L15.3,43.3L15.1,42.6L14.8,41.9L14.1,40.6L12.9,38.7L13.4,39.1L13.8,39.6L14.4,40.4L14.9,41.2L15.2,41.8L15.5,42.5L16.2,43.3L16.8,43.5Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M45.6,53.5L44.8,53.6L44.1,53.4L43.4,53.2L43.1,52.4L42.7,51.9L43.1,51.4L43.3,52.1L43.7,52.6L44.3,53.1L45,53.4Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M10.8,34L11.2,33.3L11,33.9L11.6,33.6L11.4,34.2L10.8,34Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M52.8,63L52.2,62.5L51.9,61.7L51.8,60.8L51.6,59.9L52.1,60.5L52.3,61.3L52.4,62.2L52.7,62.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M91,23.6L91.1,22.8L91.7,23L91.6,24.2L91.1,24.5L91,23.6Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M104.7,33.7L105.3,33.4L105.9,33.1L106.5,32.8L107.4,32.7L107.2,33.7L106.9,34.3L106.2,34.4L105.3,34L104.7,33.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M120.8,79.1L121,78.4L121.5,78.9L120.8,79.1Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M120.4,40.9L120.8,41.5L120.3,40.9Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M124.7,53.1L124.6,52.3L124.9,52.8Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M60.3,74.4L60.6,75.1L61,75.6L61.7,76.6L62.1,77.4L62.6,77.8L61.7,77.4L60.7,75.8L60.2,74.9L60.4,74.3Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M65.2,81.8L65.5,82.4L65.8,83.3L66,84L66.1,84.8L66.2,85.5L66.5,86.2L67.3,87.3L68.2,88.4L68.6,88.9L69.3,89.6L69.7,90.1L70.3,90.8L71,91.4L71.8,91.8L72.4,92.2L73.2,92.6L74,92.8L74.8,93.1L75.5,93.5L77.5,94.8L77.7,95.4L78.5,95.7L79.4,95.8L80.1,95.5L80.9,95.4L81.7,95.1L82.8,94.7L83.4,94.5L84.7,94L85.8,93.7L86.6,93.5L87.3,93.3L88.2,93.1L89,92.9L89.7,92.7L90.9,92.4L92,92.2L92.7,92.1L94,91.9L95.1,92L96.5,91.9L97.7,91.8L99.5,91.5L100.6,91.1L101.3,90.8L101.7,90.3L102.4,89.8L103.3,89.3L104.1,89L105.2,88.7L106,88.4L106.8,88.1L107.5,87.9L108.2,87.6L108.8,87.3L110.6,86.5L111.5,86L112.3,85.7L113,85.3L113.8,84.7L112.1,86.2L110.8,86.8L109.5,87.4L108.1,88L107.4,88.3L106.4,88.7L105.8,88.9L104.3,89.4L103.3,89.7L102.7,90.1L101.8,90.6L101.3,91L100.7,91.3L99.7,91.8L98.6,92.2L97.6,92.4L96.6,92.4L94.4,92.4L93.2,92.4L92.1,92.5L91.1,92.7L89.2,93.3L88.1,93.5L86.2,93.9L84.3,94.6L83.1,95.1L82,95.5L79.7,96.4L78,97.2L77,97.5L76,97.7L75,97.5L74.5,97.1L72.4,94.3L71.2,92.8L70.4,91.8L69.3,90.4L68.4,89.4L68,88.9L67.1,87.7L66.5,86.9L66.1,86.3L65.7,85.2L65.6,84L65.4,83.1L65.1,82Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M54.7,65.9L54.3,65.1L54.7,65.5L55.3,66L55.7,66.5L56,67.2L56.3,67.8L56.6,68.5L56.9,69.1L57.2,69.9L56.4,69.6L55.9,68.9L55.6,68.3L55,66.3Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M119.4,80.2L119.8,79.5L119.8,80.4L119.9,81.2L119.1,81.6L118.3,81.9L117.7,82.2L117.1,82.5L116.5,83L116.9,82.6L117.5,82.1L118.2,81.6L118.7,81L119.1,80.5Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M124.2,53.5L124.6,54.5L125,54.9L125.4,55.5L125.1,56.1L124.2,56.2L124.3,54.9L124.1,53.8ZM124.1,56.1L124.8,56.2L125.3,55.9L125,55L124.6,54.6L124.3,53.9L124.3,55L124.1,56.1Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M46.8,26.5L47.3,25.7L47.6,25.2L47.3,26L46.8,26.5Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M27.4,42.4L28.4,43L29.1,43.6L29.7,44L30.5,44.1L31.4,44L32.1,43.8L32.9,43.7L33.9,43.8L34.9,44L33.1,44.2L31.5,44.4L30.7,44.4L29.6,44.3L28.8,43.9L28.2,43.3L27.1,42.6L25.9,42.3L25,42.3L23.6,42.5L22.6,42.9L21.2,43.7L20.6,44.2L19.6,44.8L19.1,45.2L17.9,45.6L17.2,45.7L17,45.1L17.6,44.7L17.7,43.8L18.3,44.2L19.1,44.4L19.8,43.9L20.3,43.5L21,43.2L21.5,42.9L22.2,42.5L23.5,42.1L24.3,42L25,41.9L25.9,42L26.6,42.2L27.4,42.4Z\&quot;/>&quot;, &quot;w&quot;: 136, &quot;h&quot;: 107.7, &quot;lng0&quot;: 179.01933253361523, &quot;m0&quot;: -8.351983936797966, &quot;s&quot;: 522.2182714376198, &quot;title&quot;: &quot;富納富提環礁&quot;};             // null＝沒有小地圖；有的話 offmap 的點畫在它上面
+const FIT_PAD = {&quot;desk&quot;: [30, 200, 30, 34], &quot;small&quot;: [20, 180, 20, 30]};         // null＝照下面 refit 的預設留白；{desk:[左,上,右,下], small:[…]}＝自訂（橫版把上方留給說明卡與標題）
+
+const map = L.map('map', {
+  zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
+  dragging:false, scrollWheelZoom:false, doubleClickZoom:false,
+  touchZoom:false, boxZoom:false, keyboard:false, tap:false,
+});
+// 圖層：有 TILES 就只鋪圖磚（衛星影像等），拿掉紙紋；否則 BOUNDARIES[0]＝陸地填色＋粗界（無圖磚＝無道路，只留行政界＋水域），其餘＝細界線
+let tileLayer = null;
+if (IMAGE){   // 一張 Web Mercator 靜態圖照四角拉伸就對得上，一個請求載完；衛星主題照用
+  L.imageOverlay(IMAGE.url, IMAGE.bounds, { attribution:IMAGE.attribution }).addTo(map);
+  document.querySelector('.frame').classList.add('tiles');
+} else if (TILES){
+  // 小數縮放時圖磚之間會露出細縫：每張圖磚多畫 1px 疊住鄰居（Leaflet #3575 的通用解），配上面 CSS 的 mix-blend-mode:normal
+  const initTile = L.GridLayer.prototype._initTile;
+  L.GridLayer.include({ _initTile(tile){ initTile.call(this, tile); const s = this.getTileSize();
+    tile.style.width = (s.x + 1) + 'px'; tile.style.height = (s.y + 1) + 'px'; } });
+  tileLayer = L.tileLayer(TILES.url, { attribution:TILES.attribution, maxZoom:22 }).addTo(map);   // 抓哪一級由 refit() 決定
+  if (TILES.filter) map.getPane('tilePane').style.filter = TILES.filter;   // 影像調色（例如海太暗時提亮），CSS filter 字串
+  document.querySelector('.frame').classList.add('tiles');
+} else {
+  UNDERLAY.forEach(g => L.geoJSON(g, { style:{ stroke:false, fillColor:'#d3e6ea', fillOpacity:1 }, interactive:false }).addTo(map));
+  L.geoJSON(BOUNDARIES[0], {
+    style:{ fillColor:'#f4eee0', fillOpacity:1, color:'#c8a98f', weight:1.3, opacity:.9 },
+    attribution: ATTRIB
+  }).addTo(map);
+  BOUNDARIES.slice(1).forEach(g => L.geoJSON(g, { style:{ fill:false, color:'#c3b39a', weight:0.6, opacity:.72 } }).addTo(map));
+}
+
+const info = document.getElementById('info');
+
+// 圖釘
+const layers = {}; Object.keys(CAT).forEach(k => layers[k] = L.layerGroup());
+const bounds = [];
+const cardHtml = {};   // 景點編號 → 資訊卡 HTML（給地名點擊委派用）
+for (const s of spots){
+  const c = CAT[s.cat];
+  const icon = L.divIcon({   // 衛星主題的圖釘是 20px 圓點，中心對準座標；插畫風是 23px 水滴針，尖端對準
+    className:'', iconSize: SAT ? [20,20] : [23,23], iconAnchor: SAT ? [10,10] : [11,23],
+    html:`<div class=&quot;pin-anchor&quot; data-spot=&quot;${s.n}&quot;>
+            <div class=&quot;pin&quot; style=&quot;background:${c.color}&quot;><b>${s.n}</b></div>
+            <span class=&quot;pin-name&quot; data-spot=&quot;${s.n}&quot;>${s.short||s.zh}</span>
+          </div>`
+  });
+  const photo = s.img;
+  // 這張圖刻意「不要」loading=&quot;lazy&quot;（2026-08-25 修）：彈出視窗是 Leaflet 動態插進 DOM 的，
+  // 惰性載入的 intersection observer 判不出它可見 → 照片永遠停在灰框、naturalWidth 0。
+  // 而且 lazy 本來就沒必要——彈出視窗本身就是延遲機制，圖只有在使用者點開時才存在。
+  const html =
+    `<div class=&quot;card&quot; data-spot=&quot;${s.n}&quot;>
+       <div class=&quot;meta&quot;><span class=&quot;tag&quot; style=&quot;--tag:${c.color};background:${c.color}&quot;><span class=&quot;emo&quot;>${c.emo}</span> ${c.name}</span> <span class=&quot;area&quot;>${s.area}</span></div>
+       <img class=&quot;photo&quot; src=&quot;${photo}&quot; alt=&quot;${s.zh}&quot; draggable=&quot;false&quot;>
+       <h3>${s.zh}</h3><p class=&quot;ja&quot;>${s.ja}</p>
+       <p class=&quot;desc&quot;>${s.desc}</p>
+     </div>`;
+  cardHtml[s.n] = html;
+  if (s.offmap) continue;   // 太遠的點不進主圖（框進來會把其他點縮成一團），畫在小地圖上
+  L.marker([s.lat, s.lng], { icon, keyboard:false, zIndexOffset:1000 })
+    .on('click', () => jump(s.n))
+    .addTo(layers[s.cat]);
+  bounds.push([s.lat, s.lng]);
+}
+Object.values(layers).forEach(l => l.addTo(map));
+// 小地圖（INSET）：整個環礁＋主圖範圍框（refit 時畫）＋offmap 的點，點了照樣開說明卡。投影跟主圖一樣（Web Mercator）
+const insetXY = (lat, lng) => [(lng - INSET.lng0) * INSET.s, (INSET.m0 - Math.log(Math.tan(Math.PI/4 + lat*Math.PI/360)) * 180/Math.PI) * INSET.s];
+if (INSET){
+  const ctl = L.control({ position:'bottomright' });
+  ctl.onAdd = () => {
+    const d = L.DomUtil.create('div', 'inset');
+    d.innerHTML = `<svg viewBox=&quot;0 0 ${INSET.w} ${INSET.h}&quot;>${INSET.svg}<rect class=&quot;view&quot;/></svg><span class=&quot;cap&quot;>${INSET.title}</span>`
+      + spots.filter(s => s.offmap).map(s => `<div class=&quot;ipin&quot; data-spot=&quot;${s.n}&quot; data-cat=&quot;${s.cat}&quot;>`   // 位置在 refit 算
+          + `<div class=&quot;pin&quot; style=&quot;background:${CAT[s.cat].color}&quot;><b>${s.n}</b></div><span>${s.zh}</span></div>`).join('');
+    L.DomEvent.disableClickPropagation(d);
+    d.addEventListener('click', e => { const p = e.target.closest('.ipin'); if (p) jump(+p.dataset.spot); });
+    return d;
+  };
+  ctl.addTo(map);
+  if (SAT) map.attributionControl.addAttribution(ATTRIB);   // 小地圖的輪廓（例如 OSM）也要署名；插畫風主圖本來就掛著
+}
+// 點圖釘旁的地名也開資訊卡（事件委派：地名溢出 icon 框、冒泡接不到，改在容器上聽 .pin-name）
+map.getContainer().addEventListener('click', e => {
+  const nm = e.target.closest &amp;&amp; e.target.closest('.pin-name');
+  if (nm &amp;&amp; cardHtml[nm.dataset.spot]) jump(+nm.dataset.spot);
+});
+
+// 依畫面大小 fit（小螢幕留白縮小，內容才不會太小）；北本(②)在最西北、左上多留白免被標題框擋
+function refit(){
+  const small = window.matchMedia('(max-width:719.98px)').matches;   // 跟 CSS 斷點一致（非桌機＝<720）
+  const phone = window.matchMedia('(max-width:527.98px)').matches;   // 手機檔（純寬度、與 CSS 一致）
+  let P;
+  if (FIT_PAD){
+    const [l, t, r, b] = FIT_PAD[small ? 'small' : 'desk'];
+    P = { tl:[l, t], br:[r, b] };
+  } else if (small){
+    const shift = phone ? map.getSize().x / 6 : 0;   // 手機檔：地圖往右移 1/6
+    P = { tl:[36 + shift, 44], br:[64, 36] };
+  } else {
+    P = { tl:[124,114], br:[104,56] };   // 桌機：四邊留白＝縮小、左多＝右移、上避標題、右給 BOUSAI
+  }
+  // 圖磚只抓剛好夠清楚的那一級：一個圖磚像素對到 1～2 個螢幕實體像素（視網膜算到 2 倍為止）。
+  // 之前固定多抓一兩級，視網膜螢幕一次要載近 500 張；Leaflet 預設把縮放級四捨五入、最多放大 1.4 倍會糊，所以自己算
+  if (tileLayer){
+    const z = map.getBoundsZoom(L.latLngBounds(bounds), false, L.point(P.tl).add(P.br));
+    tileLayer.options.minNativeZoom = tileLayer.options.maxNativeZoom =
+      Math.min(TILES.maxNativeZoom || 18, Math.ceil(z + Math.log2(Math.min(window.devicePixelRatio || 1, 2)) - 0.1));
+  }
+  map.fitBounds(bounds, { paddingTopLeft:P.tl, paddingBottomRight:P.br, animate:false });
+  if (INSET){   // 小地圖框出主圖現在的範圍；主圖比環礁寬（桌機）就把小地圖的視窗放大，框才不會被切掉
+    const b = map.getBounds(), [x1, y1] = insetXY(b.getNorth(), b.getWest()), [x2, y2] = insetXY(b.getSouth(), b.getEast());
+    const vx = Math.min(0, x1 - 3), vy = Math.min(0, y1 - 3), vw = Math.max(INSET.w, x2 + 3) - vx, vh = Math.max(INSET.h, y2 + 3) - vy;
+    const svg = document.querySelector('.inset svg'), r = svg.querySelector('.view');
+    svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+    r.setAttribute('x', x1); r.setAttribute('y', y1); r.setAttribute('width', x2 - x1); r.setAttribute('height', y2 - y1);
+    document.querySelectorAll('.ipin').forEach(p => { const s = spots.find(s => s.n === +p.dataset.spot), [x, y] = insetXY(s.lat, s.lng);
+      p.style.left = (x - vx) / vw * 100 + '%'; p.style.top = (y - vy) / vh * 100 + '%'; });
+  }
+}
+
+// ── Auto Layout（量測法）：pin名/地名 自動避開 pin圖示＋popup＋彼此；碰撞優先上下移、換邊最後。
+//    全用螢幕座標 getBoundingClientRect（旋轉/縮放/字級都量到實際值），不再手動移標籤。
+const overlap = (a,b) => a.x1<b.x2 &amp;&amp; a.x2>b.x1 &amp;&amp; a.y1<b.y2 &amp;&amp; a.y2>b.y1;
+const overlapArea = (a,b) => Math.max(0, Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1)) * Math.max(0, Math.min(a.y2,b.y2)-Math.max(a.y1,b.y1));
+const asBox = r => ({ x1:r.left, y1:r.top, x2:r.right, y2:r.bottom });
+let labelMarkers = [];
+// 標題框、圖例、小地圖的框（地名要避開），各向外擴 pad。浮動的標題框＋圖例量它回到頂端（top 12px）時的位置，
+// 捲到一半重排（篩選分類、轉向）才不會避錯地方
+function fixedRects(pad){
+  const fr = document.querySelector('.frame').getBoundingClientRect(), cr = document.querySelector('.corner').getBoundingClientRect();
+  const dy = POPUP_FLOAT ? cr.top - fr.top - 12 : 0;
+  return [...document.querySelectorAll('.titlebar, .legend, .inset, .north')].map(el => ({ r:el.getBoundingClientRect(), d:el.closest('.corner') ? dy : 0 }))
+    .filter(o => o.r.width > 1).map(({ r, d }) => ({ x1:r.left-pad, y1:r.top-d-pad, x2:r.right+pad, y2:r.bottom-d+pad }));
+}
+
+// 障礙基底（非 pin）：popup（先秀 spot1＝敘述最長那張、量其框）＋標題框。pin 由 layoutPinNames 自算，不在此重複放。
+function baseObstacles(){
+  const occ = [];
+  try { stopCar(); } catch(e){}
+  showSpot(1);
+  const ir = document.getElementById('info').getBoundingClientRect();   // 浮動卡片會被拖走、跟著捲動，不當障礙
+  if (ir.width > 1 &amp;&amp; !POPUP_FLOAT) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  // 標題框、圖例（＋小地圖）也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
+  occ.push(...fixedRects(6));
+  return occ;
+}
+
+// ⚠ layoutPinNames／placeLabels＝ video/make_video.mjs 依賴的固定介面（簽名與行為勿改）；
+//   gen_map 靜態圖的「影片版規則」（pin 名浮層＋行政區 cap/farthest）走下方 gen_map 專用的 liftPinNames／capDistricts。
+// pin 地點名候選順序：右中→右上→右下→上→下→左中→左上→左下（碰撞優先上下移、換邊最後）
+const NAME_POS = [
+  { left:'34px', top:'50%', transform:'translateY(-50%)' },      // 右中（預設；34 = pin半徑16+外擴6+餘裕，clear 障礙框）
+  { left:'34px', bottom:'16px' },                                 // 右上
+  { left:'34px', top:'17px' },                                    // 右下
+  { left:'50%', bottom:'34px', transform:'translateX(-50%)' },    // 正上
+  { left:'50%', top:'34px', transform:'translateX(-50%)' },       // 正下
+  { right:'34px', top:'50%', transform:'translateY(-50%)' },      // 左中
+  { right:'34px', bottom:'16px' },                                // 左上
+  { right:'34px', top:'17px' },                                   // 左下
+];
+function setPos(el, c){
+  el.style.left = c.left || ''; el.style.right = c.right || '';
+  el.style.top = c.top || ''; el.style.bottom = c.bottom || ''; el.style.transform = c.transform || '';
+}
+function layoutPinNames(occ, frame){   // 原介面（make_video 依賴）：就地定位 .pin-name span、避開 occ+彼此
+  document.querySelectorAll('.pin-anchor').forEach(a => {
+    const el = a.querySelector('.pin-name');
+    let bestC = NAME_POS[0], bestBox = null, bestPen = Infinity, clear = false;
+    for (const c of NAME_POS){
+      setPos(el, c);
+      const b = asBox(el.getBoundingClientRect());
+      const outFrame = Math.max(0, frame.x1-b.x1) + Math.max(0, b.x2-frame.x2)
+                     + Math.max(0, frame.y1-b.y1) + Math.max(0, b.y2-frame.y2);
+      const pen = occ.reduce((s,o) => s + overlapArea(b,o), 0) + outFrame*80;
+      if (pen === 0){ bestBox = b; clear = true; break; }
+      if (pen < bestPen){ bestPen = pen; bestC = c; bestBox = b; }
+    }
+    if (!clear) setPos(el, bestC);
+    occ.push(bestBox);
+  });
+}
+
+// ── 以下 gen_map 靜態圖專用（make_video 不呼叫）：影片版標籤規則寫回 ──
+// pin 名抽到 #toplabels 浮層 → 永遠壓在所有 pin(marker) 之上（跨 marker 的 z-index 對獨立 marker 無效，故抽出獨立層）；
+// 自做避讓：候選順序右→上→左→下→右上→左上，閃不掉才選「壓最少」；避開 pin icon＋標題框/popup(occ)＋彼此，出框重罰。
+function ensureTopLayer(){
+  let top = document.getElementById('toplabels');
+  if (!top){
+    top = document.createElement('div'); top.id = 'toplabels';
+    document.querySelector('.frame').appendChild(top);
+    top.addEventListener('click', e => { const t = e.target.closest &amp;&amp; e.target.closest('.toplabel');
+      if (t &amp;&amp; cardHtml[t.dataset.spot]) jump(+t.dataset.spot); });   // 點浮層名字＝開該景點資訊卡
+  }
+  return top;
+}
+function liftPinNames(occ, frame){
+  const top = ensureTopLayer(); top.innerHTML = '';
+  const fr = document.querySelector('.frame').getBoundingClientRect();
+  const anchors = [...document.querySelectorAll('.pin-anchor')];
+  const pins = anchors.map(a => { const r = a.querySelector('.pin').getBoundingClientRect();
+    return { cx:(r.left+r.right)/2, cy:(r.top+r.bottom)/2, hw:(r.right-r.left)/2, hh:(r.bottom-r.top)/2, spot:+a.dataset.spot }; });
+  anchors.forEach(a => { const nm = a.querySelector('.pin-name'); if (!nm) return;   // 原生 pin 名隱藏、改由浮層渲染
+    const lab = document.createElement('div'); lab.className = 'toplabel'; lab.textContent = nm.textContent;
+    lab.dataset.spot = a.dataset.spot; top.appendChild(lab); nm.style.display = 'none'; });
+  const placed = [];
+  top.querySelectorAll('.toplabel').forEach(lab => {
+    const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
+    const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
+    let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
+    const sp = spots.find(s => s.n === spot) || {}, side = sp.label;   // spots.py 指定 &quot;label&quot;: right／up／left／down 就只放那邊（owner 點名的）
+    if (side){ const [ox, oy] = cands[['right', 'up', 'left', 'down'].indexOf(side)]; cands = [[ox, oy + (sp.label_dy || 0)]]; }   // label_dy：再上下微調幾 px，負＝往上
+    let best = cands[0], bestPen = Infinity, bestOv = 0;
+    for (const [ox,oy] of cands){
+      const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
+      let pen = 0, ov = 0, a;
+      for (const q of pins) if (q.spot !== spot){ a = overlapArea(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }); pen += a * 8; ov += a; }  // 壓別 pin＝重罰
+      // 名字離別的圖釘比離自己的近＝讀者會看錯是誰的名字（09-29：「TCap 2」排到 5 號正上方、貼著 2 號）→ 重罰但不禁止
+      const dist = q => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2));
+      for (const q of pins) if (q.spot !== spot &amp;&amp; dist(q) < dist(P)) pen += 400;
+      for (const o of occ){ a = overlapArea(bx, o); pen += a * 8; ov += a; }   // 壓標題框／popup（occ 內障礙）＝重罰
+      for (const b of placed){ a = overlapArea(bx, b); pen += a; ov += a; }    // 壓別名字＝輕罰
+      pen += (Math.max(0,fr.left-bx.x1)+Math.max(0,bx.x2-fr.right)+Math.max(0,fr.top-bx.y1)+Math.max(0,bx.y2-fr.bottom)) * 1000;  // 出框＝字被切掉，比壓到別人更糟
+      if (pen === 0){ best = [ox,oy]; bestOv = 0; break; }
+      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; }
+    }
+    // 六個位置都會壓到別人超過一成（手機檔的密集區）→ 名字先藏，只留編號；點圖釘照樣開說明卡。指定邊的名字一律照放
+    if (!side &amp;&amp; bestOv > 0.1 * (4 * lw * lh)){ lab.style.display = 'none'; return; }
+    const [ox,oy] = best;
+    placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
+    // 錨點放在圖釘中心、偏移寫進 transform：放大時（衛星主題的按住／雙指）名字照錨點 --px/--py 跟著圖釘移動，偏移不會被放大
+    lab.style.left = (P.cx - fr.left) + 'px'; lab.style.top = (P.cy - fr.top) + 'px';
+    lab.style.setProperty('--px', lab.style.left); lab.style.setProperty('--py', lab.style.top);
+    lab.style.transform = `translate(${ox}px,${oy}px) translate(-50%,-50%)`;
+  });
+}
+
+// RCAND：地名候選位移（原點→上下→左右）——make_video 的 placeLabels 與 gen_map 的 placeDistricts 共用
+const RCAND = [[0,0],[0,-18],[0,18],[0,-34],[0,34],[-44,0],[46,0],[-44,-18],[46,-18],[-44,18],[46,18],[-76,0],[78,0]];
+function placeLabels(occ, frame){   // 原介面（make_video 依賴，勿改）：地名排到滿、避開 occ+彼此、塞不下略過
+  labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
+  const cont = document.getElementById('map').getBoundingClientRect();
+  for (const p of places){
+    const cp = map.latLngToContainerPoint([p.lat, p.lng]);
+    const bx = cont.left + cp.x, by = cont.top + cp.y;
+    const fw = p.big ? 16 : 12, w = [...p.t].length * fw + 8, h = p.big ? 22 : 18;
+    let chosen = null;
+    for (const [dx,dy] of RCAND){
+      const cx = bx+dx, cy = by+dy, box = { x1:cx-w/2, y1:cy-h/2, x2:cx+w/2, y2:cy+h/2 };
+      const inFrame = box.x1 >= frame.x1+1 &amp;&amp; box.y1 >= frame.y1+1 &amp;&amp; box.x2 <= frame.x2-1 &amp;&amp; box.y2 <= frame.y2-1;
+      if (inFrame &amp;&amp; !occ.some(o => overlap(box,o))){ chosen = {cx,cy,box}; break; }
+    }
+    if (!chosen) continue;
+    occ.push(chosen.box);
+    const cls = 'rlabel' + (p.big?' big':'') + (p.sea?' sea':'');
+    const ll = map.containerPointToLatLng([chosen.cx - cont.left, chosen.cy - cont.top]);
+    const mk = L.marker(ll, { interactive:false, keyboard:false,
+      icon:L.divIcon({ className:cls, html:p.t, iconSize:[Math.ceil(w),Math.ceil(h)], iconAnchor:[Math.ceil(w/2),Math.ceil(h/2)] }) }).addTo(map);
+    labelMarkers.push(mk);
+  }
+}
+
+// gen_map 靜態圖專用（make_video 不呼叫）：行政區地名 只避「標題框＋popup」與彼此（**可被 pin／pin 名蓋，owner 定**）；
+// 先為每個地名找框內候選位，再篩最多 10——先放 big（縣/市/灣＝本在邊緣＝四散），其餘 farthest-point 填、四散全圖不集中中間。
+function placeDistricts(frame){
+  labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
+  const cont = document.getElementById('map').getBoundingClientRect();
+  const avoid = fixedRects(6);   // 只避標題框、圖例、小地圖＋popup（地名可被 pin／pin 名蓋）；浮動卡片會移動，不避
+  const ir = document.getElementById('info').getBoundingClientRect();
+  if (ir.width > 1 &amp;&amp; !POPUP_FLOAT) avoid.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
+  const cand = [];
+  for (const p of places){
+    const cp = map.latLngToContainerPoint([p.lat, p.lng]);
+    const bx = cont.left + cp.x, by = cont.top + cp.y;
+    const fw = p.big ? 16 : 12, w = [...p.t].length * fw + 8, h = p.big ? 22 : 18;
+    let chosen = null;
+    for (const [dx,dy] of RCAND){
+      const cx = bx+dx, cy = by+dy, box = { x1:cx-w/2, y1:cy-h/2, x2:cx+w/2, y2:cy+h/2 };
+      const inFrame = box.x1 >= frame.x1+1 &amp;&amp; box.y1 >= frame.y1+1 &amp;&amp; box.x2 <= frame.x2-1 &amp;&amp; box.y2 <= frame.y2-1;
+      if (inFrame &amp;&amp; !avoid.some(o => overlap(box,o))){ chosen = {cx,cy,box}; break; }
+    }
+    if (chosen) cand.push({ p, cx:chosen.cx, cy:chosen.cy, box:chosen.box, big:!!p.big, w, h });
+  }
+  const ctr = b => [(b.x1+b.x2)/2, (b.y1+b.y2)/2];
+  const kept = [], keptBox = [];
+  const tryAdd = c => { if (kept.length < 10 &amp;&amp; !keptBox.some(k => overlap(c.box,k))){ kept.push(c); keptBox.push(c.box); return true; } return false; };
+  for (const c of cand.filter(c => c.big)) tryAdd(c);        // 先放 big（本在邊緣）
+  const pool = cand.filter(c => !c.big);
+  while (kept.length < 10 &amp;&amp; pool.length){                    // 其餘 farthest-point 填到 10＝四散全圖
+    let bi = -1, bd = -1;
+    for (let i = 0; i < pool.length; i++){
+      if (keptBox.some(k => overlap(pool[i].box, k))) continue;
+      const [px,py] = ctr(pool[i].box);
+      let md = keptBox.length ? Infinity : 1e9;
+      for (const k of keptBox){ const [kx,ky] = ctr(k); md = Math.min(md, Math.hypot(px-kx, py-ky)); }
+      if (md > bd){ bd = md; bi = i; }
+    }
+    if (bi < 0) break;
+    const c = pool.splice(bi,1)[0]; kept.push(c); keptBox.push(c.box);
+  }
+  for (const c of kept){
+    const cls = 'rlabel' + (c.p.big?' big':'') + (c.p.sea?' sea':'');
+    const ll = map.containerPointToLatLng([c.cx - cont.left, c.cy - cont.top]);
+    const mk = L.marker(ll, { interactive:false, keyboard:false,
+      icon:L.divIcon({ className:cls, html:c.p.t, iconSize:[Math.ceil(c.w),Math.ceil(c.h)], iconAnchor:[Math.ceil(c.w/2),Math.ceil(c.h/2)] }) }).addTo(map);
+    labelMarkers.push(mk);
+  }
+}
+// popup 自動選「圖釘最少」的角落（任意城市：spots 群聚時 popup 才不壓到 pin）
+function pickPopupCorner(){
+  const info = document.getElementById('info');
+  if (POPUP_FLOAT){ placeFloat(); return; }
+  if (POPUP_SIDE){   // 長型地圖：卡片放左／右側中段（潟湖、外海那片空白），不去擠南北兩端的點
+    const off = (window.matchMedia('(max-width:719.98px)').matches ? 8 : 12) + 'px';
+    info.style.left = POPUP_SIDE === 'left' ? off : 'auto'; info.style.right = POPUP_SIDE === 'right' ? off : 'auto';
+    info.style.top = '50%'; info.style.bottom = 'auto'; info.style.transform = 'translateY(-50%)';
+    return;
+  }
+  const fr = document.querySelector('.frame').getBoundingClientRect();
+  const cx = fr.left + fr.width/2, cy = fr.top + fr.height/2, cnt = { tl:0, tr:0, bl:0, br:0 };
+  document.querySelectorAll('.pin').forEach(p => {
+    const r = p.getBoundingClientRect();
+    cnt[((r.top+r.bottom)/2 < cy ? 't':'b') + ((r.left+r.right)/2 < cx ? 'l':'r')]++;
+  });
+  const corner = ['bl','br','tl','tr'].sort((a,b) => cnt[a]-cnt[b])[0];   // 圖釘最少者；平手偏左下
+  const off = (window.matchMedia('(max-width:719.98px)').matches ? 8 : 12) + 'px';
+  info.style.top    = corner[0]==='t' ? off : 'auto';
+  info.style.bottom = corner[0]==='b' ? off : 'auto';
+  info.style.left   = corner[1]==='l' ? off : 'auto';
+  info.style.right  = corner[1]==='r' ? off : 'auto';
+}
+function relayout(){
+  const frame = asBox(document.querySelector('.frame').getBoundingClientRect());
+  pickPopupCorner();
+  const occ = baseObstacles();     // popup + 標題框（pin 由 liftPinNames 自算）
+  liftPinNames(occ, frame);        // pin 名 → #toplabels 浮層（壓在所有 pin 之上）
+  highlight(curSpot);              // 浮層是重建的，把「正在介紹」的標記補回去
+  placeDistricts(frame);           // 行政區 cap-10 + farthest-spread（可被 pin/名蓋）
+  // 衛星主題放大時，圖釘與海面地名只照放大後的位置移動：每個 marker 記下自己在畫框裡的座標（CSS 的 --px/--py）
+  map.eachLayer(l => { if (l._icon &amp;&amp; l.getLatLng){ const p = map.latLngToContainerPoint(l.getLatLng());
+    l._icon.style.setProperty('--px', p.x + 'px'); l._icon.style.setProperty('--py', p.y + 'px'); } });
+}
+
+// 說明輪播：桌機自動輪播 6 景點說明、對應圖釘加脈動高亮；手機不輪播並收起說明
+function isSmall(){ return window.matchMedia('(max-width:719.98px)').matches; }
+let carTimer = null, curSpot = 0;
+function highlight(n){   // 圖釘、浮層地名、小地圖上的點一起標 .hi（衛星主題靠地名變色表示正在介紹哪一點）
+  document.querySelectorAll('.pin-anchor.hi, .toplabel.hi, .ipin.hi').forEach(el => el.classList.remove('hi'));
+  document.querySelectorAll('[data-spot=&quot;' + n + '&quot;]').forEach(el => {
+    if (el.matches('.pin-anchor, .toplabel, .ipin')) el.classList.add('hi'); });
+}
+function showSpot(n){
+  curSpot = n;
+  info.innerHTML = '<button class=&quot;x&quot; aria-label=&quot;關閉&quot;>×</button>' + cardHtml[n];
+  info.classList.add('show'); highlight(n);
+  info.querySelector('.x').onclick = () => { stopCar(); info.classList.remove('show'); highlight(0); };
+  if (POPUP_FLOAT){ placeFloat(); const im = info.querySelector('img.photo'); if (im &amp;&amp; !im.complete) im.onload = placeFloat; }
+}
+// 浮動說明卡：讀者按住可拖到任何位置；文章往下捲時，卡片跟著停在地圖「看得到的那一段」的正中間（拖過就保留那個偏移）。
+// 看得到哪一段：沿地圖高度鋪 108 條看不見的細條、用 IntersectionObserver 看哪幾條在畫面裡。
+// 只觀察整張地圖不行：地圖比螢幕高時，捲到中段可見比例不變、不會通知。這招在跨網域 iframe 裡也拿得到，不必外頁配合。
+const flt = { x:null, dy:0, visTop:0, visBot:null, dragged:false };
+function floatBase(){   // 卡片置中於可見段落（可見段落比卡片矮時對齊上緣）；手機檔貼可見段落的下緣（owner 09-29：手機預設出現在左下角）
+  const H = document.querySelector('.frame').clientHeight, bot = flt.visBot === null ? H : flt.visBot;
+  if (!window.matchMedia('(max-width:527.98px)').matches) return flt.visTop + Math.max(0, (bot - flt.visTop - info.offsetHeight) / 2);
+  const h = info.offsetHeight, w = info.offsetWidth, x = flt.x === null ? 8 : flt.x, top = flt.visTop + 8;
+  const yMax = Math.max(top, bot - h - 22);   // 可見下緣會多算一條細條（10px），實際離底約 12px
+  if (flt.dragged) return yMax;               // 讀者拖過就照他放的位置（下緣＋拖的偏移）
+  // 會蓋到圖釘或名稱就每次往上 20px 找不蓋的地方，找不到取蓋最少的；正在介紹的點重罰、幾乎不會被蓋（owner 09-29：要記得不要被遮到）
+  const fr = document.querySelector('.frame').getBoundingClientRect();
+  const obs = [...document.querySelectorAll('.pin-anchor .pin, .toplabel')].filter(e => e.getClientRects().length).map(e => {
+    const r = e.getBoundingClientRect(); return { x1:r.left - fr.left, y1:r.top - fr.top, x2:r.right - fr.left, y2:r.bottom - fr.top, w:e.closest('.hi') ? 100 : 1 }; });
+  let best = yMax, bestPen = Infinity;
+  for (let y = yMax; y >= top; y -= 20){
+    const pen = obs.reduce((p, o) => p + o.w * Math.max(0, Math.min(x + w, o.x2) - Math.max(x, o.x1)) * Math.max(0, Math.min(y + h, o.y2) - Math.max(y, o.y1)), 0);
+    if (pen === 0) return y;
+    if (pen < bestPen){ bestPen = pen; best = y; }
+  }
+  return best;
+}
+function placeFloat(){
+  const fr = document.querySelector('.frame'), W = fr.clientWidth, H = fr.clientHeight;
+  const m = window.matchMedia('(max-width:719.98px)').matches ? 8 : 12;
+  const ab = (document.querySelector('.leaflet-control-attribution') || {}).offsetHeight || 0;   // 捲到底時停在出處上面、不蓋住它
+  if (flt.x === null) flt.x = POPUP_SIDE === 'right' ? W - info.offsetWidth - m : m;
+  info.style.left = Math.min(Math.max(flt.x, m), W - info.offsetWidth - m) + 'px';
+  info.style.top = Math.min(Math.max(floatBase() + flt.dy, m), Math.max(m, H - info.offsetHeight - m - ab)) + 'px';
+  info.style.right = info.style.bottom = 'auto'; info.style.transform = 'none';
+}
+const corner = document.querySelector('.corner');
+function placeCorner(){   // 標題框＋圖例：停在看得到那一段的上緣，跟著捲動但不能拖（owner 09-29）；手機檔本來就藏起來
+  const H = document.querySelector('.frame').clientHeight;
+  corner.style.top = Math.max(12, Math.min(flt.visTop + 12, H - corner.offsetHeight - 12)) + 'px';
+}
+function initFloat(){
+  const fr = document.querySelector('.frame'), N = 108, vis = new Set();
+  info.classList.add('float');
+  const io = new IntersectionObserver(es => {
+    for (const e of es) e.isIntersecting ? vis.add(+e.target.dataset.i) : vis.delete(+e.target.dataset.i);
+    flt.visTop = vis.size ? Math.min(...vis) * fr.clientHeight / N : 0;
+    flt.visBot = vis.size ? (Math.max(...vis) + 1) * fr.clientHeight / N : null;
+    if (!info.classList.contains('dragging')) placeFloat();
+    placeCorner();
+  });
+  for (let i = 0; i < N; i++){
+    const s = document.createElement('div'); s.className = 'vstrip'; s.dataset.i = i;
+    s.style.top = (i * 100 / N) + '%'; s.style.height = (100 / N) + '%'; fr.appendChild(s); io.observe(s);
+  }
+  let start = null;   // 拖曳：按住卡片（關閉鈕除外）移動；拖曳中暫停輪播，放開後繼續
+  info.addEventListener('pointerdown', e => {
+    if (e.target.closest('.x, a')) return;
+    start = { px:e.clientX, py:e.clientY, x:info.offsetLeft, y:info.offsetTop };
+    info.setPointerCapture(e.pointerId); info.classList.add('dragging'); stopCar();
+  });
+  info.addEventListener('pointermove', e => { if (!start) return;
+    flt.dragged = true;   // 拖過就不再自動避開圖釘，照讀者放的位置
+    flt.x = start.x + e.clientX - start.px; flt.dy = start.y + e.clientY - start.py - floatBase(); placeFloat(); });
+  const end = () => { if (!start) return; start = null; info.classList.remove('dragging');
+    stopCar(); carTimer = setInterval(carTick, carMs()); };
+  info.addEventListener('pointerup', end); info.addEventListener('pointercancel', end);
+}
+if (POPUP_FLOAT) initFloat();
+// 輪播時頁面跟著捲到正在介紹的點：owner 09-30 說不需要了，拿掉；做法留在 git 歷史 7c17240 的 followSpot。
+// 把地圖裡高度 y（畫框座標）的地方平滑捲到畫面中間（放大彈回時用）。探針一定要放在 body 底下：放在 overflow:hidden 的地圖裡，
+// scrollIntoView 會連地圖容器本身一起捲，整張圖內部被捲走。嵌在文章的 iframe 裡也捲得動外頁
+const probe = document.createElement('div');
+probe.style.cssText = 'position:absolute;left:0;width:1px;height:1px;visibility:hidden;pointer-events:none';
+document.body.appendChild(probe);
+function scrollFrameY(y){
+  probe.style.top = (document.querySelector('.frame').getBoundingClientRect().top + scrollY + y) + 'px';
+  probe.scrollIntoView({ block:'center', behavior:'smooth' });
+}
+function carMs(){ return window.matchMedia('(max-width:527.98px)').matches ? 2750 : 4200; }   // 手機檔 2.75s、其餘 4.2s
+function carTick(){ showSpot(curSpot % spots.length + 1); }
+function startCar(){ if (carTimer) return; carTick(); carTimer = setInterval(carTick, carMs()); }   // 桌機/手機都輪播
+function stopCar(){ if (carTimer){ clearInterval(carTimer); carTimer = null; } }
+function jump(n){ showSpot(n); stopCar(); carTimer = setInterval(carTick, carMs()); }   // 點某點：跳到它並重置輪播
+function syncCar(){ startCar(); }
+
+// 圖例 + 篩選（先建好再排標籤：圖例也是地名要避開的障礙）
+const legend = document.getElementById('legend');
+for (const [key,c] of Object.entries(CAT)){
+  const chip = document.createElement('div');
+  chip.className = 'chip'; chip.dataset.cat = key; chip.dataset.on = '1';
+  chip.innerHTML = `<span class=&quot;dot&quot; style=&quot;background:${c.color}&quot;>${c.emo}</span>${c.name}`;
+  chip.addEventListener('click', () => {
+    const on = chip.dataset.on === '1'; chip.dataset.on = on ? '0' : '1';
+    if (on) map.removeLayer(layers[key]); else layers[key].addTo(map);
+    document.querySelectorAll('.ipin[data-cat=&quot;' + key + '&quot;]').forEach(p => p.style.display = on ? 'none' : '');   // 小地圖上的點一起藏
+    relayout();   // 篩選後重排標籤
+  });
+  legend.appendChild(chip);
+}
+
+// 放大（衛星主題、觸控）：雙指捏開就放大、原地縮放；放手後停 0.5 秒再彈回原尺寸（owner 09-29：1.5 秒改 0.5 秒）。
+// 只放大底圖（CSS 變數見 .frame.tiles），圖釘與地名只跟著移位置、字不糊；不動 Leaflet 的縮放級，彈回後不必重排。說明卡、標題、小地圖不動。
+// 只做觸控（owner 09-29 晚：桌機不要放大；桌機按住放大的版本在 git 歷史 8ebbddb）。
+if (SAT){
+  const fr = document.querySelector('.frame'), mapEl = map.getContainer(), cur = { s:1, t:[0, 0] };
+  let backT = null, drag = null, pinch = null;   // drag＝放大後單指拖 { p:起點, t:當時的平移 }；pinch＝雙指捏 { d:兩指距離, m:中點, s, t }
+  const setZoom = (s, t = [0, 0], live = false) => {   // 畫面座標＝t＋s×原座標
+    const W = fr.clientWidth, H = fr.clientHeight;   // 夾住平移：放大後的底圖一直蓋滿畫框，拖不出地圖邊界
+    t = [Math.min(0, Math.max(W * (1 - s), t[0])), Math.min(0, Math.max(H * (1 - s), t[1]))];
+    Object.assign(cur, { s, t });
+    fr.classList.toggle('zooming', live);   // 拖曳、捏的當下不過渡；彈回照 CSS 過渡
+    fr.classList.toggle('zoomed', s > 1);   // 放大中小地圖先淡出（owner 09-29：地名會跑到小地圖上、在上面也拖不動）
+    [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
+  };
+  // 彈回時頁面跟著捲：看得到那一段正中間現在顯示的那塊地圖，彈回後捲到畫面中間，停在移動後的地方
+  // （owner 09-29：放大移動後會彈回最初放大的地方）
+  const springBack = () => { clearTimeout(backT); backT = setTimeout(() => {
+    const H = fr.clientHeight, c = POPUP_FLOAT &amp;&amp; flt.visBot !== null ? (flt.visTop + flt.visBot) / 2 : H / 2, qy = (c - cur.t[1]) / cur.s;
+    if (Math.abs(qy - c) > 20) scrollFrameY(qy);
+    setZoom(1);
+  }, 500); };
+  const frameXY = (x, y) => { const r = fr.getBoundingClientRect(); return [x - r.left, y - r.top]; };
+  const mid = ts => frameXY((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
+  const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+  const grab = t => ({ p:[t.clientX, t.clientY], t:cur.t });
+  // 雙指捏開放大（最多 4 倍）、兩指一起移動可平移；放大中單指拖就移動畫面，彈回前再捏或拖都接著目前的狀態。
+  // 沒放大時單指照樣捲文章，只有捏、或放大中的拖才擋瀏覽器預設
+  mapEl.addEventListener('touchstart', e => {
+    clearTimeout(backT);
+    if (e.touches.length === 2){ drag = null; pinch = { d:gap(e.touches), m:mid(e.touches), s:cur.s, t:cur.t }; }
+    else if (e.touches.length === 1 &amp;&amp; cur.s > 1) drag = grab(e.touches[0]);
+  }, { passive:true });
+  mapEl.addEventListener('touchmove', e => {
+    if (pinch &amp;&amp; e.touches.length === 2){
+      e.preventDefault();
+      // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間（owner 09-29：縮小時不要跑回原本放大的地方）
+      const s = Math.min(4, Math.max(1, pinch.s * gap(e.touches) / pinch.d)), m = mid(e.touches), k = s / pinch.s;
+      setZoom(s, [m[0] - (pinch.m[0] - pinch.t[0]) * k, m[1] - (pinch.m[1] - pinch.t[1]) * k], true);
+    } else if (drag &amp;&amp; e.touches.length === 1){
+      e.preventDefault();
+      setZoom(cur.s, [drag.t[0] + e.touches[0].clientX - drag.p[0], drag.t[1] + e.touches[0].clientY - drag.p[1]], true);
+    }
+  }, { passive:false });
+  const untouch = e => {
+    if (pinch &amp;&amp; e.touches.length < 2){   // 放開一指就接著用剩下那指拖
+      pinch = null;
+      if (e.touches.length === 1 &amp;&amp; cur.s > 1) drag = grab(e.touches[0]); else springBack();
+    } else if (drag &amp;&amp; !e.touches.length){ drag = null; springBack(); }
+  };
+  mapEl.addEventListener('touchend', untouch); mapEl.addEventListener('touchcancel', untouch);
+}
+
+refit(); relayout(); syncCar();   // 初次：fit → 自動排標籤（此時 showSpot 已定義）→ 開輪播
+// 直接開網址（不是嵌在文章裡）：一載入就定在第一個點，不要先停在北端、過半秒再滑下去（owner 09-29）。
+// 嵌在文章裡不這樣做：外頁的捲動是讀者在控制，載入時硬跳會把人拉走
+if (POPUP_FLOAT &amp;&amp; window.self === window.top){
+  const el = document.querySelector('.pin-anchor[data-spot=&quot;' + curSpot + '&quot;]');
+  if (el){ const r = el.getBoundingClientRect(); window.scrollTo({ top:r.top + scrollY - innerHeight / 2, behavior:'instant' }); }
+}
+
+map.on('resize', () => { refit(); relayout(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
+</script>
+"
+          style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px"></iframe>
+</div>
+</html>
