@@ -231,7 +231,10 @@
     .frame.tiles .card h3{ font-size:15px }
   }
   /* CARD=&quot;row&quot;（橫版地圖）：照片在左、文字在右，卡片矮，才放得進島上方那條潟湖、不蓋到島 */
-  .frame.tiles.cardrow .info{ width:440px; max-width:62% }
+  /* 整張卡等比縮成 4/5（owner 09-30：橫版字卡整體小個 1/4，接著改口「1/5 好了」）：外框縮成 4/5，裡面的卡片與關閉鈕用 zoom 縮，
+     卡片內容照原本的 440px（平板 62%）排版，字、照片、留白一起縮，比例不變 */
+  .frame.tiles.cardrow .info{ width:352px; max-width:49.6% }
+  .frame.tiles.cardrow .card, .frame.tiles.cardrow .info .x{ zoom:.8 }
   .frame.tiles.cardrow .card{ position:relative; min-height:150px; padding:11px 14px 12px calc(42% + 14px) }
   .frame.tiles.cardrow .card img.photo{ position:absolute; left:0; top:0; width:42%; height:100%; margin:0; aspect-ratio:auto;
     border-radius:14px 0 0 14px }
