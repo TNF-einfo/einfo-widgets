@@ -65,12 +65,15 @@
 
   <div class="row wip">
     <a href="interactive-maps/tuvalu/tuvalu-map.html">吐瓦魯，富納富提（測試中）→</a>
-    <span class="desc">長型衛星地圖、十二個地點；分類與說明文字待確認，還不要拿去發稿</span>
+    <span class="desc">長型衛星地圖、十二個地點，固定 1080 高，手機上往下捲著看；還不要拿去發稿</span>
+    <button type="button" class="copy" data-title="吐瓦魯，富納富提" data-frame="height:1080px">複製嵌入碼</button>
   </div>
 
   <div class="row wip">
     <a href="interactive-maps/tuvalu/wide/tuvalu-map-wide.html">吐瓦魯，富納富提 橫版（測試中）→</a>
-    <span class="desc">同一份內容，整張圖轉 90 度（北朝右）排成橫幅；窄螢幕排不下，嵌入時手機要換回長型</span>
+    <span class="desc">同一份內容，整張圖轉 90 度（北朝右）排成橫幅；嵌入碼在畫面 700px 以下自動換成長型；還不要拿去發稿</span>
+    <button type="button" class="copy" data-title="吐瓦魯，富納富提" data-frame="aspect-ratio:720/480"
+            data-narrow="interactive-maps/tuvalu/tuvalu-map.html" data-narrow-frame="height:1080px">複製嵌入碼</button>
   </div>
 
   <p class="said" id="said" role="status" aria-live="polite"></p>
@@ -86,15 +89,28 @@
   // 外層 position:relative ＋ iframe 絕對定位填滿——這是實際發布文章用的那一套、
   // 已經在桌機 720／平板 528／手機 352.8 三個檔位實測過。地圖內部的斷點吃的是
   // **iframe 自身寬度**，所以別把它鎖成別的寬度，否則內層會挑錯檔位。
-  function snippet(url, title) {
-    return '<div style="max-width:720px;margin:32px auto">\n' +
-           '  <div style="position:relative;aspect-ratio:720/476">\n' +
+  function frame(url, title, box, margin) {
+    return '<div style="max-width:720px;margin:' + margin + '">\n' +
+           '  <div style="position:relative;' + box + '">\n' +
            '    <iframe src="' + url + '"\n' +
            '            title="' + title.replace(/"/g, '&quot;') + '" loading="lazy" allowfullscreen\n' +
            '            style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">\n' +
            '    </iframe>\n' +
            '  </div>\n' +
            '</div>';
+  }
+  // 按鈕沒寫 data-frame＝東京那套（上面說的尺寸）。吐瓦魯的外框不同（見 interactive-maps/tuvalu/README.md「嵌入」）：
+  // data-frame 是外框的尺寸（長型固定高度 height:1080px、橫版 aspect-ratio:720/480），最外層不留上下 margin
+  // （owner 09-30：e-info 的嵌入框自己有 32px）；data-narrow 是畫面 700px 以下改嵌的那一版（橫版手機排不下，換回長型），
+  // data-narrow-frame 是它的外框。兩版都寫進嵌入碼，用 CSS 只顯示一版；藏起來的 iframe 有 loading="lazy"，不會載入。
+  function snippet(url, title, d) {
+    d = d || {};
+    if (!d.frame) return frame(url, title, 'aspect-ratio:720/476', '32px auto');
+    var main = frame(url, title, d.frame, '0 auto');
+    if (!d.narrow) return main;
+    return '<style>.tv-wide{display:block}.tv-tall{display:none}@media (max-width:700px){.tv-wide{display:none}.tv-tall{display:block}}</style>\n' +
+           '<div class="tv-wide">\n' + main + '\n</div>\n' +
+           '<div class="tv-tall">\n' + frame(new URL(d.narrow, location.href).href, title, d.narrowFrame, '0 auto') + '\n</div>';
   }
 
   var said = document.getElementById('said');
@@ -108,7 +124,7 @@
   document.querySelectorAll('button.copy').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var link = btn.closest('.row').querySelector('a');
-      var text = snippet(link.href, btn.dataset.title);
+      var text = snippet(link.href, btn.dataset.title, btn.dataset);
 
       var manual = function () {
         // 剪貼簿被擋時的退路：放進一個暫時的 textarea 選起來，請人自己按 Ctrl+C
@@ -141,6 +157,12 @@
       probe.indexOf('position:absolute;inset:0') < 0 ||
       probe.indexOf('</iframe>') < 0) {
     said.textContent = '嵌入碼產生有問題，請先不要用，並告知維護者。';
+  }
+  var wide = snippet('https://example.org/w.html', 't', { frame: 'aspect-ratio:720/480', narrow: 'https://example.org/t.html', narrowFrame: 'height:1080px' });
+  if (wide.indexOf('src="https://example.org/w.html"') < 0 || wide.indexOf('aspect-ratio:720/480') < 0 ||
+      wide.indexOf('src="https://example.org/t.html"') < 0 || wide.indexOf('height:1080px') < 0 ||
+      wide.indexOf('@media (max-width:700px)') < 0 || wide.indexOf('margin:0 auto') < 0 || wide.split('</iframe>').length !== 3) {
+    said.textContent = '吐瓦魯的嵌入碼產生有問題，請先不要用，並告知維護者。';
   }
 })();
 </script>
