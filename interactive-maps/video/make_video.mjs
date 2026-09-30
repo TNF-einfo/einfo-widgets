@@ -142,16 +142,15 @@ async function setCam(lat, lng, z) {   // 設視野＋把 pin 名浮層(#toplabe
     if (window.__pinlabels) {
       const fr = document.querySelector(".frame").getBoundingClientRect();
       const [E, S] = window.__zr, clamp = v => Math.min(1, Math.max(0, v));
-      const near = clamp(((z - E) / (S - E) - 0.5) / 0.4);   // 大遠景→特寫走到一半才開始淡入、九成時全亮
-      const wide = clamp((z - E + 0.5) / 0.5);                // 比大遠景還遠（長距離飛越的途中）連大遠景放得下的名字也收起
+      const k = clamp((z - E) / (S - E));        // 名字位置：大遠景那套（0）→ 特寫那套（1），東京兩套一樣
+      const wide = clamp((z - E + 0.5) / 0.5);   // 比大遠景還遠（長距離飛越的途中）名字收起
       for (const pl of window.__pinlabels) {
         const pin = document.querySelector('.pin-anchor[data-spot="' + pl.spot + '"] .pin');
         if (!pin) continue;
         const pr = pin.getBoundingClientRect();
-        pl.el.style.left = ((pr.left + pr.right) / 2 - fr.left + pl.dx) + "px";
-        pl.el.style.top = ((pr.top + pr.bottom) / 2 - fr.top + pl.dy) + "px";
-        if (pl.far === false) pl.el.style.opacity = near;   // 大遠景放不下的名字（liftPinNames 判的）
-        else if (pl.far) pl.el.style.opacity = wide;
+        pl.el.style.left = ((pr.left + pr.right) / 2 - fr.left + pl.fx + (pl.dx - pl.fx) * k) + "px";
+        pl.el.style.top = ((pr.top + pr.bottom) / 2 - fr.top + pl.fy + (pl.dy - pl.fy) * k) + "px";
+        pl.el.style.opacity = wide < 1 ? wide : "";
       }
       for (const m of labelMarkers) { const el = m.getElement(); if (el) el.style.opacity = wide < 1 ? wide : ""; }   // 海面地名也是（位置照大遠景排的）
     }
@@ -169,51 +168,62 @@ async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避
     const dist = (b, q) => Math.hypot(Math.max(b.x1 - q.cx, 0, q.cx - b.x2), Math.max(b.y1 - q.cy, 0, q.cy - b.y2));
     const anchors = [...document.querySelectorAll(".pin-anchor")];
     const onScreen = () => anchors.map(a => { const r = a.querySelector(".pin").getBoundingClientRect(); return { cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, hw: (r.right - r.left) / 2, hh: (r.bottom - r.top) / 2, spot: +a.dataset.spot }; });
-    // 衛星主題（吐瓦魯）點很密：名字照「特寫的縮放」排（讀者在特寫時讀名字），大遠景放不下的先藏、拉近時淡入（setCam）。
-    // 插畫風（東京）照原本在大遠景排
-    const sat = frame.classList.contains("tiles");
-    const pins = onScreen().map(q => { if (!sat) return q; const s = spots.find(s => s.n === q.spot), c = map.project([s.lat, s.lng], SZ); return { ...q, cx: c.x, cy: c.y }; });
     anchors.forEach(a => { const name = a.querySelector(".pin-name"); if (!name) return; const lab = document.createElement("div"); lab.className = "toplabel"; lab.textContent = name.textContent; lab.dataset.spot = a.dataset.spot; top.appendChild(lab); name.style.display = "none"; });
     const tb = document.querySelector(".titlebar");   // 標題框也當障礙（owner：北本被標題壓）
     const titleBox = tb ? (() => { const r = tb.getBoundingClientRect(); return { x1: r.left - 6, y1: r.top - 6, x2: r.right + 6, y2: r.bottom + 6 }; })() : null;
-    const placed = [];
-    top.querySelectorAll(".toplabel").forEach(lab => {
-      const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
-      const lr = lab.getBoundingClientRect(), lw = lr.width / 2, lh = lr.height / 2, G = P.hw + 12, V = P.hh + 12;
-      let cands = [[G + lw, 0], [0, -(V + lh)], [-(G + lw), 0], [0, V + lh], [G + lw, -(V + lh)], [-(G + lw), -(V + lh)]];  // 右→上→左→下→右上→左上
-      const side = (spots.find(s => s.n === spot) || {}).label;   // spots.py 指定 "label"（right／up／left／down）就只放那邊，照地圖
-      if (side) cands = [cands[["right", "up", "left", "down"].indexOf(side)]];
-      let best = cands[0], bestPen = Infinity;
-      for (const [ox, oy] of cands) {
-        const bx = { x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh };
-        let pen = 0;
-        for (const q of pins) if (q.spot !== spot) pen += oA(bx, pinBox(q)) * 8;  // 壓到別 pin＝重罰
-        for (const b of placed) pen += oA(bx, b);   // 壓到別名字＝輕罰
-        if (sat) { for (const q of pins) if (q.spot !== spot && dist(bx, q) < dist(bx, P)) pen += 400; }   // 名字離別的圖釘比較近＝會看錯是誰的（照地圖）
-        else {   // 標題框、畫框只在大遠景排才有意義（特寫的鏡頭每點不同）
-          if (titleBox) pen += oA(bx, titleBox) * 8;   // 壓到標題框＝重罰（owner：北本被標題壓）
-          pen += (Math.max(0, fr.left - bx.x1) + Math.max(0, bx.x2 - fr.right) + Math.max(0, fr.top - bx.y1) + Math.max(0, bx.y2 - fr.bottom)) * 3;
+    const outFrame = bx => Math.max(0, fr.left - bx.x1) + Math.max(0, bx.x2 - fr.right) + Math.max(0, fr.top - bx.y1) + Math.max(0, bx.y2 - fr.bottom);
+    const labs = [...top.querySelectorAll(".toplabel")].map(el => { const r = el.getBoundingClientRect(), spot = +el.dataset.spot;
+      return { el, spot, lw: r.width / 2, lh: r.height / 2, side: (spots.find(s => s.n === spot) || {}).label }; });   // side：spots.py 指定 "label"（right／up／left／down），照地圖
+    // 排名字：pins＝各圖釘中心，cands(L,P)＝候選偏移 [x, y, 額外罰分]（照偏好排），cost＝罰分；第一個 0 分的就用，否則取最低分。
+    // passes＞0 時再排幾輪：每個名字看著其他所有名字重挑一次，先排的才不會把後排的卡死
+    const place = (pins, cands, cost, passes = 0) => {
+      const out = {}, boxes = {}, at = L => pins.find(q => q.spot === L.spot);
+      const box = (P, L, [ox, oy]) => ({ x1: P.cx + ox - L.lw, y1: P.cy + oy - L.lh, x2: P.cx + ox + L.lw, y2: P.cy + oy + L.lh });
+      const pick = (L, others) => { const P = at(L); let best = null, bestPen = Infinity;
+        for (const [ox, oy, extra = 0] of cands(L, P)) {
+          const bx = box(P, L, [ox, oy]);
+          let pen = extra;
+          for (const q of pins) if (q.spot !== L.spot) pen += oA(bx, pinBox(q)) * 8;   // 壓到別 pin＝重罰
+          pen += cost(bx, P, pins, others);
+          if (pen === 0) return [ox, oy];
+          if (pen < bestPen) { bestPen = pen; best = [ox, oy]; }
         }
-        if (pen === 0) { best = [ox, oy]; break; }
-        if (pen < bestPen) { bestPen = pen; best = [ox, oy]; }
-      }
-      const [ox, oy] = best;
-      placed.push({ x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh });
-      // 群組（pin 框＋名字框的聯集）中心相對 pin 中心的偏移 → 給相機置中用（名字寬度要算進去，否則長名字會偏右）
-      const gx1 = Math.min(P.cx - P.hw, P.cx + ox - lw), gx2 = Math.max(P.cx + P.hw, P.cx + ox + lw);
-      const gy1 = Math.min(P.cy - P.hh, P.cy + oy - lh), gy2 = Math.max(P.cy + P.hh, P.cy + oy + lh);
-      window.__pinlabels.push({ el: lab, spot, dx: ox, dy: oy, lw, lh, gdx: (gx1 + gx2) / 2 - P.cx, gdy: (gy1 + gy2) / 2 - P.cy });
-    });
-    const scr = onScreen(), shown = [];
-    for (const pl of window.__pinlabels) {   // 貼到現在（大遠景）的螢幕位置
-      const P = scr.find(q => q.spot === pl.spot), cx = P.cx + pl.dx, cy = P.cy + pl.dy;
-      pl.el.style.left = (cx - fr.left) + "px"; pl.el.style.top = (cy - fr.top) + "px";
-      if (!sat) continue;
-      // 大遠景放不下就先藏：壓到別的圖釘、已顯示的名字、標題框，出框，或離別的圖釘比較近
-      const b = { x1: cx - pl.lw, y1: cy - pl.lh, x2: cx + pl.lw, y2: cy + pl.lh };
-      pl.far = !(scr.some(q => q.spot !== pl.spot && (oA(b, pinBox(q)) > 0 || dist(b, q) < dist(b, P))) || shown.some(s => oA(b, s) > 0)
-        || (titleBox && oA(b, titleBox) > 0) || b.x1 < fr.left || b.x2 > fr.right || b.y1 < fr.top || b.y2 > fr.bottom);
-      if (pl.far) shown.push(b);
+        return best; };
+      for (const L of labs) { out[L.spot] = pick(L, Object.values(boxes)); boxes[L.spot] = box(at(L), L, out[L.spot]); }
+      for (let i = 0; i < passes; i++) for (const L of labs) {
+        out[L.spot] = pick(L, labs.filter(M => M !== L).map(M => boxes[M.spot])); boxes[L.spot] = box(at(L), L, out[L.spot]); }
+      return out; };
+    const six = (L, P) => { const G = P.hw + 12, V = P.hh + 12;   // 右→上→左→下→右上→左上；指定邊就只放那邊
+      const c = [[G + L.lw, 0], [0, -(V + L.lh)], [-(G + L.lw), 0], [0, V + L.lh], [G + L.lw, -(V + L.lh)], [-(G + L.lw), -(V + L.lh)]];
+      return L.side ? [c[["right", "up", "left", "down"].indexOf(L.side)]] : c; };
+    const misread = w => (bx, P, pins) => pins.reduce((s, q) => s + (q.spot !== P.spot && dist(bx, q) < dist(bx, P) ? w : 0), 0);   // 名字離別的圖釘比較近＝會看錯是誰的（照地圖）
+    const over = (bx, placed) => placed.reduce((s, b) => s + oA(bx, b), 0);
+    const scr = onScreen(), sat = frame.classList.contains("tiles");
+    let far, near;
+    if (!sat) far = near = place(scr, six, (bx, P, pins, placed) =>   // 插畫風（東京）照原本：一套，在大遠景排
+      over(bx, placed) + (titleBox ? oA(bx, titleBox) * 8 : 0) + outFrame(bx) * 3);
+    else {
+      // 衛星主題（吐瓦魯）點很密，遠景、特寫各排一套，setCam 依縮放在兩套之間滑動（owner 09-30：遠景名字不能不見）。
+      // 特寫：照特寫縮放下的距離排（讀者在特寫時讀名字），標題框與畫框不管（每點的鏡頭不同）
+      const atZ = scr.map(q => { const s = spots.find(s => s.n === q.spot), c = map.project([s.lat, s.lng], SZ); return { ...q, cx: c.x, cy: c.y }; });
+      const nearMis = misread(400);
+      near = place(atZ, six, (bx, P, pins, placed) => over(bx, placed) + nearMis(bx, P, pins));
+      // 遠景：南端那群點擠在一起，名字要疊成左右兩欄，所以左右兩邊再各給上下錯開的位置。看錯是誰的名字最糟，其次是互疊、壓標題框、出框；
+      // spots.py 指定的邊優先，那邊怎麼放都會看錯或互疊才換邊（友誼農場在遠景只能這樣）
+      const farMis = misread(5000);
+      far = place(scr, (L, P) => { const G = P.hw + 12, V = P.hh + 12, h = 2 * L.lh, c = [[G + L.lw, 0], [0, -(V + L.lh)], [-(G + L.lw), 0], [0, V + L.lh]];
+        for (const k of [0.5, -0.5, 1, -1, 1.5, -1.5]) c.push([G + L.lw, k * h], [-(G + L.lw), k * h]);
+        if (!L.side) return c;
+        const on = ([x, y]) => ({ right: x > 0, left: x < 0, up: !x && y < 0, down: !x && y > 0 })[L.side];
+        return [...c.filter(on), ...c.filter(v => !on(v)).map(([x, y]) => [x, y, 300])]; },
+        (bx, P, pins, placed) => over(bx, placed) * 8 + farMis(bx, P, pins) + (titleBox ? oA(bx, titleBox) * 8 : 0) + outFrame(bx) * 1000, 3);
+    }
+    for (const L of labs) {
+      const P = scr.find(q => q.spot === L.spot), [nx, ny] = near[L.spot], [fx, fy] = far[L.spot];
+      // 群組（pin 框＋名字框的聯集）中心相對 pin 中心的偏移 → 給特寫的相機置中用（名字寬度要算進去，否則長名字會偏右）
+      const gx1 = Math.min(-P.hw, nx - L.lw), gx2 = Math.max(P.hw, nx + L.lw), gy1 = Math.min(-P.hh, ny - L.lh), gy2 = Math.max(P.hh, ny + L.lh);
+      window.__pinlabels.push({ el: L.el, spot: L.spot, dx: nx, dy: ny, fx, fy, gdx: (gx1 + gx2) / 2, gdy: (gy1 + gy2) / 2 });
+      L.el.style.left = (P.cx - fr.left + fx) + "px"; L.el.style.top = (P.cy - fr.top + fy) + "px";   // 現在是大遠景
     }
   }, SPOT_ZOOM);
 }
