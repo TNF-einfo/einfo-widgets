@@ -78,6 +78,9 @@
   .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:14px; font-weight:800;
     color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
     border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12); pointer-events:auto }
+  /* 引線：名字在圖釘旁邊擠不下、放到空地時，從圖釘邊拉到名字的細線（位置與角度由 liftPinNames 算） */
+  .leader{ position:absolute; height:1px; transform-origin:0 50%; background:var(--ink); opacity:.6; pointer-events:none }
+  .frame.tiles .leader{ background:rgba(255,255,255,.85); opacity:1; box-shadow:0 0 2px rgba(0,0,0,.9) }
   .rlabel{
     font-weight:800; letter-spacing:1px; font-size:12px; color:var(--label); opacity:.92; text-align:center;
     white-space:nowrap; pointer-events:none; text-shadow:0 1px 2px #fff,0 0 5px #fff,0 0 5px #fff;
@@ -205,7 +208,7 @@
   .frame.tiles{ transition:--zs .3s ease-out, --ztx .3s ease-out, --zty .3s ease-out }
   .frame.tiles.zooming{ transition:none }
   .frame.tiles .leaflet-tile-pane, .frame.tiles .leaflet-overlay-pane{ transform-origin:0 0; scale:var(--zs); translate:var(--ztx) var(--zty) }
-  .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel{
+  .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel, .frame.tiles .leader{
     translate:calc((var(--zs) - 1) * var(--px, 0px) + var(--ztx)) calc((var(--zs) - 1) * var(--py, 0px) + var(--zty)) }
   .frame.tiles #map{ touch-action:pan-x pan-y }   /* 單指照樣捲文章，雙指捏開交給頁面自己放大 */
   .frame.tiles #map, .frame.tiles #toplabels{ -webkit-user-select:none; user-select:none }   /* 按住拖著看時不要反白地名 */
@@ -230,6 +233,8 @@
   .frame.tiles.cardrow .card{ position:relative; min-height:150px; padding:11px 14px 12px calc(42% + 14px) }
   .frame.tiles.cardrow .card img.photo{ position:absolute; left:0; top:0; width:42%; height:100%; margin:0; aspect-ratio:auto;
     border-radius:14px 0 0 14px }
+  /* 橫版在平板（672）的比例尺比桌機還小，地名維持桌機的 14px，不放大到 16px（放大南端會多藏名字） */
+  @media (min-width:528px) and (max-width:719.98px){ .frame.tiles.cardrow .toplabel{ font-size:14px } }
   /* NORTH：指北箭頭（地圖轉過才畫），白字描邊、不加框 */
   .north{ position:absolute; left:12px; bottom:12px; z-index:6; display:flex; align-items:center; gap:5px; pointer-events:none;
     color:#fff; font-size:13px; font-weight:600; letter-spacing:.08em; text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85) }
@@ -264,7 +269,7 @@ const places = [{&quot;t&quot;: &quot;太平洋&quot;, &quot;lat&quot;: -8.50984
 const POPUP_SIDE = null;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
 const POPUP_FLOAT = false; // true＝說明卡可按住拖曳；文章往下捲時說明卡、標題框＋圖例跟著停在看得到的那一段（長型地圖用）
 const INSET = {&quot;svg&quot;: &quot;<path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M80.9,69.5L81.6,69.8L81.8,70.5L80.8,69.9Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M75.1,91.1L75.4,90.6L75.4,91.4Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M76.4,91.1L77.1,90.9L76.9,91.6L76.4,91.1Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M77.8,90.2L77.1,90.1L77.8,90.2Z\&quot;/><path fill=\&quot;#4f8f88\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M126.6,58.5L126.1,61.5L125.4,63.5L125.3,65.9L125.6,68.9L125.3,71.2L123.8,77.6L123,78.9L122.3,80L121.6,80.8L120.9,81.4L119.3,82.2L118.1,82.5L117.4,82.8L116.7,83.5L116,84.3L115,85.1L111.2,87.1L108.5,88.5L106.9,89.2L105.2,89.7L103.4,90.1L102.4,90.6L101.3,91.5L100,92.1L98.1,92.8L97.1,92.9L95.7,92.8L94.8,92.9L93.5,92.8L92.5,92.8L91.1,93.1L89.1,93.7L86,94.4L83.5,95.3L81.7,96.1L79.3,97L76.7,98.2L75.4,98.1L74.7,97.8L71.9,94.3L70.2,92.2L68.4,90.2L66.2,87.7L65.5,86.3L65.2,85.2L65.1,84.3L64.9,82.8L64.5,81.9L64,80.8L62.8,79.5L61.5,78.2L60.9,77.2L60.1,75.7L59.3,74L58.8,73.1L58.2,72.3L56.9,70.9L55.9,69.8L55.2,68.7L54.9,67.2L54.6,66.2L53.9,65.2L53.3,64.8L52.3,63.9L51.9,63.4L51.5,62.6L51.3,60.6L50.9,59.7L51,58.8L51.7,59L52.1,59.5L52.7,60.7L53,61.7L53.7,63L54.3,63.8L55.4,65.1L58,68L58.3,70L60.4,73L61.3,74.6L62.2,75.7L63.2,76.9L63.9,78.6L64.4,79.4L65.2,80.4L65.4,81.4L65.9,82.9L67.4,85.4L67.6,86.2L70.2,89.6L70.8,90.5L71.5,91.3L72.6,91.8L73.9,92.3L75.1,92.3L75.7,92.5L76.5,93.1L77,93.9L77.6,94.5L78,94.9L79.8,94.8L81.1,94.8L82.4,94.5L84.7,93.7L85.5,93.5L86.7,93.1L88.2,92.6L90.6,92.1L91.9,91.7L93.2,91.5L97.5,91L99.2,90.6L100.3,90.2L104.1,88.2L107.6,86.9L109.6,86L111.5,85L112.6,84.4L113.2,83.8L113.6,83.3L115,82.7L116,82.3L117.1,81.4L117.8,80.8L118.4,81L118.3,80.3L119.1,78.9L119.7,78.1L120.3,77.6L121,76.7L121.6,75.4L122.5,74.1L123.1,72.5L123.8,68.4L123.8,66.4L123.8,63.6L124.1,62.4L124.5,61.3L124.1,59.5L123.6,58.8L123.1,57.8L122.4,56.3L122.3,55.2L122.7,53.6L122.7,50.7L122.5,49.7L122.8,48.6L123.4,48.3L124.3,48.6L124.9,49.3L126,52.7L126.6,56L126.6,58.5ZM65.2,81.9L65.4,83.1L65.6,84L65.7,85.2L66.1,86.3L66.5,86.9L67.1,87.7L68,88.9L68.4,89.4L69,90.1L70.4,91.8L71.2,92.8L72.4,94.3L74.2,96.7L74.8,97.3L75.6,97.7L76.5,97.7L78,97.2L79.7,96.4L82,95.5L83.1,95.1L84.3,94.6L86.2,93.9L88.1,93.5L89.2,93.3L91.1,92.7L92.1,92.5L93.2,92.4L94.4,92.4L96.4,92.5L97.6,92.4L98.6,92.2L99.7,91.8L100.7,91.3L101.3,91L101.8,90.6L102.7,90.1L103.3,89.7L104.3,89.4L105.8,88.9L106.4,88.7L107.4,88.3L108.1,88L109.5,87.4L110.8,86.8L112.1,86.2L113.7,85.3L114.1,84.7L113.5,85L112.4,85.6L111.6,86L110.6,86.5L108.8,87.3L108.2,87.6L107.6,87.8L106.8,88.1L106,88.4L105.2,88.7L104.1,89L103.3,89.3L102.4,89.8L101.8,90.3L101.3,90.8L100.6,91.1L99.5,91.5L98.4,91.7L96.5,91.9L95.4,92L94.2,91.9L93.3,92L92,92.2L90.9,92.4L89.7,92.7L89,92.9L88.2,93.1L87.4,93.2L86.6,93.5L85.8,93.7L84.7,94L83.9,94.3L82.8,94.7L82.2,95L81.2,95.4L80.1,95.5L79.4,95.8L78.5,95.7L77.7,95.4L77.2,95.1L75.9,93.7L74.8,93.1L74,92.8L73.4,92.4L72.7,92.3L72,92L71.3,91.6L70.6,90.9L70,90.4L69.3,89.6L68.8,89.1L68.3,88.5L67.6,87.8L66.7,86.5L66.3,85.7L66.1,85L66,84.1L65.9,83.3L65.5,82.7L65.2,81.9ZM119.6,79.9L119.2,80.5L118.8,80.9L118.2,81.6L117.5,82.1L117,82.4L116.4,82.7L117.1,82.5L117.7,82.2L118.3,81.9L119.1,81.6L119.9,81.3L119.5,80.8L119.8,80.1L120.3,79.6L119.6,79.9ZM120.7,79.1L121.4,79.3L121.7,78.5L121.3,78.1L120.9,78.6ZM60.4,74.6L60.7,75.8L61.7,77.4L62.2,78L61.9,77.1L61.1,75.7L60.7,75.3L60.4,74.6ZM54.8,66L55.4,67.7L55.9,68.9L56.4,69.6L57,70.1L57.7,70.2L57.1,69.6L56.8,68.9L56.3,67.8L56,67.2L55.7,66.5L55.3,66L55,65.4L54.4,65.1L54.7,65.9ZM52.9,63L52.4,62.2L52.3,61.3L52.1,60.5L51.7,59.6L51.8,60.7L51.9,61.7L52.2,62.5L52.7,62.9ZM124.2,53.5L124.2,54.7L124.3,55.5L124.1,56.1L125,56.2L125.4,55.7L125.2,55.1L124.7,54.7L124.4,54ZM124.4,53.3L124.9,52.9L124.8,52.2L124.4,52.7ZM94.9,73.7L95.3,73L96.1,73.3L96.4,74.2L96.1,75.1L95.4,75.3L95,74.3ZM109.5,73.8L110.2,73.9L109.5,73.8ZM102.8,65.9L103.1,65.1L103.8,66.3L103.3,66.8L102.8,65.9ZM90.8,61.3L91.3,60.8L91.7,61.6L91.5,62.5L90.8,62.6L90.8,61.3ZM46.6,54.6L45.2,54.1L44.2,53.9L43.2,53.4L42.3,51.9L42.3,50.9L43.3,50.9L43.7,51.3L44.1,52L45.1,52.6L46.1,53.3L46.6,53.7L46.6,54.6ZM61.3,24.5L60.3,25.8L59.7,25.5L59.8,24.5L59.1,24L59.4,22.9L59,21.6L58.3,20.2L57.4,19.5L56.5,19L54.9,19.6L54,20.4L52.9,21.1L51.8,22.1L50.1,23.5L49.7,24.2L49.5,25L49.2,25.9L48.5,26.8L48.2,28.1L47.9,29L47.3,29.9L46.7,30.2L46,29.6L45.5,28.8L44.9,28L43.7,27.9L41.9,28.7L40,29.2L39.2,29.4L38.4,28.9L37.4,28.7L36.5,29.1L35,29.9L34.3,30.4L33.3,30.4L32.5,30.5L31.6,30.4L30.7,30.8L30.1,31.6L29.1,32.9L27.4,33.9L26,34.6L25.6,35.2L25.3,36.3L24.5,36.6L24.1,37.1L23.8,37.7L23.1,38.3L22.4,38.5L22.3,39.3L22.5,39.9L22.8,40.7L23,41.4L24.9,41.6L26.1,41.7L26.8,42L27.6,42.3L29.5,43.5L30.1,43.7L31.2,43.7L32.1,43.5L33,43.5L33.9,43.5L34.9,43.8L37.6,45.2L38.6,46L39.1,46.5L38.7,47.1L36.1,45.5L35.3,45L34.4,44.7L33.2,44.6L31.7,44.8L30.5,45L29.7,45L29,44.6L28.2,43.9L27.1,43.2L26.5,42.9L25.5,42.8L24.1,42.9L23.3,43.2L22.2,43.7L20.2,45L18.4,46L16.9,46.4L16.2,46.5L15.4,45.9L15,43.6L14.6,42.4L14,41.1L12.9,39.4L11.2,37L10.1,35.4L9.5,34.4L9.4,33.3L9.7,32.5L9.9,31.7L10.2,30.8L10.7,30.2L11.3,29.7L11.8,29.4L13,29.3L14.1,29.5L16.4,30.1L18.1,30.7L20.5,32L21.4,32L22.7,31.6L23.8,31.5L25.8,30.8L27.6,30.1L29.3,29.8L30.4,29.7L31.1,29.4L32.4,28.5L34.6,27.6L37.2,26.8L38.9,26.4L41.5,25.9L43.3,25.2L44.8,24.5L48,22.5L51.9,19.2L53.9,17.8L55.7,17L57.3,16.4L58.3,16.4L59.5,17.1L60.3,18.4L60.6,19.7L61.4,22.1L61.9,23.1L61.3,24.5ZM27.8,42.6L27.2,42.4L26.1,42L25.4,41.9L24.3,42L23.5,42.1L22.6,42.4L21.9,42.7L21.2,43.1L20.4,43.4L19.8,43.9L19.2,44.3L18.3,44.2L17.9,43.5L17.7,44.3L17.6,45L17,45.2L17.8,45.7L18.5,45.4L19.6,44.8L20.6,44.2L21.2,43.7L22.6,42.9L23.3,42.6L24.4,42.4L25.6,42.3L26.8,42.5L27.9,43.1L28.8,43.9L29.6,44.3L30.7,44.4L31.5,44.4L32.4,44.3L34.7,44.2L34.1,43.9L32.9,43.7L32.1,43.8L31.4,44L30.7,44.1L30,44.2L29.4,43.8L28.6,43.2L28.1,42.8ZM16.4,45.4L16.7,44.8L16.1,45ZM16.7,43.8L17,43.1L16.2,43.3L15.5,42.5L15.2,42L15,41.4L14.7,40.9L14.1,40L13.7,39.3L13.1,38.6L14.1,40.6L14.6,41.5L15.1,42.6L15.3,43.3L15.5,44L15.7,44.6L16.1,44L16.7,43.8ZM12.8,38.4L12.4,37.3L11.4,35.9L11,35.1L10.8,34.5L10.6,35.3L11.2,36.3L12.5,38.1ZM10.5,34L11.2,34.1L11.6,33.6L11,33.9L11.3,33.3L10.9,33.7ZM20.4,33.2L20.7,32.7L20,32.9ZM18.9,32.9L19.6,32.8L19.3,32.2L18.8,32.7ZM16.5,31.1L15.7,31L15.3,30.5L14.6,30.4L13.7,30L13,30.2L12.1,30.5L12.3,31.1L12.8,31.5L13.4,31.2L14.5,30.8L15.2,31.2L16,31.3ZM46.4,26.5L47.3,26L47.7,25.3L47.3,25.7L46.6,26.1ZM116,33.1L116.9,32L118.2,31.8L119.1,32.4L119.7,34L120.2,34.9L120.6,36.2L120.9,37.4L120.9,38.8L121.1,39.8L121.4,40.6L121.5,41.5L121.7,42.3L121.5,43.4L120.5,43.4L120.1,42.5L119.9,41.2L119.6,40.2L119.5,38.1L118.9,36.5L118.4,35.8L117.5,35.2L116.7,34.9L116.3,34.2L116,33.1ZM101,40.1L100.1,39.9L100.2,39.1L101.2,39.3L101.6,40ZM98.3,37.5L99,36.9L99.4,36.5L99.4,35.5L100.4,35.3L100.8,36.5L100.6,37.7L99.4,38.2L98.6,38.1L98.3,37.5ZM102.2,37.6L101.5,37.3L101.6,36.3L102.3,36.8L102.5,37.4ZM112.7,32.8L112.1,33.1L110.8,32.7L109.9,32.8L108.9,33.2L108.5,34.4L108.2,36.1L107.9,36.9L106.3,36.1L105.1,35.7L103.8,34.5L102.8,34.5L103.3,33.5L104.3,32.6L105.6,31.9L107,30.4L108.5,29.7L109.6,29.3L110.5,29.3L111.3,29.2L112.1,29.3L113.2,30.2L113.5,30.8L113.2,32.2L112.7,32.8ZM105,33.6L105.7,34.2L106.4,34.5L107,34.2L107.4,33.4L107.2,32.7L106.4,32.9L105.7,33.2L105,33.6ZM103.2,30.9L102.7,31.2L102.1,31.4L102,30.5L102.4,30.1L103,29.8L103.4,30.2L103.2,30.9ZM97.2,30.4L96.4,30L96.6,29.3L97.4,29.5L97.7,30.2ZM99.8,28.6L99.5,29.4L98.1,29.3L97.3,29.2L96.6,28.4L95.7,27.9L93.9,27.6L93.1,27.2L92.5,26.4L92.3,25.5L92.8,24L93.3,23.4L94.1,23.6L94.9,24.8L95.8,25.9L96.6,26.6L97.8,27.2L98.8,27.4L99.4,27.7L99.8,28.6ZM88.1,28.5L88.8,27.7L89.5,28L88.7,28.4ZM63.8,25.3L64,26.8L63.6,27.7L62.7,27.4L62.8,26.3L63.1,25.5L63.1,24L63,23.3L63.6,23.6L63.8,24.4L63.8,25.3ZM80.9,9.4L82.5,9.4L83.9,9.8L84.8,10.2L85.2,10.7L86.5,12.7L86.9,13.1L88,14.5L89.5,15.9L90.7,17.1L91.7,18.4L92.5,19.8L93,20.7L93,21.7L93,22.5L92.5,23.3L91.6,24.8L90.6,26L90.7,26.9L90.1,26.7L89.6,26L89.6,25.1L89.8,24.1L90.4,23.3L90.3,22.3L90.2,21.5L90.6,20.7L90.5,19.9L89.9,19.3L89.3,18.2L88.7,17.9L88.1,16.9L87.2,15.8L85.8,15.5L84.7,15.8L83.5,15.8L82.6,15.2L82.1,14.8L81.2,15.1L80.5,15.4L79.4,15L78.4,15L77,15.7L76.1,16.3L76,17.3L75.1,17.4L75,18.3L74.9,19.2L74.4,19.6L73.2,20L72.7,19.7L72,19.1L71.3,19L70.2,18.8L69.7,18.1L70,17.5L71.3,17L72.6,16.6L73.5,16.2L75.2,15L76.9,14L77.8,12.8L79.1,10.7L80.2,9.6L80.9,9.4ZM91.1,22.8L91,23.6L91.1,24.5L91.6,24.2L91.8,23.5L91.6,22.8ZM81,11.9L80.9,11.1L80.5,10.7L80,11L80.4,11.6L81,11.9ZM67.7,18.7L67.1,18.9L66.4,19.7L65.9,20L65.3,20.5L65.1,21.4L65,22.3L65.2,23L64.6,23.3L63.9,22.9L64.4,22.6L63.6,22.1L62.8,22L62.2,21.6L61.7,20L61.7,19.1L62.6,17.8L64,17.7L65.1,17.5L66.1,17.2L67.2,17.5L67.7,17.8L67.7,18.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M81.1,12L80.6,11.7L80.1,11.2L80.5,10.7L80.9,11.1L81.4,11.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M35.1,28.8L34.6,28.4L35.2,28.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M20.5,33.3L19.9,33L20.4,32.6L20.9,33Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M19,33L18.9,32.3L19.5,32.5L19,33Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M16.5,31L16.2,31.5L15.7,31.1L14.5,30.8L13.5,31.1L12.8,31.5L12.3,31.2L11.8,30.9L12.4,30.3L13.2,30.2L14.1,30.1L14.9,30.3L15.5,30.7L16,31.1Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M12.9,38.5L11.2,36.3L10.8,35.6L10.6,34.9L11.2,35.5L12.1,36.9L12.7,37.9L13,38.4Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M16.9,43.7L16.1,44L15.8,44.6L15.5,44L15.3,43.3L15.1,42.6L14.8,41.9L14.1,40.6L12.9,38.7L13.4,39.1L13.8,39.6L14.4,40.4L14.9,41.2L15.2,41.8L15.5,42.5L16.2,43.3L16.8,43.5Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M45.6,53.5L44.8,53.6L44.1,53.4L43.4,53.2L43.1,52.4L42.7,51.9L43.1,51.4L43.3,52.1L43.7,52.6L44.3,53.1L45,53.4Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M10.8,34L11.2,33.3L11,33.9L11.6,33.6L11.4,34.2L10.8,34Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M52.8,63L52.2,62.5L51.9,61.7L51.8,60.8L51.6,59.9L52.1,60.5L52.3,61.3L52.4,62.2L52.7,62.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M91,23.6L91.1,22.8L91.7,23L91.6,24.2L91.1,24.5L91,23.6Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M104.7,33.7L105.3,33.4L105.9,33.1L106.5,32.8L107.4,32.7L107.2,33.7L106.9,34.3L106.2,34.4L105.3,34L104.7,33.7Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M120.8,79.1L121,78.4L121.5,78.9L120.8,79.1Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M120.4,40.9L120.8,41.5L120.3,40.9Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M124.7,53.1L124.6,52.3L124.9,52.8Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M60.3,74.4L60.6,75.1L61,75.6L61.7,76.6L62.1,77.4L62.6,77.8L61.7,77.4L60.7,75.8L60.2,74.9L60.4,74.3Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M65.2,81.8L65.5,82.4L65.8,83.3L66,84L66.1,84.8L66.2,85.5L66.5,86.2L67.3,87.3L68.2,88.4L68.6,88.9L69.3,89.6L69.7,90.1L70.3,90.8L71,91.4L71.8,91.8L72.4,92.2L73.2,92.6L74,92.8L74.8,93.1L75.5,93.5L77.5,94.8L77.7,95.4L78.5,95.7L79.4,95.8L80.1,95.5L80.9,95.4L81.7,95.1L82.8,94.7L83.4,94.5L84.7,94L85.8,93.7L86.6,93.5L87.3,93.3L88.2,93.1L89,92.9L89.7,92.7L90.9,92.4L92,92.2L92.7,92.1L94,91.9L95.1,92L96.5,91.9L97.7,91.8L99.5,91.5L100.6,91.1L101.3,90.8L101.7,90.3L102.4,89.8L103.3,89.3L104.1,89L105.2,88.7L106,88.4L106.8,88.1L107.5,87.9L108.2,87.6L108.8,87.3L110.6,86.5L111.5,86L112.3,85.7L113,85.3L113.8,84.7L112.1,86.2L110.8,86.8L109.5,87.4L108.1,88L107.4,88.3L106.4,88.7L105.8,88.9L104.3,89.4L103.3,89.7L102.7,90.1L101.8,90.6L101.3,91L100.7,91.3L99.7,91.8L98.6,92.2L97.6,92.4L96.6,92.4L94.4,92.4L93.2,92.4L92.1,92.5L91.1,92.7L89.2,93.3L88.1,93.5L86.2,93.9L84.3,94.6L83.1,95.1L82,95.5L79.7,96.4L78,97.2L77,97.5L76,97.7L75,97.5L74.5,97.1L72.4,94.3L71.2,92.8L70.4,91.8L69.3,90.4L68.4,89.4L68,88.9L67.1,87.7L66.5,86.9L66.1,86.3L65.7,85.2L65.6,84L65.4,83.1L65.1,82Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M54.7,65.9L54.3,65.1L54.7,65.5L55.3,66L55.7,66.5L56,67.2L56.3,67.8L56.6,68.5L56.9,69.1L57.2,69.9L56.4,69.6L55.9,68.9L55.6,68.3L55,66.3Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M119.4,80.2L119.8,79.5L119.8,80.4L119.9,81.2L119.1,81.6L118.3,81.9L117.7,82.2L117.1,82.5L116.5,83L116.9,82.6L117.5,82.1L118.2,81.6L118.7,81L119.1,80.5Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M124.2,53.5L124.6,54.5L125,54.9L125.4,55.5L125.1,56.1L124.2,56.2L124.3,54.9L124.1,53.8ZM124.1,56.1L124.8,56.2L125.3,55.9L125,55L124.6,54.6L124.3,53.9L124.3,55L124.1,56.1Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M46.8,26.5L47.3,25.7L47.6,25.2L47.3,26L46.8,26.5Z\&quot;/><path fill=\&quot;#e9e3cc\&quot; fill-rule=\&quot;evenodd\&quot; d=\&quot;M27.4,42.4L28.4,43L29.1,43.6L29.7,44L30.5,44.1L31.4,44L32.1,43.8L32.9,43.7L33.9,43.8L34.9,44L33.1,44.2L31.5,44.4L30.7,44.4L29.6,44.3L28.8,43.9L28.2,43.3L27.1,42.6L25.9,42.3L25,42.3L23.6,42.5L22.6,42.9L21.2,43.7L20.6,44.2L19.6,44.8L19.1,45.2L17.9,45.6L17.2,45.7L17,45.1L17.6,44.7L17.7,43.8L18.3,44.2L19.1,44.4L19.8,43.9L20.3,43.5L21,43.2L21.5,42.9L22.2,42.5L23.5,42.1L24.3,42L25,41.9L25.9,42L26.6,42.2L27.4,42.4Z\&quot;/>&quot;, &quot;w&quot;: 136, &quot;h&quot;: 107.7, &quot;lng0&quot;: 179.01933253361523, &quot;m0&quot;: -8.351983936797966, &quot;s&quot;: 522.2182714376198, &quot;title&quot;: &quot;富納富提環礁&quot;};             // null＝沒有小地圖；有的話 offmap 的點畫在它上面
-const FIT_PAD = {&quot;desk&quot;: [30, 200, 30, 34], &quot;small&quot;: [20, 180, 20, 30]};         // null＝照下面 refit 的預設留白；{desk:[左,上,右,下], small:[…]}＝自訂（橫版把上方留給說明卡與標題）
+const FIT_PAD = {&quot;desk&quot;: [70, 200, 30, 34], &quot;small&quot;: [60, 180, 20, 30]};         // null＝照下面 refit 的預設留白；{desk:[左,上,右,下], small:[…]}＝自訂（橫版把上方留給說明卡與標題）
 
 const map = L.map('map', {
   zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
@@ -457,6 +462,47 @@ function ensureTopLayer(){
   }
   return top;
 }
+function segHitsBox(s, b){   // 線段碰到框（Liang–Barsky 裁切）
+  let t0 = 0, t1 = 1; const dx = s.x1 - s.x0, dy = s.y1 - s.y0;
+  for (const [p, q] of [[-dx, s.x0 - b.x1], [dx, b.x2 - s.x0], [-dy, s.y0 - b.y1], [dy, b.y2 - s.y0]]){
+    if (p === 0){ if (q < 0) return false; continue; }
+    const t = q / p;
+    if (p < 0){ if (t > t1) return false; if (t > t0) t0 = t; } else { if (t < t0) return false; if (t < t1) t1 = t; }
+  }
+  return true;
+}
+function segsCross(a, b){
+  const o = (s, x, y) => Math.sign((s.x1 - s.x0) * (y - s.y0) - (s.y1 - s.y0) * (x - s.x0));
+  return o(a, b.x0, b.y0) !== o(a, b.x1, b.y1) &amp;&amp; o(b, a.x0, a.y0) !== o(b, a.x1, a.y1);
+}
+// 名字在圖釘旁邊擠不下時：沿 24 個方向、由近而遠找一塊空地（不壓圖釘、名字、標題框、別的線，也不出框），
+// 線從圖釘邊拉到名字邊、不穿過別的圖釘與名字；線越短越好，名字或線貼近別的圖釘要扣分（讀者會先看成那個點的）。
+// 回傳名字中心相對圖釘的偏移、線段與扣分，找不到回 null
+function leaderSpot(P, lw, lh, pins, occ, placed, lines, fr){
+  const segDist = (s, x, y) => { const dx = s.x1 - s.x0, dy = s.y1 - s.y0,
+    t = Math.max(0, Math.min(1, ((x - s.x0) * dx + (y - s.y0) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(s.x0 + t * dx - x, s.y0 + t * dy - y); };
+  let best = null;
+  for (let R = 14; R <= 90; R += 8){
+    for (let k = 0; k < 24; k++){
+      const c = Math.cos(k * Math.PI / 12), s = Math.sin(k * Math.PI / 12);
+      const e = Math.min(Math.abs(c) > 1e-6 ? lw / Math.abs(c) : Infinity, Math.abs(s) > 1e-6 ? lh / Math.abs(s) : Infinity);   // 名字中心沿這方向到框邊
+      const d = P.hw + R + e, ox = c * d, oy = s * d;
+      const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
+      const seg = { x0:P.cx + c * (P.hw + 2), y0:P.cy + s * (P.hh + 2), x1:P.cx + c * (P.hw + R - 3), y1:P.cy + s * (P.hh + R - 3) };
+      if (bx.x1 < fr.left + 2 || bx.x2 > fr.right - 2 || bx.y1 < fr.top + 2 || bx.y2 > fr.bottom - 2) continue;
+      if (occ.some(o => overlap(bx, o)) || placed.some(o => overlap(bx, o) || segHitsBox(seg, o)) || lines.some(l => segHitsBox(l, bx) || segsCross(l, seg))) continue;
+      let cost = 25 + R * R / 30, bad = false;   // 有線就扣一點，線越長扣越多
+      for (const q of pins) if (q.spot !== P.spot){
+        const ls = segDist(seg, q.cx, q.cy);
+        if (overlap(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }) || ls < q.hw + 3){ bad = true; break; }
+        const g = Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2)) - q.hw;
+        cost += Math.max(0, q.hw + 8 - ls) * 4 + Math.max(0, 6 - g) * 2;   // 線擦過別的圖釘最容易看錯；名字有線接著，貼近別人扣得少
+      }
+      if (!bad &amp;&amp; (!best || cost < best.cost)) best = { off:[ox, oy], seg, cost };
+    }
+  }
+  return best;
+}
 function liftPinNames(occ, frame){
   const top = ensureTopLayer(); top.innerHTML = '';
   const fr = document.querySelector('.frame').getBoundingClientRect();
@@ -466,29 +512,44 @@ function liftPinNames(occ, frame){
   anchors.forEach(a => { const nm = a.querySelector('.pin-name'); if (!nm) return;   // 原生 pin 名隱藏、改由浮層渲染
     const lab = document.createElement('div'); lab.className = 'toplabel'; lab.textContent = nm.textContent;
     lab.dataset.spot = a.dataset.spot; top.appendChild(lab); nm.style.display = 'none'; });
-  const placed = [];
+  const placed = [], lines = [];
   top.querySelectorAll('.toplabel').forEach(lab => {
     const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
     const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
     let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
     const sp = spots.find(s => s.n === spot) || {}, side = sp.label;   // spots.py 指定 &quot;label&quot;: right／up／left／down 就只放那邊（owner 點名的）
     if (side){ const [ox, oy] = cands[['right', 'up', 'left', 'down'].indexOf(side)]; cands = [[ox, oy + (sp.label_dy || 0)]]; }   // label_dy：再上下微調幾 px，負＝往上
-    let best = cands[0], bestPen = Infinity, bestOv = 0;
+    let best = cands[0], bestPen = Infinity, bestOv = 0, bestAmb = 0;
     for (const [ox,oy] of cands){
       const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
-      let pen = 0, ov = 0, a;
+      let pen = 0, ov = 0, amb = 0, a;
       for (const q of pins) if (q.spot !== spot){ a = overlapArea(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }); pen += a * 8; ov += a; }  // 壓別 pin＝重罰
       // 名字離別的圖釘比離自己的近＝讀者會看錯是誰的名字（09-29：「TCap 2」排到 5 號正上方、貼著 2 號）→ 重罰但不禁止
       const dist = q => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2));
-      for (const q of pins) if (q.spot !== spot &amp;&amp; dist(q) < dist(P)) pen += 400;
+      for (const q of pins) if (q.spot !== spot &amp;&amp; dist(q) < dist(P)){ pen += 400; amb++; }
       for (const o of occ){ a = overlapArea(bx, o); pen += a * 8; ov += a; }   // 壓標題框／popup（occ 內障礙）＝重罰
       for (const b of placed){ a = overlapArea(bx, b); pen += a; ov += a; }    // 壓別名字＝輕罰
+      for (const s of lines) if (segHitsBox(s, bx)) pen += 200;               // 蓋到別人的引線
       pen += (Math.max(0,fr.left-bx.x1)+Math.max(0,bx.x2-fr.right)+Math.max(0,fr.top-bx.y1)+Math.max(0,bx.y2-fr.bottom)) * 1000;  // 出框＝字被切掉，比壓到別人更糟
-      if (pen === 0){ best = [ox,oy]; bestOv = 0; break; }
-      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; }
+      if (pen === 0){ best = [ox,oy]; bestOv = 0; bestAmb = 0; break; }
+      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; bestAmb = amb; }
     }
-    // 六個位置都會壓到別人超過一成（手機檔的密集區）→ 名字先藏，只留編號；點圖釘照樣開說明卡。指定邊的名字一律照放
-    if (!side &amp;&amp; bestOv > 0.1 * (4 * lw * lh)){ lab.style.display = 'none'; return; }
+    // 旁邊擠不下（六個位置都壓到別人超過一成）、會看錯（都離別的圖釘比較近）、或只剩斜角（右上、左上離圖釘遠、看起來飄著）
+    // → 往外找一塊空地放名字、拉一條細線接回圖釘（owner 09-30：藏起來的名字要看得到）。斜角只在引線很短時才換。
+    // 擠不下又找不到空地才藏，只留編號，點圖釘照樣開說明卡。指定邊的名字一律照放
+    const crowded = bestOv > 0.1 * (4 * lw * lh), diag = !!(best[0] &amp;&amp; best[1]);
+    let far = !side &amp;&amp; (crowded || bestAmb || diag) &amp;&amp; leaderSpot(P, lw, lh, pins, occ, placed, lines, fr);
+    if (far &amp;&amp; diag &amp;&amp; !crowded &amp;&amp; !bestAmb &amp;&amp; far.cost > 35) far = null;
+    if (!far &amp;&amp; !side &amp;&amp; crowded){ lab.style.display = 'none'; return; }
+    if (far){
+      best = far.off; lines.push(far.seg);
+      const ln = document.createElement('div'); ln.className = 'leader'; ln.dataset.spot = spot;
+      ln.style.left = (far.seg.x0 - fr.left) + 'px'; ln.style.top = (far.seg.y0 - fr.top) + 'px';
+      ln.style.setProperty('--px', (P.cx - fr.left) + 'px'); ln.style.setProperty('--py', (P.cy - fr.top) + 'px');   // 放大時照圖釘移動
+      ln.style.width = Math.hypot(far.seg.x1 - far.seg.x0, far.seg.y1 - far.seg.y0) + 'px';
+      ln.style.transform = `rotate(${Math.atan2(far.seg.y1 - far.seg.y0, far.seg.x1 - far.seg.x0)}rad)`;
+      top.appendChild(ln);
+    }
     const [ox,oy] = best;
     placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
     // 錨點放在圖釘中心、偏移寫進 transform：放大時（衛星主題的按住／雙指）名字照錨點 --px/--py 跟著圖釘移動，偏移不會被放大
