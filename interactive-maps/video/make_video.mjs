@@ -4,7 +4,9 @@
 //   node make_video.mjs --preview                       # 只輸出幾張關鍵幀 PNG 檢查構圖（便宜）
 //   node make_video.mjs --height 1920                    # 全片 → out/<地圖名>_1080x1920.mp4
 //   node make_video.mjs --map ../demo-kaohsiung/kaohsiung-map.html --height 1305
+//   node make_video.mjs --map ../tuvalu/tuvalu-map.html --zoom 16 --estab-out 0.65 --height 1920   # 範圍小的地圖要自己給景點 zoom
 // 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
+// 衛星主題的地圖（.frame.tiles，例如吐瓦魯）照地圖的深色卡片、白字地名；offmap 的點不飛過去，鏡頭拉回大遠景、把小地圖放大擺在地圖區。
 import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
@@ -26,8 +28,9 @@ const SAFE_BOT = HEIGHT >= 1600 ? 0.15 : 0.085;        // 下留白：4:5(1305) 
 const POPUP_X = HEIGHT >= 1600 ? SAFE_X : 0.155;       // popup 左右留白：4:5(1305) 加大＝卡片變窄、照片不那麼寬扁（owner）
 const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例）
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
-const SPOT_ZOOM = 12.2;                  // 景點鏡頭 zoom
-const ESTAB_OUT = HEIGHT >= 1600 ? 0.55 : 1.15;  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
+const opt = (k, d) => args.includes(k) ? +args[args.indexOf(k) + 1] : d;
+const SPOT_ZOOM = opt("--zoom", 12.2);   // 景點鏡頭 zoom（東京 12.2；吐瓦魯這種小範圍要 16 上下）
+const ESTAB_OUT = opt("--estab-out", HEIGHT >= 1600 ? 0.55 : 1.15);  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
 // 特寫垂直中心＝執行期實測「標題框下緣～該景點 popup 上緣」的中點（每景點卡高不同→逐點量；勿用寫死比例，4:5 會偏低）
 const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
@@ -63,6 +66,31 @@ const VIDEO_CSS = `
   #vpop .card h3{margin:2px 0 0;font-size:44px}
   #vpop .card .ja{margin:2px 0 8px;font-size:22px;color:#a2957f}
   #vpop .card p.desc{margin:0;font-size:30px;line-height:1.5;color:#4a443b}
+  /* ── 衛星主題（.frame.tiles，例如吐瓦魯）：照地圖的深色無框卡片、白字描邊地名；插畫風地圖（東京）碰不到這段 ── */
+  .frame.tiles, .frame.tiles *{ transition:none!important }   /* 地圖的過渡動畫照實際時間跑、跟逐幀截圖對不上，全關 */
+  .frame.tiles .corner{ left:0!important; right:0!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; align-items:center!important; z-index:55 }  /* 標題框在 .corner 裡、不能自己定位，改排 .corner（整行置中） */
+  .frame.tiles .corner > .titlebar{ transform:none!important; text-align:left; border-radius:24px }
+  .frame.tiles .titlebar .mark{ font-size:22px }
+  .frame.tiles .titlebar h1{ font-size:50px; margin-top:6px }
+  .frame.tiles .pin-anchor, .frame.tiles .pin-anchor.hi{ transform-origin:50% 50%!important }   /* 圓點圖釘的中心對準座標（水滴針才是尖端） */
+  .frame.tiles .toplabel{ text-shadow:0 0 4px rgba(0,0,0,.95), 0 2px 7px rgba(0,0,0,.85), 0 0 22px rgba(0,0,0,.6) }
+  .frame.tiles .rlabel{ text-shadow:0 2px 6px rgba(0,0,0,.75), 0 0 16px rgba(0,0,0,.45) }
+  .frame.tiles #vpop{ background:var(--glass); color:var(--cream); padding:0; border-radius:28px; box-shadow:0 16px 48px rgba(0,0,0,.45);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
+  .frame.tiles #vpop .card{ display:flex; padding:24px 40px 34px }
+  .frame.tiles #vpop .card img.photo{ width:calc(100% + 80px); height:22vh; margin:-24px -40px 24px; border-radius:28px 28px 0 0; aspect-ratio:auto }
+  .frame.tiles #vpop .card .meta{ gap:20px }
+  .frame.tiles #vpop .card .tag{ font-size:24px; padding:0; gap:12px }
+  .frame.tiles #vpop .card .tag::before{ width:16px; height:16px }
+  .frame.tiles #vpop .card .area{ font-size:24px; color:var(--mute) }
+  .frame.tiles #vpop .card h3{ font-size:46px; margin:10px 0 0 }
+  .frame.tiles #vpop .card .ja{ margin:4px 0 14px; color:var(--mute) }
+  .frame.tiles #vpop .card p.desc{ color:#e3ebe6 }
+  .frame.tiles .leaflet-control-attribution{ font-size:17px; padding:2px 10px }   /* Copernicus 出處是授權條件，要讀得到 */
+  .frame.tiles .inset{ display:none }   /* 小地圖平常收起，輪到 offmap 的點才放大擺進地圖區（setPopup） */
+  .frame.tiles.vinset .inset{ display:block; position:absolute; left:50%; z-index:58; transform:translate(-50%,-50%) scale(var(--iz,3)) }
+  .frame.tiles.vinset .leaflet-map-pane{ filter:brightness(.45) }   /* 看小地圖時主圖壓暗、名字收起，焦點才在小地圖 */
+  .frame.tiles.vinset #toplabels{ display:none }
 `;
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: true,
@@ -84,36 +112,47 @@ await p.evaluate((css, out) => {
   try { stopCar(); } catch (e) {}       // 保險再殺一次
   const maxT = setInterval(() => {}, 1e9); for (let i = 1; i <= maxT; i++) clearInterval(i);  // 硬清所有 timer（輪播）
   document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));  // 清掉輪播 pin 高亮
+  const ins = document.querySelector(".inset");   // 小地圖搬出 Leaflet 右下角（那裡是下方安全區外），改由 setPopup 擺位置
+  if (ins) document.querySelector(".frame").appendChild(ins);
   window.__estab = { c: map.getCenter(), z: map.getZoom() - out };   // fit 後再拉遠 → 全景更小、留白多
 }, VIDEO_CSS, ESTAB_OUT);
 
 const estab = await p.evaluate(() => window.__estab);   // 景點相機(cams)移到 placeDistricts/liftPinNames 之後算（要先知道 pin 名偏移才能整體置中）
+await p.evaluate((E, S) => { window.__zr = [E, S]; }, estab.z, SPOT_ZOOM);   // 大遠景、特寫的 zoom：setCam 依此淡入名字
 
 async function setCam(lat, lng, z) {   // 設視野＋把 pin 名浮層(#toplabels)貼回各 pin 的螢幕位置（固定偏移＝平滑不跳、永遠壓在 pin 上）
   await p.evaluate((lat, lng, z) => {
     map.setView([lat, lng], z, { animate: false });
     if (window.__pinlabels) {
       const fr = document.querySelector(".frame").getBoundingClientRect();
+      const [E, S] = window.__zr, near = Math.min(1, Math.max(0, ((z - E) / (S - E) - 0.5) / 0.4));   // 大遠景→特寫走到一半才開始淡入、九成時全亮
       for (const pl of window.__pinlabels) {
         const pin = document.querySelector('.pin-anchor[data-spot="' + pl.spot + '"] .pin');
         if (!pin) continue;
         const pr = pin.getBoundingClientRect();
         pl.el.style.left = ((pr.left + pr.right) / 2 - fr.left + pl.dx) + "px";
         pl.el.style.top = ((pr.top + pr.bottom) / 2 - fr.top + pl.dy) + "px";
+        if (pl.far === false) pl.el.style.opacity = near;   // 大遠景放不下的名字（liftPinNames 判的）
       }
     }
   }, lat, lng, z);
 }
 async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避讓：框不壓別的 pin icon（右→上→左→下，閃不掉才選壓最少）
-  await p.evaluate(() => {
+  await p.evaluate((SZ) => {
     const frame = document.querySelector(".frame");
     let top = document.getElementById("toplabels");
     if (!top) { top = document.createElement("div"); top.id = "toplabels"; frame.appendChild(top); }
     top.innerHTML = ""; window.__pinlabels = [];
     const fr = frame.getBoundingClientRect();
     const oA = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
+    const pinBox = q => ({ x1: q.cx - q.hw - 4, y1: q.cy - q.hh - 4, x2: q.cx + q.hw + 4, y2: q.cy + q.hh + 4 });
+    const dist = (b, q) => Math.hypot(Math.max(b.x1 - q.cx, 0, q.cx - b.x2), Math.max(b.y1 - q.cy, 0, q.cy - b.y2));
     const anchors = [...document.querySelectorAll(".pin-anchor")];
-    const pins = anchors.map(a => { const r = a.querySelector(".pin").getBoundingClientRect(); return { cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, hw: (r.right - r.left) / 2, hh: (r.bottom - r.top) / 2, spot: +a.dataset.spot }; });
+    const onScreen = () => anchors.map(a => { const r = a.querySelector(".pin").getBoundingClientRect(); return { cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, hw: (r.right - r.left) / 2, hh: (r.bottom - r.top) / 2, spot: +a.dataset.spot }; });
+    // 衛星主題（吐瓦魯）點很密：名字照「特寫的縮放」排（讀者在特寫時讀名字），大遠景放不下的先藏、拉近時淡入（setCam）。
+    // 插畫風（東京）照原本在大遠景排
+    const sat = frame.classList.contains("tiles");
+    const pins = onScreen().map(q => { if (!sat) return q; const s = spots.find(s => s.n === q.spot), c = map.project([s.lat, s.lng], SZ); return { ...q, cx: c.x, cy: c.y }; });
     anchors.forEach(a => { const name = a.querySelector(".pin-name"); if (!name) return; const lab = document.createElement("div"); lab.className = "toplabel"; lab.textContent = name.textContent; lab.dataset.spot = a.dataset.spot; top.appendChild(lab); name.style.display = "none"; });
     const tb = document.querySelector(".titlebar");   // 標題框也當障礙（owner：北本被標題壓）
     const titleBox = tb ? (() => { const r = tb.getBoundingClientRect(); return { x1: r.left - 6, y1: r.top - 6, x2: r.right + 6, y2: r.bottom + 6 }; })() : null;
@@ -121,39 +160,64 @@ async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避
     top.querySelectorAll(".toplabel").forEach(lab => {
       const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
       const lr = lab.getBoundingClientRect(), lw = lr.width / 2, lh = lr.height / 2, G = P.hw + 12, V = P.hh + 12;
-      const cands = [[G + lw, 0], [0, -(V + lh)], [-(G + lw), 0], [0, V + lh], [G + lw, -(V + lh)], [-(G + lw), -(V + lh)]];  // 右→上→左→下→右上→左上
+      let cands = [[G + lw, 0], [0, -(V + lh)], [-(G + lw), 0], [0, V + lh], [G + lw, -(V + lh)], [-(G + lw), -(V + lh)]];  // 右→上→左→下→右上→左上
+      const side = (spots.find(s => s.n === spot) || {}).label;   // spots.py 指定 "label"（right／up／left／down）就只放那邊，照地圖
+      if (side) cands = [cands[["right", "up", "left", "down"].indexOf(side)]];
       let best = cands[0], bestPen = Infinity;
       for (const [ox, oy] of cands) {
         const bx = { x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh };
         let pen = 0;
-        for (const q of pins) if (q.spot !== spot) pen += oA(bx, { x1: q.cx - q.hw - 4, y1: q.cy - q.hh - 4, x2: q.cx + q.hw + 4, y2: q.cy + q.hh + 4 }) * 8;  // 壓到別 pin＝重罰
-        if (titleBox) pen += oA(bx, titleBox) * 8;   // 壓到標題框＝重罰（owner：北本被標題壓）
+        for (const q of pins) if (q.spot !== spot) pen += oA(bx, pinBox(q)) * 8;  // 壓到別 pin＝重罰
         for (const b of placed) pen += oA(bx, b);   // 壓到別名字＝輕罰
-        pen += (Math.max(0, fr.left - bx.x1) + Math.max(0, bx.x2 - fr.right) + Math.max(0, fr.top - bx.y1) + Math.max(0, bx.y2 - fr.bottom)) * 3;
+        if (sat) { for (const q of pins) if (q.spot !== spot && dist(bx, q) < dist(bx, P)) pen += 400; }   // 名字離別的圖釘比較近＝會看錯是誰的（照地圖）
+        else {   // 標題框、畫框只在大遠景排才有意義（特寫的鏡頭每點不同）
+          if (titleBox) pen += oA(bx, titleBox) * 8;   // 壓到標題框＝重罰（owner：北本被標題壓）
+          pen += (Math.max(0, fr.left - bx.x1) + Math.max(0, bx.x2 - fr.right) + Math.max(0, fr.top - bx.y1) + Math.max(0, bx.y2 - fr.bottom)) * 3;
+        }
         if (pen === 0) { best = [ox, oy]; break; }
         if (pen < bestPen) { bestPen = pen; best = [ox, oy]; }
       }
       const [ox, oy] = best;
       placed.push({ x1: P.cx + ox - lw, y1: P.cy + oy - lh, x2: P.cx + ox + lw, y2: P.cy + oy + lh });
-      lab.style.left = (P.cx - fr.left + ox) + "px"; lab.style.top = (P.cy - fr.top + oy) + "px";
       // 群組（pin 框＋名字框的聯集）中心相對 pin 中心的偏移 → 給相機置中用（名字寬度要算進去，否則長名字會偏右）
       const gx1 = Math.min(P.cx - P.hw, P.cx + ox - lw), gx2 = Math.max(P.cx + P.hw, P.cx + ox + lw);
       const gy1 = Math.min(P.cy - P.hh, P.cy + oy - lh), gy2 = Math.max(P.cy + P.hh, P.cy + oy + lh);
-      window.__pinlabels.push({ el: lab, spot, dx: ox, dy: oy, gdx: (gx1 + gx2) / 2 - P.cx, gdy: (gy1 + gy2) / 2 - P.cy });
+      window.__pinlabels.push({ el: lab, spot, dx: ox, dy: oy, lw, lh, gdx: (gx1 + gx2) / 2 - P.cx, gdy: (gy1 + gy2) / 2 - P.cy });
     });
-  });
+    const scr = onScreen(), shown = [];
+    for (const pl of window.__pinlabels) {   // 貼到現在（大遠景）的螢幕位置
+      const P = scr.find(q => q.spot === pl.spot), cx = P.cx + pl.dx, cy = P.cy + pl.dy;
+      pl.el.style.left = (cx - fr.left) + "px"; pl.el.style.top = (cy - fr.top) + "px";
+      if (!sat) continue;
+      // 大遠景放不下就先藏：壓到別的圖釘、已顯示的名字、標題框，出框，或離別的圖釘比較近
+      const b = { x1: cx - pl.lw, y1: cy - pl.lh, x2: cx + pl.lw, y2: cy + pl.lh };
+      pl.far = !(scr.some(q => q.spot !== pl.spot && (oA(b, pinBox(q)) > 0 || dist(b, q) < dist(b, P))) || shown.some(s => oA(b, s) > 0)
+        || (titleBox && oA(b, titleBox) > 0) || b.x1 < fr.left || b.x2 > fr.right || b.y1 < fr.top || b.y2 > fr.bottom);
+      if (pl.far) shown.push(b);
+    }
+  }, SPOT_ZOOM);
 }
 async function setPopup(n) {
-  await p.evaluate((n) => {
-    const vp = document.getElementById("vpop");
+  await p.evaluate(async (n) => {
+    const fr = document.querySelector(".frame"), vp = document.getElementById("vpop");
     if (n == null) { vp.classList.remove("show"); vp.innerHTML = ""; }
     else {
       vp.innerHTML = cardHtml[n];
-      const card = vp.querySelector(".card");                       // 把 .tag＋.area 包進一行 header（左上）
+      const card = vp.querySelector(".card");                       // 把 .tag＋.area 包進一行 header（左上）；衛星主題的卡片本來就有 .meta 包著
       const tag = card.querySelector(".tag"), area = card.querySelector(".area");
-      if (tag && area) { const h = document.createElement("div"); h.className = "vhdr";
+      if (tag && area && tag.parentNode === card) { const h = document.createElement("div"); h.className = "vhdr";
         card.insertBefore(h, tag); h.appendChild(tag); h.appendChild(area); }
       vp.classList.add("show");
+      const im = vp.querySelector("img"); if (im) await im.decode().catch(() => {});   // 照片解碼完再截，第一幀才不會是空框
+    }
+    if (!fr.classList.contains("tiles")) return;
+    if (typeof highlight === "function") highlight(n || 0);   // 衛星主題照地圖：正在介紹的點地名變黃、圖釘放大
+    const ins = document.querySelector(".inset"), off = ins && n != null && spots.find(s => s.n === n).offmap;
+    fr.classList.toggle("vinset", !!off);
+    if (off) {   // offmap 的點：小地圖放大，擺在標題框與說明卡中間
+      const tb = document.querySelector(".titlebar").getBoundingClientRect().bottom, pt = vp.getBoundingClientRect().top;
+      ins.style.top = (tb + pt) / 2 + "px";
+      ins.style.setProperty("--iz", Math.min(3.2, 0.9 * (pt - tb) / ins.offsetHeight));
     }
   }, n);
 }
@@ -209,8 +273,9 @@ for (const n of spotNs) {
   mcy[n] = await p.evaluate(tb => (tb + document.getElementById("vpop").getBoundingClientRect().top) / 2, titleBottom);
 }
 await setPopup(null);
-const cams = await p.evaluate((SPOT_ZOOM, H, mcy, off) => {
+const cams = await p.evaluate((SPOT_ZOOM, H, mcy, off, E) => {
   return spots.map(s => {
+    if (s.offmap) return { n: s.n, lat: E.c.lat, lng: E.c.lng, z: E.z };   // 主圖外的點（底圖沒鋪到）不飛過去：拉回大遠景，改看放大的小地圖
     const o = off[s.n] || [0, 0];   // o＝群組(pin框＋名字框聯集)中心相對 pin 的偏移
     const pt = map.project([s.lat, s.lng], SPOT_ZOOM);
     const want = { x: 540 - o[0], y: mcy[s.n] - o[1] };   // pin 落此 → 群組中心落在(540, 實測帶中點)＝標題與 popup 之間置中
@@ -218,7 +283,7 @@ const cams = await p.evaluate((SPOT_ZOOM, H, mcy, off) => {
     const c = map.unproject([centerPt.x, centerPt.y], SPOT_ZOOM);
     return { n: s.n, lat: c.lat, lng: c.lng, z: SPOT_ZOOM };
   });
-}, SPOT_ZOOM, HEIGHT, mcy, noff);
+}, SPOT_ZOOM, HEIGHT, mcy, noff, estab);
 
 // 組鏡頭關鍵段（from→to 視野＋該段要不要顯示 popup）
 const segs = [];
@@ -231,14 +296,21 @@ for (let i = 1; i < cams.length; i++) {
 }
 segs.push({ kind: "move", from: cams.at(-1), to: estab, pop: null, sec: SEC.zoom });   // 結尾 zoom out 回大遠景（owner）：popup 先收、鏡頭拉回全圖
 segs.push({ kind: "hold", from: estab, to: estab, pop: null, sec: SEC.end });
+// 兩點太遠（特寫縮放下平移超過 2000px，吐瓦魯 ⑧→⑨ 約 2900px）就中途先拉遠再推近，免得像甩鏡頭；
+// 拉遠到中途的平移速度跟東京最遠那段（1344px）差不多。東京每段都不到 2000px，不受影響
+const cam = c => c.c ? { lat: c.c.lat, lng: c.c.lng, z: c.z } : c;
+const pans = segs.filter(s => s.kind === "move" && s.from.z === s.to.z);
+const dists = await p.evaluate(pairs => pairs.map(([a, b]) => map.project([a.lat, a.lng], a.z).distanceTo(map.project([b.lat, b.lng], a.z))),
+  pans.map(s => [cam(s.from), cam(s.to)]));
+pans.forEach((s, i) => { s.dip = dists[i] > 2000 ? Math.log2(dists[i] / 1400) : 0; });
 
 if (PREVIEW) {
-  // 只截幾張關鍵幀：大遠景、景點1、景點2、景點3
+  // 只截關鍵幀：大遠景＋每個景點的特寫
   mkdirSync("out", { recursive: true });
   await setCam(estab.c.lat, estab.c.lng, estab.z); await setPopup(null);   // 版面已在上面放好
   await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_${NAME}_estab_${HEIGHT}.png` });
-  for (const i of [0, 1, 2]) { await setCam(cams[i].lat, cams[i].lng, cams[i].z); await setPopup(cams[i].n);
-    await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_${NAME}_spot${cams[i].n}_${HEIGHT}.png` }); }
+  for (const c of cams) { await setCam(c.lat, c.lng, c.z); await setPopup(c.n);
+    await new Promise(r => setTimeout(r, 300)); await p.screenshot({ path: `out/preview_${NAME}_spot${c.n}_${HEIGHT}.png` }); }
   await b.close(); console.log(`wrote out/preview_${NAME}_*_${HEIGHT}.png`); process.exit(0);
 }
 
@@ -253,12 +325,11 @@ for (const seg of segs) {
   const nf = Math.max(1, Math.round(seg.sec * FPS));
   for (let f = 0; f < nf; f++) {
     const t = ease(nf === 1 ? 1 : f / (nf - 1));
-    const c1 = seg.from.c ? { lat: seg.from.c.lat, lng: seg.from.c.lng, z: seg.from.z } : seg.from;
-    const c2 = seg.to.c ? { lat: seg.to.c.lat, lng: seg.to.c.lng, z: seg.to.z } : seg.to;
-    await setCam(lerp(c1.lat, c2.lat, t), lerp(c1.lng, c2.lng, t), lerp(c1.z, c2.z, t));
+    const c1 = cam(seg.from), c2 = cam(seg.to);
+    await setCam(lerp(c1.lat, c2.lat, t), lerp(c1.lng, c2.lng, t), lerp(c1.z, c2.z, t) - (seg.dip || 0) * Math.sin(Math.PI * t));
     const want = (seg.kind === "move" && seg.popAtEnd != null && t > .6) ? seg.popAtEnd : seg.pop;
     if (want !== popState) { await setPopup(want); popState = want; }
-    const buf = await p.screenshot({ type: "png" });
+    const buf = await p.screenshot({ type: "png", optimizeForSpeed: true });   // 快速壓縮一樣是無損 PNG；衛星影像用預設壓縮每幀要慢三倍
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once("drain", r));
   }
 }
