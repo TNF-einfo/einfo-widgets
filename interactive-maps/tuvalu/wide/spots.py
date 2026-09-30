@@ -31,8 +31,9 @@ TITLE, MARK, CAT, ATTRIB = B.TITLE, B.MARK, B.CAT, B.ATTRIB
 LOGO = "../" + B.LOGO   # 橫版的地圖檔多一層資料夾
 MAP_FILE = "tuvalu-map-wide.html"
 ASPECT = "720/480"
-# 主島南北 9 公里，橫放後寬度吃緊：左右只留 20～30px；上方那條潟湖留給說明卡、標題與圖例
-FIT_PAD = {"desk": [30, 200, 30, 34], "small": [20, 180, 20, 30]}
+# 主島南北 9 公里，橫放後寬度吃緊：右邊只留 20～30px；左邊留 76px 給友誼農場（放 ② 左邊的外海，09-30 owner：名字不要藏）；
+# 上方那條潟湖留給說明卡、標題與圖例
+FIT_PAD = {"desk": [76, 200, 30, 34], "small": [76, 180, 20, 30]}
 CARD = "row"
 POPUP_SIDE = "left"
 POPUP_FLOAT = "top"   # 說明卡可以按住拖走（09-30 owner：橫版的卡片拖不動），預設貼上緣、放左上那條潟湖
