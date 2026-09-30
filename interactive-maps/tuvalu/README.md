@@ -29,7 +29,8 @@
   ④⑤ 在 2026 年 Sentinel-2 底圖的新生地上（2024 年的 Esri 影像上 ⑤ 還是水，新生地 2025 年才完成）、⑨ 在 OSM 標的掩埋場範圍、
   ⑩ 在很窄的一段陸地上、⑪ 在北端淺水區、⑫ 離 Funafala 村 55 公尺。
 - 沒辦法獨立確認、照表格：⑥ 大使館（OSM 沒標）、⑦ TTCAP（點在港口碼頭一帶）。
-- ⑧ 集會所待確認：表格的點在 Fakaifou 鎮議會（Town Council）旁；OSM 另有一座 Vaiaku Falekaupule 在政府大樓旁，差約 1 公里，已問 owner 採訪的是哪一座。
+- ⑧ 集會所：表格的點在 Fakaifou 鎮議會（Town Council）旁；OSM 另有一座 Vaiaku Falekaupule 在政府大樓旁，差約 1 公里。
+  owner 問過記者，確認表格的點（Fakaifou 那座）正確，不改。
 
 ## 底圖
 - **現行：Sentinel-2 2026-01-05 單景（`basemap/s2_20260105_2x.webp`）**，10 公尺影像放大兩倍並銳化成 Web Mercator 靜態圖，
