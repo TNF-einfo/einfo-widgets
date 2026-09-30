@@ -96,6 +96,7 @@ Esri 圖磚不能自己拼成一張靜態圖來加速（授權不允許，見上
   原本畫在主圖左下角、寫「↙ 富納法拉 16 公里」，owner 說太遠（09-29）。
 
 ## 嵌入
+首頁 <https://tnf-einfo.github.io/einfo-widgets/> 直版、橫版各有一顆「複製嵌入碼」（09-30 owner 要的），複製出來的就是這裡與「橫版」節的兩段。
 尺寸跟東京那張不同，外框用固定高度，不用 `aspect-ratio`。最外層不留上下 margin（owner 09-30）：e-info 的嵌入框自己有 32px，
 再加一層地圖上下會空到約 64px。
 
@@ -152,7 +153,14 @@ python interactive-maps/template/gen_map.py tuvalu/wide  # 產 wide/tuvalu-map-w
 </div>
 </div>
 <div class="tv-tall">
-（直版嵌入碼，見上面「嵌入」）
+<div style="max-width:720px;margin:0 auto">
+  <div style="position:relative;height:1080px">
+    <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tuvalu/tuvalu-map.html"
+            title="吐瓦魯，富納富提" loading="lazy" allowfullscreen
+            style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">
+    </iframe>
+  </div>
+</div>
 </div>
 ```
 
