@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+# 影片專用底圖（tuvalu/build_video_basemap.py 產的，約 2.5 MB，要用再產）
+interactive-maps/tuvalu/basemap/video/
