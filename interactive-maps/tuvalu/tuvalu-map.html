@@ -76,7 +76,7 @@
   .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:14px; font-weight:800;
     color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
     border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12); pointer-events:auto }
-  /* 擠不下的名字平常藏著，輪到那個點或滑鼠移到圖釘上才出現；出現時跟它疊到的名字淡掉（見 unveil） */
+  /* 擠不下的名字平常藏著，輪到那個點或滑鼠移到圖釘上才出現（見 unveil）；出現的位置另外找不壓別人的空地，找不到才淡掉疊到的名字 */
   .toplabel.crowd, .toplabel.dim{ opacity:0; pointer-events:none }
   .toplabel.crowd.hi, .toplabel.crowd.peek{ opacity:1 }
   .rlabel{
@@ -471,7 +471,7 @@ function liftPinNames(occ, frame){
   anchors.forEach(a => { const nm = a.querySelector('.pin-name'); if (!nm) return;   // 原生 pin 名隱藏、改由浮層渲染
     const lab = document.createElement('div'); lab.className = 'toplabel'; lab.textContent = nm.textContent;
     lab.dataset.spot = a.dataset.spot; top.appendChild(lab); nm.style.display = 'none'; });
-  const placed = [];
+  const placed = [], crowd = [];
   top.querySelectorAll('.toplabel').forEach(lab => {
     const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
     const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
@@ -495,13 +495,42 @@ function liftPinNames(occ, frame){
     // 六個位置都會壓到別人超過一成（密集區）→ 名字先藏（.crowd），只留編號，照樣排在壓最少的位置但不佔位；
     // 輪播或點到那個點、滑鼠移到圖釘上時才出現（unveil）。指定邊的名字一律照放
     const [ox,oy] = best;
-    if (!side && bestOv > 0.1 * (4 * lw * lh)) lab.classList.add('crowd');
+    if (!side && bestOv > 0.1 * (4 * lw * lh)){ lab.classList.add('crowd'); crowd.push({ lab, P, lw, lh }); }
     else placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
     // 錨點放在圖釘中心、偏移寫進 transform：放大時（衛星主題的按住／雙指）名字照錨點 --px/--py 跟著圖釘移動，偏移不會被放大
     lab.style.left = (P.cx - fr.left) + 'px'; lab.style.top = (P.cy - fr.top) + 'px';
     lab.style.setProperty('--px', lab.style.left); lab.style.setProperty('--py', lab.style.top);
     lab.style.transform = `translate(${ox}px,${oy}px) translate(-50%,-50%)`;
   });
+  // 藏著的名字出現時的位置：等其他名字都排好，再往外找一塊不壓圖釘、不壓別的名字的空地，出現時別的名字就不必淡掉
+  // （owner 09-30：友誼農場出現時政府大樓不見了）。找不到才照上面壓最少的位置，出現時淡掉疊到的名字（unveil）
+  for (const { lab, P, lw, lh } of crowd){
+    const o = openSpot(P, lw, lh, pins, occ, placed, fr);
+    if (!o) continue;
+    lab.style.transform = `translate(${o[0]}px,${o[1]}px) translate(-50%,-50%)`;
+    placed.push({ x1:P.cx+o[0]-lw, y1:P.cy+o[1]-lh, x2:P.cx+o[0]+lw, y2:P.cy+o[1]+lh });
+  }
+}
+// 圖釘周圍由近而遠（離圖釘邊 6～90px）、沿 24 個方向找空地：不壓別的圖釘、名字、標題框，不出框；
+// 同一圈裡挑離別的圖釘最遠的方向（比較不會看錯是誰的）。回傳名字中心相對圖釘的偏移，找不到回 null
+function openSpot(P, lw, lh, pins, occ, placed, fr){
+  for (let R = 6; R <= 90; R += 6){
+    let best = null, far = -1;
+    for (let k = 0; k < 24; k++){
+      const c = Math.cos(k * Math.PI / 12), s = Math.sin(k * Math.PI / 12);
+      const e = Math.min(Math.abs(c) > 1e-6 ? lw / Math.abs(c) : Infinity, Math.abs(s) > 1e-6 ? lh / Math.abs(s) : Infinity);   // 名字中心沿這方向到框邊
+      const ox = c * (P.hw + R + e), oy = s * (P.hh + R + e);
+      const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
+      if (bx.x1 < fr.left + 2 || bx.x2 > fr.right - 2 || bx.y1 < fr.top + 2 || bx.y2 > fr.bottom - 2) continue;
+      if (occ.some(o => overlap(bx, o)) || placed.some(o => overlap(bx, o))) continue;
+      const others = pins.filter(q => q.spot !== P.spot);
+      if (others.some(q => overlap(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }))) continue;
+      const d = Math.min(...others.map(q => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2))));
+      if (d > far){ far = d; best = [ox, oy]; }
+    }
+    if (best) return best;
+  }
+  return null;
 }
 
 // RCAND：地名候選位移（原點→上下→左右）——make_video 的 placeLabels 與 gen_map 的 placeDistricts 共用
