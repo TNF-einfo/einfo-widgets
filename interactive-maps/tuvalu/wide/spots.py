@@ -30,8 +30,9 @@ def rot(lat, lng):
 TITLE, MARK, CAT, ATTRIB = B.TITLE, B.MARK, B.CAT, B.ATTRIB
 MAP_FILE = "tuvalu-map-wide.html"
 ASPECT = "720/480"
-# 主島南北 9 公里，橫放後寬度吃緊：左右只留 20～30px；上方那條潟湖留給說明卡、標題與圖例
-FIT_PAD = {"desk": [30, 200, 30, 34], "small": [20, 180, 20, 30]}
+# 主島南北 9 公里，橫放後寬度吃緊：右邊只留 20～30px；左邊留 60～70px，南端 ② ⑤ 的名字才放得進外海與潟湖、不必藏；
+# 上方那條潟湖留給說明卡、標題與圖例
+FIT_PAD = {"desk": [70, 200, 30, 34], "small": [60, 180, 20, 30]}
 CARD = "row"
 NORTH = 90
 INSET = B.INSET   # 輪廓讀本夾 boundaries/（build_wide.py 轉好的）

@@ -162,6 +162,9 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .toplabel{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; font-size:14px; font-weight:800;
     color:var(--ink); background:rgba(255,255,255,.88); padding:1px 8px; border-radius:20px;
     border:1px solid var(--line); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.12); pointer-events:auto }
+  /* 引線：名字在圖釘旁邊擠不下、放到空地時，從圖釘邊拉到名字的細線（位置與角度由 liftPinNames 算） */
+  .leader{ position:absolute; height:1px; transform-origin:0 50%; background:var(--ink); opacity:.6; pointer-events:none }
+  .frame.tiles .leader{ background:rgba(255,255,255,.85); opacity:1; box-shadow:0 0 2px rgba(0,0,0,.9) }
   .rlabel{
     font-weight:800; letter-spacing:1px; font-size:12px; color:var(--label); opacity:.92; text-align:center;
     white-space:nowrap; pointer-events:none; text-shadow:0 1px 2px #fff,0 0 5px #fff,0 0 5px #fff;
@@ -289,7 +292,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles{ transition:--zs .3s ease-out, --ztx .3s ease-out, --zty .3s ease-out }
   .frame.tiles.zooming{ transition:none }
   .frame.tiles .leaflet-tile-pane, .frame.tiles .leaflet-overlay-pane{ transform-origin:0 0; scale:var(--zs); translate:var(--ztx) var(--zty) }
-  .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel{
+  .frame.tiles .leaflet-marker-icon, .frame.tiles .toplabel, .frame.tiles .leader{
     translate:calc((var(--zs) - 1) * var(--px, 0px) + var(--ztx)) calc((var(--zs) - 1) * var(--py, 0px) + var(--zty)) }
   .frame.tiles #map{ touch-action:pan-x pan-y }   /* 單指照樣捲文章，雙指捏開交給頁面自己放大 */
   .frame.tiles #map, .frame.tiles #toplabels{ -webkit-user-select:none; user-select:none }   /* 按住拖著看時不要反白地名 */
@@ -314,6 +317,8 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame.tiles.cardrow .card{ position:relative; min-height:150px; padding:11px 14px 12px calc(42% + 14px) }
   .frame.tiles.cardrow .card img.photo{ position:absolute; left:0; top:0; width:42%; height:100%; margin:0; aspect-ratio:auto;
     border-radius:14px 0 0 14px }
+  /* 橫版在平板（672）的比例尺比桌機還小，地名維持桌機的 14px，不放大到 16px（放大南端會多藏名字） */
+  @media (min-width:528px) and (max-width:719.98px){ .frame.tiles.cardrow .toplabel{ font-size:14px } }
   /* NORTH：指北箭頭（地圖轉過才畫），白字描邊、不加框 */
   .north{ position:absolute; left:12px; bottom:12px; z-index:6; display:flex; align-items:center; gap:5px; pointer-events:none;
     color:#fff; font-size:13px; font-weight:600; letter-spacing:.08em; text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85) }
@@ -540,6 +545,47 @@ function ensureTopLayer(){
   }
   return top;
 }
+function segHitsBox(s, b){   // 線段碰到框（Liang–Barsky 裁切）
+  let t0 = 0, t1 = 1; const dx = s.x1 - s.x0, dy = s.y1 - s.y0;
+  for (const [p, q] of [[-dx, s.x0 - b.x1], [dx, b.x2 - s.x0], [-dy, s.y0 - b.y1], [dy, b.y2 - s.y0]]){
+    if (p === 0){ if (q < 0) return false; continue; }
+    const t = q / p;
+    if (p < 0){ if (t > t1) return false; if (t > t0) t0 = t; } else { if (t < t0) return false; if (t < t1) t1 = t; }
+  }
+  return true;
+}
+function segsCross(a, b){
+  const o = (s, x, y) => Math.sign((s.x1 - s.x0) * (y - s.y0) - (s.y1 - s.y0) * (x - s.x0));
+  return o(a, b.x0, b.y0) !== o(a, b.x1, b.y1) && o(b, a.x0, a.y0) !== o(b, a.x1, a.y1);
+}
+// 名字在圖釘旁邊擠不下時：沿 24 個方向、由近而遠找一塊空地（不壓圖釘、名字、標題框、別的線，也不出框），
+// 線從圖釘邊拉到名字邊、不穿過別的圖釘與名字；線越短越好，名字或線貼近別的圖釘要扣分（讀者會先看成那個點的）。
+// 回傳名字中心相對圖釘的偏移、線段與扣分，找不到回 null
+function leaderSpot(P, lw, lh, pins, occ, placed, lines, fr){
+  const segDist = (s, x, y) => { const dx = s.x1 - s.x0, dy = s.y1 - s.y0,
+    t = Math.max(0, Math.min(1, ((x - s.x0) * dx + (y - s.y0) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(s.x0 + t * dx - x, s.y0 + t * dy - y); };
+  let best = null;
+  for (let R = 14; R <= 90; R += 8){
+    for (let k = 0; k < 24; k++){
+      const c = Math.cos(k * Math.PI / 12), s = Math.sin(k * Math.PI / 12);
+      const e = Math.min(Math.abs(c) > 1e-6 ? lw / Math.abs(c) : Infinity, Math.abs(s) > 1e-6 ? lh / Math.abs(s) : Infinity);   // 名字中心沿這方向到框邊
+      const d = P.hw + R + e, ox = c * d, oy = s * d;
+      const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
+      const seg = { x0:P.cx + c * (P.hw + 2), y0:P.cy + s * (P.hh + 2), x1:P.cx + c * (P.hw + R - 3), y1:P.cy + s * (P.hh + R - 3) };
+      if (bx.x1 < fr.left + 2 || bx.x2 > fr.right - 2 || bx.y1 < fr.top + 2 || bx.y2 > fr.bottom - 2) continue;
+      if (occ.some(o => overlap(bx, o)) || placed.some(o => overlap(bx, o) || segHitsBox(seg, o)) || lines.some(l => segHitsBox(l, bx) || segsCross(l, seg))) continue;
+      let cost = 25 + R * R / 30, bad = false;   // 有線就扣一點，線越長扣越多
+      for (const q of pins) if (q.spot !== P.spot){
+        const ls = segDist(seg, q.cx, q.cy);
+        if (overlap(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }) || ls < q.hw + 3){ bad = true; break; }
+        const g = Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2)) - q.hw;
+        cost += Math.max(0, q.hw + 8 - ls) * 4 + Math.max(0, 6 - g) * 2;   // 線擦過別的圖釘最容易看錯；名字有線接著，貼近別人扣得少
+      }
+      if (!bad && (!best || cost < best.cost)) best = { off:[ox, oy], seg, cost };
+    }
+  }
+  return best;
+}
 function liftPinNames(occ, frame){
   const top = ensureTopLayer(); top.innerHTML = '';
   const fr = document.querySelector('.frame').getBoundingClientRect();
@@ -549,29 +595,44 @@ function liftPinNames(occ, frame){
   anchors.forEach(a => { const nm = a.querySelector('.pin-name'); if (!nm) return;   // 原生 pin 名隱藏、改由浮層渲染
     const lab = document.createElement('div'); lab.className = 'toplabel'; lab.textContent = nm.textContent;
     lab.dataset.spot = a.dataset.spot; top.appendChild(lab); nm.style.display = 'none'; });
-  const placed = [];
+  const placed = [], lines = [];
   top.querySelectorAll('.toplabel').forEach(lab => {
     const spot = +lab.dataset.spot, P = pins.find(p => p.spot === spot);
     const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12;
     let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[G+lw,-(V+lh)],[-(G+lw),-(V+lh)]];  // 右→上→左→下→右上→左上
     const sp = spots.find(s => s.n === spot) || {}, side = sp.label;   // spots.py 指定 "label": right／up／left／down 就只放那邊（owner 點名的）
     if (side){ const [ox, oy] = cands[['right', 'up', 'left', 'down'].indexOf(side)]; cands = [[ox, oy + (sp.label_dy || 0)]]; }   // label_dy：再上下微調幾 px，負＝往上
-    let best = cands[0], bestPen = Infinity, bestOv = 0;
+    let best = cands[0], bestPen = Infinity, bestOv = 0, bestAmb = 0;
     for (const [ox,oy] of cands){
       const bx = { x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh };
-      let pen = 0, ov = 0, a;
+      let pen = 0, ov = 0, amb = 0, a;
       for (const q of pins) if (q.spot !== spot){ a = overlapArea(bx, { x1:q.cx-q.hw-4, y1:q.cy-q.hh-4, x2:q.cx+q.hw+4, y2:q.cy+q.hh+4 }); pen += a * 8; ov += a; }  // 壓別 pin＝重罰
       // 名字離別的圖釘比離自己的近＝讀者會看錯是誰的名字（09-29：「TCap 2」排到 5 號正上方、貼著 2 號）→ 重罰但不禁止
       const dist = q => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2));
-      for (const q of pins) if (q.spot !== spot && dist(q) < dist(P)) pen += 400;
+      for (const q of pins) if (q.spot !== spot && dist(q) < dist(P)){ pen += 400; amb++; }
       for (const o of occ){ a = overlapArea(bx, o); pen += a * 8; ov += a; }   // 壓標題框／popup（occ 內障礙）＝重罰
       for (const b of placed){ a = overlapArea(bx, b); pen += a; ov += a; }    // 壓別名字＝輕罰
+      for (const s of lines) if (segHitsBox(s, bx)) pen += 200;               // 蓋到別人的引線
       pen += (Math.max(0,fr.left-bx.x1)+Math.max(0,bx.x2-fr.right)+Math.max(0,fr.top-bx.y1)+Math.max(0,bx.y2-fr.bottom)) * 1000;  // 出框＝字被切掉，比壓到別人更糟
-      if (pen === 0){ best = [ox,oy]; bestOv = 0; break; }
-      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; }
+      if (pen === 0){ best = [ox,oy]; bestOv = 0; bestAmb = 0; break; }
+      if (pen < bestPen){ bestPen = pen; best = [ox,oy]; bestOv = ov; bestAmb = amb; }
     }
-    // 六個位置都會壓到別人超過一成（手機檔的密集區）→ 名字先藏，只留編號；點圖釘照樣開說明卡。指定邊的名字一律照放
-    if (!side && bestOv > 0.1 * (4 * lw * lh)){ lab.style.display = 'none'; return; }
+    // 旁邊擠不下（六個位置都壓到別人超過一成）、會看錯（都離別的圖釘比較近）、或只剩斜角（右上、左上離圖釘遠、看起來飄著）
+    // → 往外找一塊空地放名字、拉一條細線接回圖釘（owner 09-30：藏起來的名字要看得到）。斜角只在引線很短時才換。
+    // 擠不下又找不到空地才藏，只留編號，點圖釘照樣開說明卡。指定邊的名字一律照放
+    const crowded = bestOv > 0.1 * (4 * lw * lh), diag = !!(best[0] && best[1]);
+    let far = !side && (crowded || bestAmb || diag) && leaderSpot(P, lw, lh, pins, occ, placed, lines, fr);
+    if (far && diag && !crowded && !bestAmb && far.cost > 35) far = null;
+    if (!far && !side && crowded){ lab.style.display = 'none'; return; }
+    if (far){
+      best = far.off; lines.push(far.seg);
+      const ln = document.createElement('div'); ln.className = 'leader'; ln.dataset.spot = spot;
+      ln.style.left = (far.seg.x0 - fr.left) + 'px'; ln.style.top = (far.seg.y0 - fr.top) + 'px';
+      ln.style.setProperty('--px', (P.cx - fr.left) + 'px'); ln.style.setProperty('--py', (P.cy - fr.top) + 'px');   // 放大時照圖釘移動
+      ln.style.width = Math.hypot(far.seg.x1 - far.seg.x0, far.seg.y1 - far.seg.y0) + 'px';
+      ln.style.transform = `rotate(${Math.atan2(far.seg.y1 - far.seg.y0, far.seg.x1 - far.seg.x0)}rad)`;
+      top.appendChild(ln);
+    }
     const [ox,oy] = best;
     placed.push({ x1:P.cx+ox-lw, y1:P.cy+oy-lh, x2:P.cx+ox+lw, y2:P.cy+oy+lh });
     // 錨點放在圖釘中心、偏移寫進 transform：放大時（衛星主題的按住／雙指）名字照錨點 --px/--py 跟著圖釘移動，偏移不會被放大
