@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""吐瓦魯・富納富提 橫版：地點與敘述跟直版同一份（讀 ../spots.py），整張圖順時針轉 90 度讓主島橫躺（北朝右）。
+"""吐瓦魯，富納富提 橫版：地點與敘述跟直版同一份（讀 ../spots.py），整張圖順時針轉 90 度讓主島橫躺（北朝右）。
    座標、底圖、小地圖輪廓都照 rot() 換算成「轉過的經緯度」，產生器不必知道地圖轉過（只是多畫一個指北箭頭）。
    底圖與小地圖輪廓先跑 python interactive-maps/tuvalu/wide/build_wide.py，再跑 python template/gen_map.py tuvalu/wide。"""
 import copy
@@ -28,12 +28,14 @@ def rot(lat, lng):
 
 
 TITLE, MARK, CAT, ATTRIB = B.TITLE, B.MARK, B.CAT, B.ATTRIB
+LOGO = "../" + B.LOGO   # 橫版的地圖檔多一層資料夾
 MAP_FILE = "tuvalu-map-wide.html"
 ASPECT = "720/480"
-# 主島南北 9 公里，橫放後寬度吃緊：右邊只留 20～30px；左邊留 60～70px，南端 ② ⑤ 的名字才放得進外海與潟湖、不必藏；
-# 上方那條潟湖留給說明卡、標題與圖例
-FIT_PAD = {"desk": [70, 200, 30, 34], "small": [60, 180, 20, 30]}
+# 主島南北 9 公里，橫放後寬度吃緊：左右只留 20～30px；上方那條潟湖留給說明卡、標題與圖例
+FIT_PAD = {"desk": [30, 200, 30, 34], "small": [20, 180, 20, 30]}
 CARD = "row"
+POPUP_SIDE = "left"
+POPUP_FLOAT = "top"   # 說明卡可以按住拖走（09-30 owner：橫版的卡片拖不動），預設貼上緣、放左上那條潟湖
 NORTH = 90
 INSET = B.INSET   # 輪廓讀本夾 boundaries/（build_wide.py 轉好的）
 _hw, _hh = (_y1 - _y0) / 2, (_x1 - _x0) / 2   # 轉 90 度後寬高對調
