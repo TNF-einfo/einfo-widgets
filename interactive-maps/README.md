@@ -16,11 +16,11 @@ interactive-maps/
     article_preview.tpl.html  文章預覽模板（地圖 base64 內嵌、複製鈕本地解碼）
     build_*.py / verify_map.py / render_labels.py   舊工具（東京界線來源／Python 自我核對）
   tokyo-map-stable/       ★ 交付版：手調標籤、無法重生（標籤寫在產出的 HTML 上，不在 spots.py）
-  tokyo-autolayout-test/  自動排版測試＝產生器的實例（手調三層界線＋手列地名，設了 BOUNDARIES 故不自動抓）
+  tokyo-autolayout-test/  自動排版測試＝產生器的實例（手調三層界線＋手列地名，設了 BOUNDARIES 故不自動抓）；首頁不列（09-30 收掉）
     spots.py             ★ 只編這個：TITLE/MARK + CAT 分類 + SPOTS（地點名/敘述，座標可省→自動編碼）
     boundaries/          自動抓後快取於此（land/subdiv.geojson + places.json + geocode.json）
     <MAP_FILE> + article-preview.html   ← 產生
-  tuvalu/                 吐瓦魯，富納富提（第一版、測試中）：長型、環礁底圖、用到下面的選用設定
+  tuvalu/                 吐瓦魯，富納富提：長型、環礁底圖、用到下面的選用設定
   assets/                 共用圖檔（環資 logo）
     wide/                 同一份內容的橫版（整張圖轉 90 度），實例名 `tuvalu/wide`
   video/                  地圖 → 直式短影音（見母 README 為何不搬去 data-shorts）
