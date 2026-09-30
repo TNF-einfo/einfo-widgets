@@ -1,6 +1,9 @@
-# tuvalu — 吐瓦魯・富納富提 互動地圖
+# tuvalu — 吐瓦魯，富納富提 互動地圖
 
 〈環境資訊中心〉吐瓦魯報導用的長型互動地圖。**測試中（2026-09-29），先不要發稿。** 說明文字 09-30 已換成 owner 改好的圖說；分類 owner 只改了 TTCAP 一項，其餘還是暫定。
+
+標題 09-30 由「吐瓦魯・富納富提」改成「吐瓦魯，富納富提」（owner 轉來的建議：中間的點意思不明，國名接首都多用逗號，像「義大利，米蘭」），
+標題上方的黃字「環境資訊中心」換成環資的白色 logo（`LOGO`，owner 轉來的：環資統一用 logo）；直版、橫版、短影音都換了。
 
 ## 檔案
 - `spots.py`：12 個地點、分類、照片、說明文字。要改內容只改這個檔。
@@ -100,7 +103,7 @@ Esri 圖磚不能自己拼成一張靜態圖來加速（授權不允許，見上
 <div style="max-width:720px;margin:0 auto">
   <div style="position:relative;height:1080px">
     <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tuvalu/tuvalu-map.html"
-            title="吐瓦魯・富納富提" loading="lazy" allowfullscreen
+            title="吐瓦魯，富納富提" loading="lazy" allowfullscreen
             style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">
     </iframe>
   </div>
@@ -119,13 +122,15 @@ owner 看了測試站專題頁：「嵌在專題中的改成橫的如何？多�
 - 地點與敘述照讀直版的 `spots.py`，改直版就會跟著變；座標、底圖、小地圖輪廓照 `wide/spots.py` 的 `rot()` 換算成轉過的經緯度，
   產生器不知道有轉。直版手調的名字位置（`label`）轉過之後不適用，拿掉交給自動排；潟湖的地名另外挪了位置（照換算會被圖例蓋到）。
 - 版面：720×480，說明卡改成照片在左的橫式（`CARD = "row"`）放左上的潟湖，標題與圖例在右上，小地圖在右下。
-  上方留 200px 給它們（`FIT_PAD`），右邊只留 30px，左邊留 70px（平板 60px）給南端 ② ⑤ 的名字。
-- 取捨：比例尺不到直版的七成（68%），南端七個點擠在一起，⑧⑥兩個圖釘邊緣碰在一起。手機寬度（350px）會擠成一團，嵌入時要換回直版，見下面的嵌入碼。
-- 南端的名字（09-30 改）：第一版桌機藏了集會所、友誼農場，平板藏了政府大樓、友誼農場（只留編號），owner 問藏起來的名字能不能顯示。
+  上方留 200px 給它們（`FIT_PAD`），左右只留 30px，主島才撐得滿寬度。
+  說明卡可以按住拖走（09-30 owner：橫版的卡片拖不動；`POPUP_FLOAT = "top"`，預設照樣貼左上）。
+- 取捨：比例尺只有直版的七成多，南端七個點擠在一起，⑧⑥兩個圖釘邊緣碰在一起。手機寬度（350px）會擠成一團，嵌入時要換回直版，見下面的嵌入碼。
+- 南端的名字（09-30 改兩次）：第一版桌機藏了集會所、友誼農場，平板藏了政府大樓、友誼農場（只留編號），owner 問藏起來的名字能不能顯示。
   試過縮小字級（16px 縮到 11px 照樣藏同兩個）沒用，問題在 ②③④① 四個圖釘擠在約 60×25px 裡，名字放圖釘旁哪一邊都會壓到別人。
-  改成：旁邊擺不下的名字往外找空地放、拉一條細白線接回圖釘（產生器的規則見 `interactive-maps/README.md`）；左邊留白從 30px 加到 70px，
-  友誼農場才放得進 ② 左下的外海（留 30px 時只能放到 TCap 2 上方、線拉得很長）；平板地名從 16px 改回跟桌機一樣 14px
-  （平板比例尺比桌機小，字反而大）。現在桌機、平板七個名字都顯示，政府大樓、TCap 1、集會所、友誼農場四個接短線。
+  先改成擺不下的名字往外找空地、拉細白線接回圖釘（`07c5951`，左邊留白加到 70px），owner 看了說「那個線不要」。
+  現在：集會所、友誼農場平常藏著，輪播或點到那個點、滑鼠移到圖釘上時才出現，疊到的名字先淡掉（規則見 `interactive-maps/README.md`）；
+  留白改回 30px（沒有線，加寬反而讓名字飄更遠）。平板地名從 16px 改回跟桌機一樣 14px（平板比例尺比桌機小，字反而大），
+  平板因此跟桌機一樣只藏這兩個。政府大樓照舊擺在 ③ 右上、比較靠近 ④，owner 沒提，先不動。
 ```
 python interactive-maps/tuvalu/wide/build_wide.py        # 轉好的底圖與小地圖輪廓；已存在就跳過，加 --force 重做
 python interactive-maps/template/gen_map.py tuvalu/wide  # 產 wide/tuvalu-map-wide.html
@@ -137,7 +142,7 @@ python interactive-maps/template/gen_map.py tuvalu/wide  # 產 wide/tuvalu-map-w
 <div style="max-width:720px;margin:0 auto">
   <div style="position:relative;aspect-ratio:720/480">
     <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tuvalu/wide/tuvalu-map-wide.html"
-            title="吐瓦魯・富納富提" loading="lazy" allowfullscreen
+            title="吐瓦魯，富納富提" loading="lazy" allowfullscreen
             style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">
     </iframe>
   </div>
