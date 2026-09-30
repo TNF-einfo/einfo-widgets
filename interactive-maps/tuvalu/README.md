@@ -93,10 +93,11 @@ Esri 圖磚不能自己拼成一張靜態圖來加速（授權不允許，見上
   原本畫在主圖左下角、寫「↙ 富納法拉 16 公里」，owner 說太遠（09-29）。
 
 ## 嵌入
-尺寸跟東京那張不同，外框用固定高度，不用 `aspect-ratio`：
+尺寸跟東京那張不同，外框用固定高度，不用 `aspect-ratio`。最外層不留上下 margin（owner 09-30）：e-info 的嵌入框自己有 32px，
+再加一層地圖上下會空到約 64px。
 
 ```html
-<div style="max-width:720px;margin:32px auto">
+<div style="max-width:720px;margin:0 auto">
   <div style="position:relative;height:1080px">
     <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tuvalu/tuvalu-map.html"
             title="吐瓦魯・富納富提" loading="lazy" allowfullscreen
@@ -110,6 +111,37 @@ Esri 圖磚不能自己拼成一張靜態圖來加速（授權不允許，見上
 ```
 python interactive-maps/tuvalu/build_land.py        # 底圖；需連網，已存在就跳過，加 --force 重抓
 python interactive-maps/template/gen_map.py tuvalu   # 讀 spots.py 產地圖
+```
+
+## 橫版（`wide/`，2026-09-30）
+owner 看了測試站專題頁：「嵌在專題中的改成橫的如何？多做一版」。主島南北長約 9 公里、東西不到 3 公里，北朝上排成橫幅會縮成一條，
+南端那群點擠在一起，所以整張圖順時針轉 90 度：島橫躺、北朝右（左下角畫指北箭頭），潟湖在上、外海在下。
+- 地點與敘述照讀直版的 `spots.py`，改直版就會跟著變；座標、底圖、小地圖輪廓照 `wide/spots.py` 的 `rot()` 換算成轉過的經緯度，
+  產生器不知道有轉。直版手調的名字位置（`label`）轉過之後不適用，拿掉交給自動排；潟湖的地名另外挪了位置（照換算會被圖例蓋到）。
+- 版面：720×480，說明卡改成照片在左的橫式（`CARD = "row"`）放左上的潟湖，標題與圖例在右上，小地圖在右下。
+  上方留 200px 給它們（`FIT_PAD`），左右只留 30px，主島才撐得滿寬度。
+- 取捨：比例尺只有直版的七成多，南端最密的地方放不下所有名字：桌機藏了集會所、友誼農場，平板藏了政府大樓、友誼農場
+  （只留編號，點了照樣開說明卡）；⑧⑥兩個圖釘邊緣碰在一起。手機寬度（350px）會擠成一團，嵌入時要換回直版，見下面的嵌入碼。
+```
+python interactive-maps/tuvalu/wide/build_wide.py        # 轉好的底圖與小地圖輪廓；已存在就跳過，加 --force 重做
+python interactive-maps/template/gen_map.py tuvalu/wide  # 產 wide/tuvalu-map-wide.html
+```
+嵌入碼（畫面 700px 以下換回直版；藏起來的 iframe 有 `loading="lazy"`，不會載入）：
+```html
+<style>.tv-wide{display:block}.tv-tall{display:none}@media (max-width:700px){.tv-wide{display:none}.tv-tall{display:block}}</style>
+<div class="tv-wide">
+<div style="max-width:720px;margin:0 auto">
+  <div style="position:relative;aspect-ratio:720/480">
+    <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tuvalu/wide/tuvalu-map-wide.html"
+            title="吐瓦魯・富納富提" loading="lazy" allowfullscreen
+            style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">
+    </iframe>
+  </div>
+</div>
+</div>
+<div class="tv-tall">
+（直版嵌入碼，見上面「嵌入」）
+</div>
 ```
 
 ## 短影音（2026-09-30）

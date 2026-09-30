@@ -1,99 +1,13 @@
-#!/usr/bin/env python3
-"""地圖產生器（template）。用法: python template/gen_map.py [instance]（預設 tokyo）。
-   讀 {instance}/spots.py（地點＋敘述）＋ {instance}/boundaries/*.geojson → 產 {instance}/<MAP_FILE>。
-   無圖磚（無道路），只留行政界線＋水域；瓦紙固定配色。座標/文案/照片/地名全在 {instance}/spots.py。"""
-import os, sys, json, math, base64, importlib.util, urllib.parse
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import fetch_boundaries as fb
-HERE = os.path.dirname(os.path.abspath(__file__))          # template/
-ROOT = os.path.dirname(HERE)                               # 專案根
-inst = sys.argv[1] if len(sys.argv) > 1 else "tokyo"
-IDIR = os.path.join(ROOT, inst)
-_spec = importlib.util.spec_from_file_location("cfg", os.path.join(IDIR, "spots.py"))
-cfg = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(cfg)
-_bd = os.path.join(IDIR, "boundaries"); os.makedirs(_bd, exist_ok=True)
-
-# 1) 缺座標的 spot → Nominatim 地理編碼（快取 boundaries/geocode.json，之後離線）
-_gcp = os.path.join(_bd, "geocode.json")
-_gc = json.load(open(_gcp, encoding="utf-8")) if os.path.isfile(_gcp) else {}
-for s in cfg.SPOTS:
-    if "lat" not in s or "lng" not in s:
-        key = s.get("geo") or s["zh"]
-        if key not in _gc:
-            g = fb.geocode(key)
-            if not g: raise SystemExit("geocode failed: " + key)
-            _gc[key] = g
-        s["lat"], s["lng"] = _gc[key]["lat"], _gc[key]["lng"]
-json.dump(_gc, open(_gcp, "w", encoding="utf-8"), ensure_ascii=False)
-
-# 2) 界線＋地名：cfg.TILES（圖磚底圖，例如衛星影像）設了就不畫向量陸地、也不抓界線；
-#    否則 cfg.BOUNDARIES 有就用（如東京手調三層＋手列 PLACES），再否則自動抓
-image = getattr(cfg, "IMAGE", None)   # 一張地理對齊的影像當底圖（Web Mercator 靜態圖）；有它就不用 TILES
-tiles = None if image else getattr(cfg, "TILES", None)
-if tiles or image:
-    boundary_files, places = [], getattr(cfg, "PLACES", [])
-elif getattr(cfg, "BOUNDARIES", None):
-    boundary_files, places = cfg.BOUNDARIES, cfg.PLACES
-else:
-    boundary_files, places = fb.ensure_boundaries(IDIR, cfg.SPOTS)
-boundaries = [open(os.path.join(_bd, f), encoding="utf-8").read() for f in boundary_files]
-# 選用：UNDERLAY＝壓在陸地下面的填色層（例：環礁的礁盤）；有影像底圖就用不到
-underlay = [] if tiles or image else [open(os.path.join(_bd, f), encoding="utf-8").read() for f in getattr(cfg, "UNDERLAY", [])]
-
-def inset_data(conf, width=136):
-    """小地圖：把 conf["layers"]（{geojson: 填色}）用跟主圖一樣的 Web Mercator 投影成寬 width 像素的 SVG，
-       連同頁面換算座標要用的參數（主圖範圍框、offmap 的點由頁面自己算位置）一起回傳。"""
-    merc = lambda lat: math.degrees(math.log(math.tan(math.pi / 4 + math.radians(lat) / 2)))
-    feats = {f: json.load(open(os.path.join(_bd, f), encoding="utf-8"))["features"] for f in conf["layers"]}
-    rings = lambda g: [r for poly in ([g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]) for r in poly]
-    pts = [p for fs in feats.values() for ft in fs for r in rings(ft["geometry"]) for p in r]
-    x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
-    m0, m1 = max(merc(p[1]) for p in pts), min(merc(p[1]) for p in pts)
-    pad = (x1 - x0) * 0.08                       # 四邊留白
-    x0, m0 = x0 - pad, m0 + pad
-    s = width / (x1 - x0 + pad)                  # 每度幾像素
-    xy = lambda lng, lat: (round((lng - x0) * s, 1), round((m0 - merc(lat)) * s, 1))
-    svg = ""
-    for f, fill in conf["layers"].items():
-        for ft in feats[f]:                      # 一個地物一條 path，evenodd 才挖得出礁盤中間的洞
-            d = ""
-            for r in rings(ft["geometry"]):
-                kept = [xy(*r[0])]
-                for p in r[1:]:
-                    q = xy(*p)
-                    if abs(q[0] - kept[-1][0]) + abs(q[1] - kept[-1][1]) >= 0.8: kept.append(q)   # 不到一個像素的點省掉
-                if len(kept) >= 3: d += "M" + "L".join(f"{x:g},{y:g}" for x, y in kept) + "Z"
-            if d: svg += f'<path fill="{fill}" fill-rule="evenodd" d="{d}"/>'
-    return {"svg": svg, "w": width, "h": round((m0 - m1 + pad) * s, 1), "lng0": x0, "m0": m0, "s": s, "title": conf.get("title", "")}
-inset = inset_data(cfg.INSET) if getattr(cfg, "INSET", None) else None
-if any(s.get("offmap") for s in cfg.SPOTS) and not inset:
-    raise SystemExit("offmap 的點畫在小地圖上，spots.py 要設 INSET")
-# 畫框尺寸：預設固定比例（東京 720/476，三檔寬度等比縮）；設 HEIGHT＝固定高度、寬度跟文章欄寬走
-# （長型地圖用：手機上照樣這麼高，讀者往下捲著看，不會整張縮小）。嵌入碼的外框要跟著用同一條。
-frame_size = f"height:{cfg.HEIGHT}px" if getattr(cfg, "HEIGHT", None) else "aspect-ratio:" + getattr(cfg, "ASPECT", "720/476")
-# 橫版地圖用（都選用，不設就照舊）：FIT_PAD＝自訂 fit 的四邊留白；CARD="row"＝說明卡照片在左、文字在右（卡片矮）；
-# NORTH＝指北箭頭指的角度（順時針，地圖轉過才需要）
-frame_class = " cardrow" if getattr(cfg, "CARD", None) == "row" else ""
-north = getattr(cfg, "NORTH", None)
-north_html = f'\n  <div class="north" style="--r:{north}deg" aria-label="北方"><span>北</span><b>↑</b></div>' if north is not None else ""
-attrib = getattr(cfg, "ATTRIB", 'boundaries © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors')
-# 衛星主題的標題與說明卡標題用思源宋體：Google Fonts 的 text= 只下載用得到的字（標題＋各地點名），幾 KB；載不到就退回系統宋體
-font_link = ""
-if tiles or image:
-    glyphs = "".join(sorted(set(cfg.TITLE + "".join(s["zh"] for s in cfg.SPOTS))))
-    font_link = (('\n<link rel="preconnect" href="https://' + urllib.parse.urlsplit(tiles["url"]).netloc + '">' if tiles else '')   # 圖磚主機趁 Leaflet 還在下載時先連線
-                 + '\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-                 '\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&display=swap&text='
-                 + urllib.parse.quote(glyphs) + '">')
-
-TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中心
+<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中心
      Leaflet + 內嵌行政區 GeoJSON（都縣界＋東京23區界＋鄰縣市町村界；無圖磚＝無道路，只留行政交界＋水域）。
      繁中地名（自動位移避讓、移太多才刪）、圖釘旁名稱、瓦紙固定配色、鎖死靜態、可 <iframe> 內嵌。
      界線/pin/地名皆以 Python 算圖核對。座標/文案/照片在 spots、地名在 places。 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>__TITLE__｜__MARK__</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">__FONT_LINK__
+<title>吐瓦魯・富納富提｜環境資訊中心</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&display=swap&text=%2012ACPTap%E3%83%BB%E4%B8%AD%E4%BD%BF%E5%8F%8B%E5%90%90%E5%9C%8B%E5%9C%BE%E5%9E%83%E5%A0%B4%E5%A4%A7%E5%AF%8C%E5%BA%9C%E6%89%80%E6%8B%89%E6%8F%90%E6%94%BF%E6%9C%80%E6%9C%83%E6%9F%AF%E6%A8%93%E6%A9%9F%E6%B0%91%E6%B3%95%E6%BC%94%E7%93%A6%E7%AA%84%E7%B4%8D%E8%8F%AF%E8%AA%BC%E8%AC%9B%E8%BE%B2%E9%9A%9B%E9%9B%86%E9%A3%9B%E9%A4%A8%E9%A7%90%E9%AD%AF%E9%BB%9E">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{
@@ -112,7 +26,7 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .frame{
     /* margin:auto 置中：畫面比地圖矮時（直接開網址看長型地圖）會貼齊頂端、往下捲；
        用 align-items:center 的話，這頁沒有 doctype（quirks mode），上緣會被切掉、捲不回去 */
-    margin:auto; position:relative; width:720px; max-width:100%; __FRAME_SIZE__;
+    margin:auto; position:relative; width:720px; max-width:100%; aspect-ratio:720/480;
     border-radius:16px; overflow:hidden; background:var(--paper);   /* 不要框線/陰影，但保留圓角 */
   }
   #map{ position:absolute; inset:0; width:100%; height:100%; background:var(--water); z-index:1 }
@@ -320,34 +234,35 @@ TPL = r"""<!-- 東京・防災・生態 另類旅遊地圖 — 環境資訊中�
   .north b{ display:inline-block; font-size:16px; transform:rotate(var(--r)) }
 </style>
 
-<div class="frame__FRAME_CLASS__">
+<div class="frame cardrow">
   <div id="map"></div>
   <div class="paper-wash"></div>
   <div class="corner">
     <div class="titlebar">
-      <div class="mark">__MARK__</div>
-      <h1>__TITLE__</h1>
+      <div class="mark">環境資訊中心</div>
+      <h1>吐瓦魯・富納富提</h1>
     </div>
     <div class="legend" id="legend"></div>
   </div>
-  <div class="info" id="info"></div>__NORTH__
+  <div class="info" id="info"></div>
+  <div class="north" style="--r:90deg" aria-label="北方"><span>北</span><b>↑</b></div>
 </div>
 
 <script>
-const BOUNDARIES = __BOUNDARIES__;   // [0]=陸地(填色+粗界)，其餘=細界線
-const UNDERLAY = __UNDERLAY__;       // 陸地下面的淺色填色層（礁盤等），可為空
-const TILES = __TILES__;             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
-const IMAGE = __IMAGE__;             // null＝無；{url, bounds, attribution}＝一張地理對齊的影像當底圖（有它就不用 TILES）
+const BOUNDARIES = [];   // [0]=陸地(填色+粗界)，其餘=細界線
+const UNDERLAY = [];       // 陸地下面的淺色填色層（礁盤等），可為空
+const TILES = null;             // null＝無圖磚；{url, attribution, maxNativeZoom}＝圖磚底圖
+const IMAGE = {"url": "basemap/s2_20260105_2x_rot.webp", "bounds": [[-8.544456585322848, 179.10911253694664], [-8.445553723638842, 179.27088746305338]], "attribution": "Contains modified Copernicus Sentinel data 2026"};             // null＝無；{url, bounds, attribution}＝一張地理對齊的影像當底圖（有它就不用 TILES）
 const SAT = !!(TILES || IMAGE);      // 衛星主題（圖釘、署名、放大都看這個，不要只看 TILES）
-const ATTRIB = __ATTRIB__;
+const ATTRIB = "inset © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors";
 
-const CAT = __CAT__;
-const spots = __SPOTS__;
-const places = __PLACES__;
-const POPUP_SIDE = __POPUP_SIDE__;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
-const POPUP_FLOAT = __POPUP_FLOAT__; // true＝說明卡可按住拖曳；文章往下捲時說明卡、標題框＋圖例跟著停在看得到的那一段（長型地圖用）
-const INSET = __INSET__;             // null＝沒有小地圖；有的話 offmap 的點畫在它上面
-const FIT_PAD = __FIT_PAD__;         // null＝照下面 refit 的預設留白；{desk:[左,上,右,下], small:[…]}＝自訂（橫版把上方留給說明卡與標題）
+const CAT = {"adapt": {"name": "氣候調適", "color": "#f0b429", "emo": "🌊"}, "site": {"name": "環境現場", "color": "#ff7b5c", "emo": "📍"}, "life": {"name": "島上生活", "color": "#f6f3e7", "emo": "🏝"}, "tw": {"name": "台灣援助", "color": "#8fd0ff", "emo": "🤝"}};
+const spots = [{"n": 1, "cat": "life", "lat": -8.501881535557523, "lng": 179.1608025206034, "area": "豐阿法萊島", "short": "國際機場", "zh": "富納富提國際機場", "ja": "Funafuti International Airport", "img": "../photos/DSC03594.jpg", "desc": "機場很小、跑道很短。因為航班少，居民平常就在跑道上通行、運動、休閒，只有飛機起降時才退到兩旁等待，像一座飛機版的平交道。"}, {"n": 2, "cat": "tw", "lat": -8.498965326604134, "lng": 179.1568323465354, "area": "豐阿法萊島", "zh": "友誼農場", "ja": "Happy Friendship Garden", "img": "../photos/DSC03660.jpg", "desc": "台灣技術團在機場旁經營的農場，每週兩天清晨舉辦市集販售蔬果，居民排隊採買。吐瓦魯的環境完全不適合種植蔬果，技術團需要自己做土，並將作物墊高40至50公分，避開漲潮時從地面冒出的海水。"}, {"n": 3, "cat": "life", "lat": -8.499387736186655, "lng": 179.16030077811482, "area": "豐阿法萊島", "short": "政府大樓", "zh": "吐瓦魯政府大樓", "ja": "The Parliament of Tuvalu", "img": "../photos/IMG_8620.jpg", "desc": "這是當地最高建築物。台灣自2010年起推動「潔淨能源計畫」，富納富提的政府建築屋頂也鋪了來自台灣的光電板。"}, {"n": 4, "cat": "adapt", "lat": -8.4997438812024, "lng": 179.16390164069918, "area": "瓦伊阿庫村西側", "zh": "TCap 1", "ja": "吐瓦魯海岸調適計畫（TCAP）第一階段", "img": "../photos/DJI_0264.MP4_000337051.jpg", "desc": "在聯合國支援下，吐瓦魯政府2017年展開的大型填海造陸工程。第一階段在人口最密集的瓦伊阿庫村西側，2023年底完工，用潟湖砂土填出約7.3公頃新土地，可抵禦2100年以前的海平面上升。"}, {"n": 5, "cat": "adapt", "lat": -8.495388029886884, "lng": 179.15518108672038, "area": "南側潟湖", "zh": "TCap 2", "ja": "吐瓦魯海岸調適計畫（TCAP）第二階段", "img": "../photos/DSC04644.jpg", "desc": "第二階段填海造陸選在南側潟湖，用高強度沙袋堆成防波堤，再以潟湖砂土填出長約800公尺、約8公頃的新生地，2025年10月由聯合國開發計劃署正式移交。未來這裡會蓋台灣援助的國會大樓。"}, {"n": 6, "cat": "tw", "lat": -8.505504265760216, "lng": 179.16999252389832, "area": "豐阿法萊島", "short": "大使館", "zh": "中華民國駐吐瓦魯大使館", "ja": "Embassy of the Republic of China (Taiwan)", "img": "../photos/IMG_6593.jpg", "desc": "台吐建交已40餘年，現任大使為林東亨。兩國2025年底簽署《台吐團結共榮條約》，條約名稱的「Kaitasi」在吐瓦魯語是「至親家人」。"}, {"n": 7, "cat": "tw", "lat": -8.50045884058097, "lng": 179.182397863194, "area": "豐阿法萊島", "zh": "TTCAP", "ja": "台吐海岸調適計畫", "img": "../photos/DJI_0255.MP4_000013219.jpg", "desc": "台灣協助的海岸調適計畫，在富納富提更北端，修築、加高防波堤，保護容易受浪潮衝擊的聚落。2026年完工，同年3月外交部長林佳龍以總統特使身分出席啟用典禮。"}, {"n": 8, "cat": "life", "lat": -8.503889717149956, "lng": 179.16828651598092, "area": "豐阿法萊島", "zh": "集會所", "ja": "Maneapa", "img": "../photos/DSC03746.jpg", "desc": "吐瓦魯社群聚會、議事的地方，是該國文化的精神建築。富納富提社群副首領提凱圖說，當地的氣候調適方案，長老們都在集會所討論過。"}, {"n": 9, "cat": "site", "lat": -8.488182004879244, "lng": 179.22804995473075, "area": "豐阿法萊島北端", "zh": "垃圾場", "ja": "", "img": "../photos/DJI_0262.MP4_000208749.jpg", "desc": "首都全島的垃圾都集中在北端這座垃圾山，從汽機車殘骸到日常用品都有。當地沒有大型焚化爐，只能露天焚燒。"}, {"n": 10, "cat": "site", "lat": -8.494512640419542, "lng": 179.21346851964185, "area": "豐阿法萊島北段", "short": "最窄點", "zh": "吐瓦魯最窄點", "ja": "The narrowest point on Fongafale Island", "img": "../photos/DJI_0264.jpg", "desc": "一眼望去，道路兩旁就是海水，一側是相對平靜的潟湖，另一側是洶湧的浪花，一波波拍打路基。"}, {"n": 11, "cat": "site", "lat": -8.483087986873498, "lng": 179.23722997541776, "area": "豐阿法萊島最北端", "zh": "柯飛演講點", "ja": "", "img": "../photos/DSC06616.jpg", "desc": "2021年聯合國氣候大會（COP26）期間，時任外交部長柯飛穿西裝站在海水中演講的地方。他身後的水泥設施是二戰時美軍的大型防空砲基座，漲潮時會泡在海水裡。"}, {"n": 12, "cat": "life", "lat": -8.407098375863232, "lng": 179.05428477100241, "area": "富納富提環礁的離島", "offmap": 1, "zh": "富納法拉", "ja": "Funafala", "img": "../photos/DJI_0258.MP4_000113911.jpg", "desc": "只有寥寥幾戶人家的離島，有潔淨的沙灘，還有台灣技術團的農場。每逢大潮，海水會直接淹上陸地，房屋和器具都泡在水裡；隨丈夫移居這裡的斐濟籍婦女瓦萊布魯說，當地人對此總說「沒事啦，很正常」。"}];
+const places = [{"t": "太平洋", "lat": -8.509843485962415, "lng": 179.19506386626398, "big": 1, "sea": 1}, {"t": "富納富提潟湖", "lat": -8.4868, "lng": 179.2115, "big": 1, "sea": 1}];
+const POPUP_SIDE = null;   // null＝自動挑圖釘最少的角落；'left'／'right'＝固定在該側中段
+const POPUP_FLOAT = false; // true＝說明卡可按住拖曳；文章往下捲時說明卡、標題框＋圖例跟著停在看得到的那一段（長型地圖用）
+const INSET = {"svg": "<path fill=\"#4f8f88\" fill-rule=\"evenodd\" d=\"M80.9,69.5L81.6,69.8L81.8,70.5L80.8,69.9Z\"/><path fill=\"#4f8f88\" fill-rule=\"evenodd\" d=\"M75.1,91.1L75.4,90.6L75.4,91.4Z\"/><path fill=\"#4f8f88\" fill-rule=\"evenodd\" d=\"M76.4,91.1L77.1,90.9L76.9,91.6L76.4,91.1Z\"/><path fill=\"#4f8f88\" fill-rule=\"evenodd\" d=\"M77.8,90.2L77.1,90.1L77.8,90.2Z\"/><path fill=\"#4f8f88\" fill-rule=\"evenodd\" d=\"M126.6,58.5L126.1,61.5L125.4,63.5L125.3,65.9L125.6,68.9L125.3,71.2L123.8,77.6L123,78.9L122.3,80L121.6,80.8L120.9,81.4L119.3,82.2L118.1,82.5L117.4,82.8L116.7,83.5L116,84.3L115,85.1L111.2,87.1L108.5,88.5L106.9,89.2L105.2,89.7L103.4,90.1L102.4,90.6L101.3,91.5L100,92.1L98.1,92.8L97.1,92.9L95.7,92.8L94.8,92.9L93.5,92.8L92.5,92.8L91.1,93.1L89.1,93.7L86,94.4L83.5,95.3L81.7,96.1L79.3,97L76.7,98.2L75.4,98.1L74.7,97.8L71.9,94.3L70.2,92.2L68.4,90.2L66.2,87.7L65.5,86.3L65.2,85.2L65.1,84.3L64.9,82.8L64.5,81.9L64,80.8L62.8,79.5L61.5,78.2L60.9,77.2L60.1,75.7L59.3,74L58.8,73.1L58.2,72.3L56.9,70.9L55.9,69.8L55.2,68.7L54.9,67.2L54.6,66.2L53.9,65.2L53.3,64.8L52.3,63.9L51.9,63.4L51.5,62.6L51.3,60.6L50.9,59.7L51,58.8L51.7,59L52.1,59.5L52.7,60.7L53,61.7L53.7,63L54.3,63.8L55.4,65.1L58,68L58.3,70L60.4,73L61.3,74.6L62.2,75.7L63.2,76.9L63.9,78.6L64.4,79.4L65.2,80.4L65.4,81.4L65.9,82.9L67.4,85.4L67.6,86.2L70.2,89.6L70.8,90.5L71.5,91.3L72.6,91.8L73.9,92.3L75.1,92.3L75.7,92.5L76.5,93.1L77,93.9L77.6,94.5L78,94.9L79.8,94.8L81.1,94.8L82.4,94.5L84.7,93.7L85.5,93.5L86.7,93.1L88.2,92.6L90.6,92.1L91.9,91.7L93.2,91.5L97.5,91L99.2,90.6L100.3,90.2L104.1,88.2L107.6,86.9L109.6,86L111.5,85L112.6,84.4L113.2,83.8L113.6,83.3L115,82.7L116,82.3L117.1,81.4L117.8,80.8L118.4,81L118.3,80.3L119.1,78.9L119.7,78.1L120.3,77.6L121,76.7L121.6,75.4L122.5,74.1L123.1,72.5L123.8,68.4L123.8,66.4L123.8,63.6L124.1,62.4L124.5,61.3L124.1,59.5L123.6,58.8L123.1,57.8L122.4,56.3L122.3,55.2L122.7,53.6L122.7,50.7L122.5,49.7L122.8,48.6L123.4,48.3L124.3,48.6L124.9,49.3L126,52.7L126.6,56L126.6,58.5ZM65.2,81.9L65.4,83.1L65.6,84L65.7,85.2L66.1,86.3L66.5,86.9L67.1,87.7L68,88.9L68.4,89.4L69,90.1L70.4,91.8L71.2,92.8L72.4,94.3L74.2,96.7L74.8,97.3L75.6,97.7L76.5,97.7L78,97.2L79.7,96.4L82,95.5L83.1,95.1L84.3,94.6L86.2,93.9L88.1,93.5L89.2,93.3L91.1,92.7L92.1,92.5L93.2,92.4L94.4,92.4L96.4,92.5L97.6,92.4L98.6,92.2L99.7,91.8L100.7,91.3L101.3,91L101.8,90.6L102.7,90.1L103.3,89.7L104.3,89.4L105.8,88.9L106.4,88.7L107.4,88.3L108.1,88L109.5,87.4L110.8,86.8L112.1,86.2L113.7,85.3L114.1,84.7L113.5,85L112.4,85.6L111.6,86L110.6,86.5L108.8,87.3L108.2,87.6L107.6,87.8L106.8,88.1L106,88.4L105.2,88.7L104.1,89L103.3,89.3L102.4,89.8L101.8,90.3L101.3,90.8L100.6,91.1L99.5,91.5L98.4,91.7L96.5,91.9L95.4,92L94.2,91.9L93.3,92L92,92.2L90.9,92.4L89.7,92.7L89,92.9L88.2,93.1L87.4,93.2L86.6,93.5L85.8,93.7L84.7,94L83.9,94.3L82.8,94.7L82.2,95L81.2,95.4L80.1,95.5L79.4,95.8L78.5,95.7L77.7,95.4L77.2,95.1L75.9,93.7L74.8,93.1L74,92.8L73.4,92.4L72.7,92.3L72,92L71.3,91.6L70.6,90.9L70,90.4L69.3,89.6L68.8,89.1L68.3,88.5L67.6,87.8L66.7,86.5L66.3,85.7L66.1,85L66,84.1L65.9,83.3L65.5,82.7L65.2,81.9ZM119.6,79.9L119.2,80.5L118.8,80.9L118.2,81.6L117.5,82.1L117,82.4L116.4,82.7L117.1,82.5L117.7,82.2L118.3,81.9L119.1,81.6L119.9,81.3L119.5,80.8L119.8,80.1L120.3,79.6L119.6,79.9ZM120.7,79.1L121.4,79.3L121.7,78.5L121.3,78.1L120.9,78.6ZM60.4,74.6L60.7,75.8L61.7,77.4L62.2,78L61.9,77.1L61.1,75.7L60.7,75.3L60.4,74.6ZM54.8,66L55.4,67.7L55.9,68.9L56.4,69.6L57,70.1L57.7,70.2L57.1,69.6L56.8,68.9L56.3,67.8L56,67.2L55.7,66.5L55.3,66L55,65.4L54.4,65.1L54.7,65.9ZM52.9,63L52.4,62.2L52.3,61.3L52.1,60.5L51.7,59.6L51.8,60.7L51.9,61.7L52.2,62.5L52.7,62.9ZM124.2,53.5L124.2,54.7L124.3,55.5L124.1,56.1L125,56.2L125.4,55.7L125.2,55.1L124.7,54.7L124.4,54ZM124.4,53.3L124.9,52.9L124.8,52.2L124.4,52.7ZM94.9,73.7L95.3,73L96.1,73.3L96.4,74.2L96.1,75.1L95.4,75.3L95,74.3ZM109.5,73.8L110.2,73.9L109.5,73.8ZM102.8,65.9L103.1,65.1L103.8,66.3L103.3,66.8L102.8,65.9ZM90.8,61.3L91.3,60.8L91.7,61.6L91.5,62.5L90.8,62.6L90.8,61.3ZM46.6,54.6L45.2,54.1L44.2,53.9L43.2,53.4L42.3,51.9L42.3,50.9L43.3,50.9L43.7,51.3L44.1,52L45.1,52.6L46.1,53.3L46.6,53.7L46.6,54.6ZM61.3,24.5L60.3,25.8L59.7,25.5L59.8,24.5L59.1,24L59.4,22.9L59,21.6L58.3,20.2L57.4,19.5L56.5,19L54.9,19.6L54,20.4L52.9,21.1L51.8,22.1L50.1,23.5L49.7,24.2L49.5,25L49.2,25.9L48.5,26.8L48.2,28.1L47.9,29L47.3,29.9L46.7,30.2L46,29.6L45.5,28.8L44.9,28L43.7,27.9L41.9,28.7L40,29.2L39.2,29.4L38.4,28.9L37.4,28.7L36.5,29.1L35,29.9L34.3,30.4L33.3,30.4L32.5,30.5L31.6,30.4L30.7,30.8L30.1,31.6L29.1,32.9L27.4,33.9L26,34.6L25.6,35.2L25.3,36.3L24.5,36.6L24.1,37.1L23.8,37.7L23.1,38.3L22.4,38.5L22.3,39.3L22.5,39.9L22.8,40.7L23,41.4L24.9,41.6L26.1,41.7L26.8,42L27.6,42.3L29.5,43.5L30.1,43.7L31.2,43.7L32.1,43.5L33,43.5L33.9,43.5L34.9,43.8L37.6,45.2L38.6,46L39.1,46.5L38.7,47.1L36.1,45.5L35.3,45L34.4,44.7L33.2,44.6L31.7,44.8L30.5,45L29.7,45L29,44.6L28.2,43.9L27.1,43.2L26.5,42.9L25.5,42.8L24.1,42.9L23.3,43.2L22.2,43.7L20.2,45L18.4,46L16.9,46.4L16.2,46.5L15.4,45.9L15,43.6L14.6,42.4L14,41.1L12.9,39.4L11.2,37L10.1,35.4L9.5,34.4L9.4,33.3L9.7,32.5L9.9,31.7L10.2,30.8L10.7,30.2L11.3,29.7L11.8,29.4L13,29.3L14.1,29.5L16.4,30.1L18.1,30.7L20.5,32L21.4,32L22.7,31.6L23.8,31.5L25.8,30.8L27.6,30.1L29.3,29.8L30.4,29.7L31.1,29.4L32.4,28.5L34.6,27.6L37.2,26.8L38.9,26.4L41.5,25.9L43.3,25.2L44.8,24.5L48,22.5L51.9,19.2L53.9,17.8L55.7,17L57.3,16.4L58.3,16.4L59.5,17.1L60.3,18.4L60.6,19.7L61.4,22.1L61.9,23.1L61.3,24.5ZM27.8,42.6L27.2,42.4L26.1,42L25.4,41.9L24.3,42L23.5,42.1L22.6,42.4L21.9,42.7L21.2,43.1L20.4,43.4L19.8,43.9L19.2,44.3L18.3,44.2L17.9,43.5L17.7,44.3L17.6,45L17,45.2L17.8,45.7L18.5,45.4L19.6,44.8L20.6,44.2L21.2,43.7L22.6,42.9L23.3,42.6L24.4,42.4L25.6,42.3L26.8,42.5L27.9,43.1L28.8,43.9L29.6,44.3L30.7,44.4L31.5,44.4L32.4,44.3L34.7,44.2L34.1,43.9L32.9,43.7L32.1,43.8L31.4,44L30.7,44.1L30,44.2L29.4,43.8L28.6,43.2L28.1,42.8ZM16.4,45.4L16.7,44.8L16.1,45ZM16.7,43.8L17,43.1L16.2,43.3L15.5,42.5L15.2,42L15,41.4L14.7,40.9L14.1,40L13.7,39.3L13.1,38.6L14.1,40.6L14.6,41.5L15.1,42.6L15.3,43.3L15.5,44L15.7,44.6L16.1,44L16.7,43.8ZM12.8,38.4L12.4,37.3L11.4,35.9L11,35.1L10.8,34.5L10.6,35.3L11.2,36.3L12.5,38.1ZM10.5,34L11.2,34.1L11.6,33.6L11,33.9L11.3,33.3L10.9,33.7ZM20.4,33.2L20.7,32.7L20,32.9ZM18.9,32.9L19.6,32.8L19.3,32.2L18.8,32.7ZM16.5,31.1L15.7,31L15.3,30.5L14.6,30.4L13.7,30L13,30.2L12.1,30.5L12.3,31.1L12.8,31.5L13.4,31.2L14.5,30.8L15.2,31.2L16,31.3ZM46.4,26.5L47.3,26L47.7,25.3L47.3,25.7L46.6,26.1ZM116,33.1L116.9,32L118.2,31.8L119.1,32.4L119.7,34L120.2,34.9L120.6,36.2L120.9,37.4L120.9,38.8L121.1,39.8L121.4,40.6L121.5,41.5L121.7,42.3L121.5,43.4L120.5,43.4L120.1,42.5L119.9,41.2L119.6,40.2L119.5,38.1L118.9,36.5L118.4,35.8L117.5,35.2L116.7,34.9L116.3,34.2L116,33.1ZM101,40.1L100.1,39.9L100.2,39.1L101.2,39.3L101.6,40ZM98.3,37.5L99,36.9L99.4,36.5L99.4,35.5L100.4,35.3L100.8,36.5L100.6,37.7L99.4,38.2L98.6,38.1L98.3,37.5ZM102.2,37.6L101.5,37.3L101.6,36.3L102.3,36.8L102.5,37.4ZM112.7,32.8L112.1,33.1L110.8,32.7L109.9,32.8L108.9,33.2L108.5,34.4L108.2,36.1L107.9,36.9L106.3,36.1L105.1,35.7L103.8,34.5L102.8,34.5L103.3,33.5L104.3,32.6L105.6,31.9L107,30.4L108.5,29.7L109.6,29.3L110.5,29.3L111.3,29.2L112.1,29.3L113.2,30.2L113.5,30.8L113.2,32.2L112.7,32.8ZM105,33.6L105.7,34.2L106.4,34.5L107,34.2L107.4,33.4L107.2,32.7L106.4,32.9L105.7,33.2L105,33.6ZM103.2,30.9L102.7,31.2L102.1,31.4L102,30.5L102.4,30.1L103,29.8L103.4,30.2L103.2,30.9ZM97.2,30.4L96.4,30L96.6,29.3L97.4,29.5L97.7,30.2ZM99.8,28.6L99.5,29.4L98.1,29.3L97.3,29.2L96.6,28.4L95.7,27.9L93.9,27.6L93.1,27.2L92.5,26.4L92.3,25.5L92.8,24L93.3,23.4L94.1,23.6L94.9,24.8L95.8,25.9L96.6,26.6L97.8,27.2L98.8,27.4L99.4,27.7L99.8,28.6ZM88.1,28.5L88.8,27.7L89.5,28L88.7,28.4ZM63.8,25.3L64,26.8L63.6,27.7L62.7,27.4L62.8,26.3L63.1,25.5L63.1,24L63,23.3L63.6,23.6L63.8,24.4L63.8,25.3ZM80.9,9.4L82.5,9.4L83.9,9.8L84.8,10.2L85.2,10.7L86.5,12.7L86.9,13.1L88,14.5L89.5,15.9L90.7,17.1L91.7,18.4L92.5,19.8L93,20.7L93,21.7L93,22.5L92.5,23.3L91.6,24.8L90.6,26L90.7,26.9L90.1,26.7L89.6,26L89.6,25.1L89.8,24.1L90.4,23.3L90.3,22.3L90.2,21.5L90.6,20.7L90.5,19.9L89.9,19.3L89.3,18.2L88.7,17.9L88.1,16.9L87.2,15.8L85.8,15.5L84.7,15.8L83.5,15.8L82.6,15.2L82.1,14.8L81.2,15.1L80.5,15.4L79.4,15L78.4,15L77,15.7L76.1,16.3L76,17.3L75.1,17.4L75,18.3L74.9,19.2L74.4,19.6L73.2,20L72.7,19.7L72,19.1L71.3,19L70.2,18.8L69.7,18.1L70,17.5L71.3,17L72.6,16.6L73.5,16.2L75.2,15L76.9,14L77.8,12.8L79.1,10.7L80.2,9.6L80.9,9.4ZM91.1,22.8L91,23.6L91.1,24.5L91.6,24.2L91.8,23.5L91.6,22.8ZM81,11.9L80.9,11.1L80.5,10.7L80,11L80.4,11.6L81,11.9ZM67.7,18.7L67.1,18.9L66.4,19.7L65.9,20L65.3,20.5L65.1,21.4L65,22.3L65.2,23L64.6,23.3L63.9,22.9L64.4,22.6L63.6,22.1L62.8,22L62.2,21.6L61.7,20L61.7,19.1L62.6,17.8L64,17.7L65.1,17.5L66.1,17.2L67.2,17.5L67.7,17.8L67.7,18.7Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M81.1,12L80.6,11.7L80.1,11.2L80.5,10.7L80.9,11.1L81.4,11.7Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M35.1,28.8L34.6,28.4L35.2,28.7Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M20.5,33.3L19.9,33L20.4,32.6L20.9,33Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M19,33L18.9,32.3L19.5,32.5L19,33Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M16.5,31L16.2,31.5L15.7,31.1L14.5,30.8L13.5,31.1L12.8,31.5L12.3,31.2L11.8,30.9L12.4,30.3L13.2,30.2L14.1,30.1L14.9,30.3L15.5,30.7L16,31.1Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M12.9,38.5L11.2,36.3L10.8,35.6L10.6,34.9L11.2,35.5L12.1,36.9L12.7,37.9L13,38.4Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M16.9,43.7L16.1,44L15.8,44.6L15.5,44L15.3,43.3L15.1,42.6L14.8,41.9L14.1,40.6L12.9,38.7L13.4,39.1L13.8,39.6L14.4,40.4L14.9,41.2L15.2,41.8L15.5,42.5L16.2,43.3L16.8,43.5Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M45.6,53.5L44.8,53.6L44.1,53.4L43.4,53.2L43.1,52.4L42.7,51.9L43.1,51.4L43.3,52.1L43.7,52.6L44.3,53.1L45,53.4Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M10.8,34L11.2,33.3L11,33.9L11.6,33.6L11.4,34.2L10.8,34Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M52.8,63L52.2,62.5L51.9,61.7L51.8,60.8L51.6,59.9L52.1,60.5L52.3,61.3L52.4,62.2L52.7,62.7Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M91,23.6L91.1,22.8L91.7,23L91.6,24.2L91.1,24.5L91,23.6Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M104.7,33.7L105.3,33.4L105.9,33.1L106.5,32.8L107.4,32.7L107.2,33.7L106.9,34.3L106.2,34.4L105.3,34L104.7,33.7Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M120.8,79.1L121,78.4L121.5,78.9L120.8,79.1Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M120.4,40.9L120.8,41.5L120.3,40.9Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M124.7,53.1L124.6,52.3L124.9,52.8Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M60.3,74.4L60.6,75.1L61,75.6L61.7,76.6L62.1,77.4L62.6,77.8L61.7,77.4L60.7,75.8L60.2,74.9L60.4,74.3Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M65.2,81.8L65.5,82.4L65.8,83.3L66,84L66.1,84.8L66.2,85.5L66.5,86.2L67.3,87.3L68.2,88.4L68.6,88.9L69.3,89.6L69.7,90.1L70.3,90.8L71,91.4L71.8,91.8L72.4,92.2L73.2,92.6L74,92.8L74.8,93.1L75.5,93.5L77.5,94.8L77.7,95.4L78.5,95.7L79.4,95.8L80.1,95.5L80.9,95.4L81.7,95.1L82.8,94.7L83.4,94.5L84.7,94L85.8,93.7L86.6,93.5L87.3,93.3L88.2,93.1L89,92.9L89.7,92.7L90.9,92.4L92,92.2L92.7,92.1L94,91.9L95.1,92L96.5,91.9L97.7,91.8L99.5,91.5L100.6,91.1L101.3,90.8L101.7,90.3L102.4,89.8L103.3,89.3L104.1,89L105.2,88.7L106,88.4L106.8,88.1L107.5,87.9L108.2,87.6L108.8,87.3L110.6,86.5L111.5,86L112.3,85.7L113,85.3L113.8,84.7L112.1,86.2L110.8,86.8L109.5,87.4L108.1,88L107.4,88.3L106.4,88.7L105.8,88.9L104.3,89.4L103.3,89.7L102.7,90.1L101.8,90.6L101.3,91L100.7,91.3L99.7,91.8L98.6,92.2L97.6,92.4L96.6,92.4L94.4,92.4L93.2,92.4L92.1,92.5L91.1,92.7L89.2,93.3L88.1,93.5L86.2,93.9L84.3,94.6L83.1,95.1L82,95.5L79.7,96.4L78,97.2L77,97.5L76,97.7L75,97.5L74.5,97.1L72.4,94.3L71.2,92.8L70.4,91.8L69.3,90.4L68.4,89.4L68,88.9L67.1,87.7L66.5,86.9L66.1,86.3L65.7,85.2L65.6,84L65.4,83.1L65.1,82Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M54.7,65.9L54.3,65.1L54.7,65.5L55.3,66L55.7,66.5L56,67.2L56.3,67.8L56.6,68.5L56.9,69.1L57.2,69.9L56.4,69.6L55.9,68.9L55.6,68.3L55,66.3Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M119.4,80.2L119.8,79.5L119.8,80.4L119.9,81.2L119.1,81.6L118.3,81.9L117.7,82.2L117.1,82.5L116.5,83L116.9,82.6L117.5,82.1L118.2,81.6L118.7,81L119.1,80.5Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M124.2,53.5L124.6,54.5L125,54.9L125.4,55.5L125.1,56.1L124.2,56.2L124.3,54.9L124.1,53.8ZM124.1,56.1L124.8,56.2L125.3,55.9L125,55L124.6,54.6L124.3,53.9L124.3,55L124.1,56.1Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M46.8,26.5L47.3,25.7L47.6,25.2L47.3,26L46.8,26.5Z\"/><path fill=\"#e9e3cc\" fill-rule=\"evenodd\" d=\"M27.4,42.4L28.4,43L29.1,43.6L29.7,44L30.5,44.1L31.4,44L32.1,43.8L32.9,43.7L33.9,43.8L34.9,44L33.1,44.2L31.5,44.4L30.7,44.4L29.6,44.3L28.8,43.9L28.2,43.3L27.1,42.6L25.9,42.3L25,42.3L23.6,42.5L22.6,42.9L21.2,43.7L20.6,44.2L19.6,44.8L19.1,45.2L17.9,45.6L17.2,45.7L17,45.1L17.6,44.7L17.7,43.8L18.3,44.2L19.1,44.4L19.8,43.9L20.3,43.5L21,43.2L21.5,42.9L22.2,42.5L23.5,42.1L24.3,42L25,41.9L25.9,42L26.6,42.2L27.4,42.4Z\"/>", "w": 136, "h": 107.7, "lng0": 179.01933253361523, "m0": -8.351983936797966, "s": 522.2182714376198, "title": "富納富提環礁"};             // null＝沒有小地圖；有的話 offmap 的點畫在它上面
+const FIT_PAD = {"desk": [30, 200, 30, 34], "small": [20, 180, 20, 30]};         // null＝照下面 refit 的預設留白；{desk:[左,上,右,下], small:[…]}＝自訂（橫版把上方留給說明卡與標題）
 
 const map = L.map('map', {
   zoomControl:false, attributionControl:true, zoomSnap:0,   // 允許小數縮放→填滿畫面（免整數化掉一級變太小）
@@ -860,49 +775,3 @@ if (POPUP_FLOAT && window.self === window.top){
 
 map.on('resize', () => { refit(); relayout(); syncCar(); });   // 縮放/轉向後重 fit＋重算避讓＋輪播開關
 </script>
-"""
-
-html = (TPL
-        .replace("__BOUNDARIES__", "[" + ",".join(boundaries) + "]")
-        .replace("__UNDERLAY__", "[" + ",".join(underlay) + "]")
-        .replace("__TILES__", json.dumps(tiles, ensure_ascii=False))
-        .replace("__IMAGE__", json.dumps(image, ensure_ascii=False))
-        .replace("__FONT_LINK__", font_link)
-        .replace("__FRAME_SIZE__", frame_size)
-        .replace("__FRAME_CLASS__", frame_class).replace("__NORTH__", north_html)
-        .replace("__FIT_PAD__", json.dumps(getattr(cfg, "FIT_PAD", None)))
-        .replace("__POPUP_SIDE__", json.dumps(getattr(cfg, "POPUP_SIDE", None)))
-        .replace("__POPUP_FLOAT__", json.dumps(bool(getattr(cfg, "POPUP_FLOAT", False))))
-        .replace("__INSET__", json.dumps(inset, ensure_ascii=False))
-        .replace("__ATTRIB__", json.dumps(attrib, ensure_ascii=False))
-        .replace("__CAT__", json.dumps(cfg.CAT, ensure_ascii=False))
-        .replace("__SPOTS__", json.dumps(cfg.SPOTS, ensure_ascii=False))
-        .replace("__PLACES__", json.dumps(places, ensure_ascii=False))
-        .replace("__TITLE__", cfg.TITLE).replace("__MARK__", cfg.MARK))
-out = os.path.join(IDIR, cfg.MAP_FILE)
-open(out, "w", encoding="utf-8").write(html)
-print("wrote", out, "KB:", round(len(html.encode())/1024, 1))
-
-# 文章內嵌示意頁：把整張地圖 base64 內嵌（複製鈕本地解碼、不需 fetch → file:// 也能用）
-b64 = base64.b64encode(html.encode("utf-8")).decode("ascii")
-ap = (open(os.path.join(HERE, "article_preview.tpl.html"), encoding="utf-8").read()
-      .replace("__MAP_FILE__", cfg.MAP_FILE)
-      .replace("__MAP_TITLE__", cfg.TITLE + "｜" + cfg.MARK)
-      .replace("__FRAME_SIZE__", frame_size)
-      .replace("@@MAP_B64@@", b64))
-ap_out = os.path.join(IDIR, "article-preview.html")
-open(ap_out, "w", encoding="utf-8").write(ap)
-print("wrote", ap_out, "KB:", round(len(ap.encode())/1024, 1))
-
-# 純地圖外包一層 iframe（隔離＋自足）：整張地圖轉義塞進 <iframe srcdoc>，此檔可直接開預覽，
-# 或複製 <div> 區塊貼進文章（等同 article-preview 的「複製完整嵌入碼」，但免開頁點鈕）。
-esc = html.replace("&", "&amp;").replace('"', "&quot;")  # srcdoc 屬性用雙引號，需轉 & 與 "
-embed = ('<!doctype html><html lang="zh-Hant"><meta charset="utf-8">'
-         '<title>' + cfg.TITLE + '｜iframe 嵌入</title>\n'
-         '<div style="position:relative;max-width:720px;margin:auto;' + frame_size + '">\n'
-         '  <iframe loading="lazy" allowfullscreen srcdoc="' + esc + '"\n'
-         '          style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px"></iframe>\n'
-         '</div>\n</html>\n')
-embed_out = os.path.join(IDIR, cfg.MAP_FILE.replace(".html", ".embed.html"))
-open(embed_out, "w", encoding="utf-8").write(embed)
-print("wrote", embed_out, "KB:", round(len(embed.encode())/1024, 1))

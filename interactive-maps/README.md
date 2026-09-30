@@ -21,6 +21,7 @@ interactive-maps/
     boundaries/          自動抓後快取於此（land/subdiv.geojson + places.json + geocode.json）
     <MAP_FILE> + article-preview.html   ← 產生
   tuvalu/                 吐瓦魯・富納富提（第一版、測試中）：長型、環礁底圖、用到下面的選用設定
+    wide/                 同一份內容的橫版（整張圖轉 90 度），實例名 `tuvalu/wide`
   video/                  地圖 → 直式短影音（見母 README 為何不搬去 data-shorts）
 ```
 
@@ -73,6 +74,10 @@ spot 加 `"label": "right"／"up"／"left"／"down"` 就固定放那一邊、也
   浮動卡片不當地名的障礙物；標題框＋圖例一律用它們回到頂端時的位置當障礙物，捲到一半重排也不會避錯地方。
 - `INSET`：`{"title", "layers": {geojson: 填色}}`，右下角的小地圖（疊在出處上面）。geojson 依序疊畫、跟主圖同一個投影，
   頁面會框出主圖現在的範圍（主圖比小地圖寬時把視窗放大，框不會被切掉）。
+- `FIT_PAD`：`{"desk": [左, 上, 右, 下], "small": [...]}`，自訂縮放時四邊留白（px；small＝寬度不到 720）。不設就照原本的留白。
+- `CARD = "row"`：衛星主題的說明卡改成照片在左、文字在右，比較矮（橫幅地圖用）。
+- `NORTH`：指北箭頭指的角度（順時針，90＝北朝右），畫在左下角。地圖轉過才需要。
+  轉圖本身不在產生器裡：實例自己把座標與底圖換算成「轉過的經緯度」，做法見 `tuvalu/wide/spots.py`。
 - spot 加 `"offmap": 1`：這個點不參與縮放範圍、不畫在主圖，畫在小地圖上，點了照樣開說明卡。離其他點太遠、框進來會讓其他點擠成一團時用；
   要搭配 `INSET`，沒設會報錯。
 
