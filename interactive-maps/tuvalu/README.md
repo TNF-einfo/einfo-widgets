@@ -7,6 +7,7 @@
 - `build_land.py`：抓富納富提環礁的島嶼與礁盤，寫成 `boundaries/land.geojson`、`boundaries/reef.geojson`（插畫風底圖用）。
 - `photos/`：12 張照片，縮成 800px 寬、不帶 EXIF。
 - `basemap/`：Sentinel-2 靜態底圖（見「底圖」）。
+- `build_video_basemap.py`：影片專用底圖（整個環礁），寫進 `basemap/video/`，不進 repo（見「短影音」）。
 - `tuvalu-map.html`（產出的地圖）、`article-preview.html`（桌機／平板／手機三檔寬度對照）。
 
 ## 說明文字
@@ -109,18 +110,24 @@ python interactive-maps/template/gen_map.py tuvalu   # 讀 spots.py 產地圖
 
 ## 短影音（2026-09-30）
 owner 要照東京那支的安全區拍：1080×1920，上 12%、下 15%、左右 9% 不放東西（社群平台的介面會蓋住），不畫框線。
-鏡頭跟東京一樣：大遠景 → 拉近 ① → 依序到 ⑫ → 拉回大遠景，每點停 2 秒，全長約 47 秒。
+鏡頭跟東京一樣：大遠景 → 拉近 ① → 依序到 ⑫ → 拉回大遠景，每點停 2 秒，全長約 50 秒。
 ```
+python interactive-maps/tuvalu/build_video_basemap.py   # 影片專用底圖（整個環礁），已存在就跳過；需連網
 cd interactive-maps/video        # 第一次先 npm ci；要有 Chrome 與 ffmpeg
-node make_video.mjs --map ../tuvalu/tuvalu-map.html --zoom 16 --estab-out 0.65 --height 1920
+node make_video.mjs --map ../tuvalu/tuvalu-map.html --zoom 16 --estab-out 0.65 --height 1920 \
+  --image ../tuvalu/basemap/video/s2_20260105_atoll_2x.webp
 ```
-成品在 `video/out/tuvalu_1080x1920.mp4`，不進 repo。加 `--preview` 只輸出大遠景和每點特寫的 PNG，先看構圖用。
+成品在 `video/out/tuvalu_1080x1920.mp4`，不進 repo。加 `--preview` 只輸出大遠景、每點特寫與飛越中點的 PNG，先看構圖用。
 跟東京那支不一樣的地方：
 - 卡片、標題、地名照這張地圖的衛星主題：深色無框卡片、照片滿版、白字描邊，正在介紹的點放大、地名變黃。
 - 南端八個點太密：地名照特寫的距離排，大遠景放不下的先藏、只留編號，拉近到一半開始淡入。
   照大遠景排的話，特寫時「政府大樓」會貼在 ① 旁邊。
-- ⑧→⑨ 相隔約 6.5 公里（特寫縮放下 2882px，東京最遠一段 1344px），平移中途先拉遠再推近，免得像甩鏡頭。
-- ⑫ 富納法拉在衛星影像範圍外：鏡頭拉回大遠景，主圖壓暗、名字收起，把小地圖放大擺在標題與說明卡中間。
+- ⑧→⑨ 相隔約 6.5 公里（特寫縮放下 2897px，東京最遠一段 1344px），平移中途先拉遠再推近，免得像甩鏡頭。
+- ⑫ 富納法拉：鏡頭直接飛過去（owner 09-30：「富那法拉可以直接移動過去，僅限影片版」），互動地圖照舊畫在右下角小地圖。
+  影片版把它的圖釘也畫上主圖，底圖換成 `build_video_basemap.py` 切的整個環礁（同一景 2026-01-05、同樣放大兩倍銳化，
+  跟主圖重疊的部分平均只差 2～3 階），不進 repo。⑪→⑫ 約 22 公里，中途拉遠到看得到整個環礁再推近，3.1 秒；
+  最後從 ⑫ 拉回大遠景也一樣，2.5 秒。飛越途中說明卡與地名先收起。小地圖在影片裡不出現。
+- 這一景環礁南半部有一片積雲：飛越時會入鏡，富納法拉特寫的上方與右邊也有雲，島本身沒被蓋到。
 - 特寫是 zoom 16，一個 10 公尺像素放大成約 4 個螢幕像素，看得出糊，跟地圖上雙指放大到底差不多。
 - Copernicus 出處放大到 17px 留在右下角（授權條件要讀得到），那裡在下方安全區外，可能被平台介面蓋到。
 
