@@ -49,6 +49,7 @@ const VIDEO_CSS = `
   .titlebar{ left:50%!important; right:auto!important; transform:translateX(-50%)!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:82%!important; padding:26px 44px!important; z-index:55!important }  /* 背景框置中；內文靠左（環境資訊中心/標題都靠左，owner） */
   .titlebar h1{ font-size:50px; line-height:1.1; white-space:nowrap }                  /* 標題不換行、縮字剛好一行 */
   .titlebar .mark{ font-size:22px }
+  .titlebar .mark .logo{ height:58px; margin:0 0 6px }   /* 地圖設了 LOGO：logo 跟標題一樣靠左、放大到配 50px 的標題 */
   .rlabel{ font-size:25px; font-weight:800 } .rlabel.big{ font-size:28px; font-weight:800 }  /* 行政區地名：~10 個、放大（owner） */
   .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大 */
   .pin-name{ font-size:18px }   /* 原生 pin 名（會被抽到 #toplabels 浮層；此處只留基本樣式） */

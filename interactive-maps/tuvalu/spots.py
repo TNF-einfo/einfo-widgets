@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""吐瓦魯・富納富提 地圖的資料（地點＋敘述）。改這裡就好，再跑 python template/gen_map.py tuvalu。
+"""吐瓦魯，富納富提 地圖的資料（地點＋敘述）。改這裡就好，再跑 python template/gen_map.py tuvalu。
    底圖是環礁的島嶼＋礁盤（build_land.py 產生），不用行政界：富納富提的行政區把整個潟湖包進去。"""
 
-TITLE = "吐瓦魯・富納富提"
+TITLE = "吐瓦魯，富納富提"                  # 國名，首都（09-30 owner：原本的「・」意思不明，改逗號，像「義大利，米蘭」）
 MARK = "環境資訊中心"
+LOGO = "../assets/eic-logo.png"             # 標題上方放環資 logo，不寫字（09-30 owner：環資統一用 logo）
 MAP_FILE = "tuvalu-map.html"
 HEIGHT = 1080                             # 長型：固定 1080 高、寬度跟文章欄寬走；手機上比螢幕高，往下捲著看
 POPUP_SIDE = "left"                       # 說明卡一開始放左側（潟湖那片空白），不去擠南端那一群點
