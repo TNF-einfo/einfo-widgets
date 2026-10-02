@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!-- 吐瓦魯，富納富提 海岸線變化（環境資訊中心）
+     同一個範圍、五個日期的 Sentinel-2 影像疊在一起，點年份（或左右滑、方向鍵）淡入淡出，看得到時自動輪播，讀者一動手就停。
+     樣式照吐瓦魯互動地圖的衛星主題（深綠＋黃、白字描邊、無框卡片）。影像由 build_images.py 產生，說明見 README.md。 -->
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>吐瓦魯，富納富提 海岸線變化｜環境資訊中心</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+  :root{ --glass:rgba(16,42,31,.84); --cream:#f6f3e7; --mute:#aebfb5; --gold:#f0b429; --deep:#10231b;
+    --serif:"Noto Serif TC","Source Han Serif TC","Songti TC","PMingLiU",serif }
+  *{ box-sizing:border-box }
+  html,body{ margin:0; height:100% }
+  body{ display:flex; background:transparent; color:var(--cream);
+    font-family:"Hiragino Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif }
+  /* 畫框填滿 iframe：嵌入碼的外框桌機是正方形、欄寬 600px 以下是 2:3（見 README「嵌入」）。直接開網址時置中、最寬 720 */
+  .frame{ position:relative; margin:auto; overflow:hidden; border-radius:16px; background:#0f2a22;
+    width:min(100vw,100vh,720px); height:min(100vw,100vh,720px); touch-action:pan-y; -webkit-user-select:none; user-select:none }
+  @media (max-aspect-ratio:5/6){ .frame{ width:min(100vw,720px); height:min(100vh,150vw) } }
+
+  .stage{ position:absolute }   /* 影像＋地名；位置由 layout() 依畫框比例算 */
+  .stage img{ position:absolute; inset:0; width:100%; height:100%; opacity:0; transition:opacity .9s ease }
+  .stage img.on{ opacity:1 }
+  .lbl{ position:absolute; transform:translate(-50%,-50%); white-space:nowrap; color:#fff; font-weight:600; font-size:14px;
+    letter-spacing:.02em; text-shadow:0 0 2px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.6);
+    transition:color .3s, opacity .6s; pointer-events:none }
+  .lbl.r{ transform:translate(-100%,-50%) }   /* 名字放錨點左邊（潟湖那側），錨點貼著新生地 */
+  .lbl.sea{ color:rgba(228,244,244,.9); font-weight:500; font-size:15px; letter-spacing:.5em }
+  .lbl.hi{ color:var(--gold) }
+  .lbl.off{ opacity:0 }
+
+  .titlebar{ position:absolute; left:14px; top:14px; padding:10px 14px 11px; border-radius:12px; background:var(--glass);
+    box-shadow:0 8px 24px rgba(0,0,0,.4); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
+  .titlebar .logo{ display:block; height:26px; width:auto; margin-bottom:4px }
+  .titlebar h1{ margin:3px 0 0; font-family:var(--serif); font-size:22px; font-weight:700; letter-spacing:.08em; color:#fff }
+  .titlebar p{ margin:3px 0 0; font-size:12px; color:var(--mute); letter-spacing:.12em }
+
+  .card{ position:absolute; right:14px; bottom:26px; width:330px;   /* 下緣留給出處那一行（Copernicus 的標示要讀得到） */ padding:8px 15px 14px; border-radius:14px; background:var(--glass);
+    box-shadow:0 8px 24px rgba(0,0,0,.4); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
+  .tabs{ display:flex; justify-content:space-between; margin:0 -7px 4px }
+  .tabs button{ font:inherit; font-size:12.5px; letter-spacing:.04em; color:var(--mute); background:none; border:0; border-radius:8px;
+    padding:7px 7px; cursor:pointer; transition:color .2s }
+  .tabs button:hover{ color:var(--cream) }
+  .tabs button[aria-selected="true"]{ color:var(--gold); font-weight:700 }
+  .tabs button:focus-visible{ outline:2px solid var(--gold); outline-offset:-2px }
+  .card h2{ margin:0 0 6px; font-family:var(--serif); font-size:18px; font-weight:700; letter-spacing:.04em; color:#fff }
+  .card p{ margin:0; font-size:14px; line-height:1.7; color:#e3ebe6 }
+
+  .attrib{ position:absolute; left:0; bottom:0; padding:2px 7px; border-top-right-radius:6px; font-size:9.5px; line-height:1.5;
+    color:#c9d6cf; background:rgba(8,20,16,.55); white-space:nowrap }
+  .attrib .abbr{ display:none }
+
+  /* 直式畫框（手機、平板欄寬）：卡片橫跨下緣，蓋的是外海與主島西南段，不蓋新生地 */
+  .frame.tall .card{ left:10px; right:10px; bottom:24px; width:auto; padding:6px 13px 12px }
+  .frame.tall .titlebar{ left:10px; top:10px; padding:8px 12px 9px }
+  @media (max-width:599.98px){
+    .titlebar .logo{ height:22px }
+    .titlebar h1{ font-size:19px; margin-top:2px }
+    .titlebar p{ font-size:11px; letter-spacing:.08em }
+    .lbl{ font-size:13px } .lbl.sea{ font-size:13px; letter-spacing:.3em }
+    .tabs button{ font-size:12px; padding:7px 5px }
+    .card h2{ font-size:16px; margin-bottom:4px }
+    .card p{ font-size:13.5px; line-height:1.65 }
+    .attrib{ font-size:8px; padding:2px 6px }
+    .attrib .full{ display:none } .attrib .abbr{ display:inline }
+  }
+  @media (prefers-reduced-motion:reduce){ .stage img, .lbl{ transition:none } }
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+  <div class="stage" id="stage"></div>
+  <div class="titlebar">
+    <img class="logo" src="../../assets/eic-logo.png" alt="環境資訊中心">
+    <h1>吐瓦魯，富納富提</h1>
+    <p>海岸線變化 2022–2026</p>
+  </div>
+  <div class="card">
+    <div class="tabs" id="tabs" role="tablist" aria-label="影像日期"></div>
+    <h2 id="ctitle"></h2>
+    <p id="ctext"></p>
+  </div>
+  <div class="attrib">Contains modified Copernicus Sentinel data 2022–2026｜資料：<span class="full">環境資訊中心</span><span class="abbr">環資</span>、UNDP、NASA</div>
+</div>
+<script>
+// 影像範圍＝build_images.py 寫出的 img/bounds.json（南、西、北、東）；IW×IH 是影像像素
+const B = { s:-8.550054495649448, w:179.17194785807612, n:-8.500038143793898, e:179.21398901337292 }, IW = 936, IH = 1126;
+// 畫框要露出的範圍（北、西、南、東）：正方形＝桌機；直式＝手機、平板欄寬。新生地都在框內，卡片蓋的地方是海
+// 直式的新生地要夾在標題框（上緣約 19%）與卡片（下緣約 32%）之間，所以框得比正方形鬆
+const WIN = { square:[-8.50333, 179.17572, -8.53886, 179.21165], tall:[-8.50448, 179.18003, -8.54446, 179.20698] };
+// 字卡：出處見 README「字卡出處」。hi＝這一步要變黃的地名
+const STEPS = [
+  { img:"img/s2_20220809.webp", tab:"2022.8", title:"填海之前", hi:[],
+    text:"吐瓦魯國土平均海拔約2公尺，NASA 2023年評估，當地海平面比30年前高了將近15公分。依IPCC最壞情境，2050到2060年，首都富納富提將近一半土地會在每月大潮時淹水。" },
+  { img:"img/s2_20230605.webp", tab:"2023.6", title:"第一階段施工中", hi:["p1"],
+    text:"吐瓦魯政府2017年展開海岸調適計畫（TCAP），由聯合國開發計劃署執行，綠色氣候基金出資3600萬美元。第一階段抽取潟湖砂土，在人口最密集的瓦伊阿庫村旁填海造陸。" },
+  { img:"img/s2_20240828.webp", tab:"2024.8", title:"第一階段完工", hi:["p1"],
+    text:"第一階段2023年底完工，新生地長約730公尺、寬約100公尺，面積約7.3公頃。依聯合國開發計劃署的設計標準，可以抵禦2100年以前的海平面上升。" },
+  { img:"img/s2_20260105.webp", tab:"2026.1", title:"第二階段完工", hi:["p2"],
+    text:"第二階段2024年10月動工，在南側潟湖再填出長約800公尺、8公頃的新生地，2025年10月完工，經費由澳洲、紐西蘭與美國支應。兩期合計為主島增加約15公頃土地。" },
+  { img:"img/s2_20260917.webp", tab:"2026.9", title:"往北繼續填", hi:["p3"],
+    text:"2026年9月的影像上，第一階段北邊的潟湖岸又多了一片白色填地。依計畫，第三階段2026年1月啟動，往北再填4到7公頃，預計2028年中完工。" },
+];
+// 地名：from＝第幾步起出現；r＝名字放錨點左邊
+const LABELS = [
+  { id:"lagoon", t:"富納富提潟湖", lat:-8.51781, lon:179.18632, sea:1, from:0 },
+  { id:"ocean",  t:"太平洋",       lat:-8.52669, lon:179.20339, sea:1, from:0 },   // 離岸約 1 公里，手機框右緣也放得下
+  { id:"p1", t:"第一階段",   lat:-8.52092, lon:179.19418, r:1, from:1 },
+  { id:"p2", t:"第二階段",   lat:-8.52722, lon:179.18947, r:1, from:3 },
+  { id:"p3", t:"北段新填地", lat:-8.51470, lon:179.19719, r:1, from:4 },
+];
+
+const frame = document.getElementById("frame"), stage = document.getElementById("stage"), tabs = document.getElementById("tabs");
+const my = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));   // Web Mercator 的 y（影像是 Web Mercator）
+const fx = lon => (lon - B.w) / (B.e - B.w), fy = lat => (my(B.n) - my(lat)) / (my(B.n) - my(B.s));
+
+// 宋體只下載用得到的字（標題＋各步標題），幾 KB；載不到就退回系統宋體
+const glyphs = [...new Set("吐瓦魯，富納富提" + STEPS.map(s => s.title).join(""))].join("");
+document.head.insertAdjacentHTML("beforeend", '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&display=swap&text='
+  + encodeURIComponent(glyphs) + '">');
+
+const imgs = STEPS.map((s, i) => { const im = new Image(); im.src = s.img; im.alt = ""; im.decoding = "async"; stage.appendChild(im); return im; });
+const labels = LABELS.map(l => { const el = document.createElement("div");
+  el.className = "lbl" + (l.sea ? " sea" : "") + (l.r ? " r" : ""); el.textContent = l.t;
+  el.style.left = fx(l.lon) * 100 + "%"; el.style.top = fy(l.lat) * 100 + "%"; stage.appendChild(el); return el; });
+const btns = STEPS.map((s, i) => { const b = document.createElement("button");
+  b.type = "button"; b.setAttribute("role", "tab"); b.textContent = s.tab;
+  b.onclick = () => { hold(); go(i); }; tabs.appendChild(b); return b; });
+
+const tallMQ = matchMedia("(max-aspect-ratio:5/6)");
+function layout(){   // 把 WIN 那塊撐滿畫框（cover），影像與地名一起放大縮小
+  const tall = tallMQ.matches; frame.classList.toggle("tall", tall);
+  const [n, w, s, e] = WIN[tall ? "tall" : "square"], W = frame.clientWidth, H = frame.clientHeight;
+  const x0 = fx(w), x1 = fx(e), y0 = fy(n), y1 = fy(s);
+  const k = Math.max(W / ((x1 - x0) * IW), H / ((y1 - y0) * IH)), sw = IW * k, sh = IH * k;
+  Object.assign(stage.style, { width:sw + "px", height:sh + "px",
+    left:W / 2 - (x0 + x1) / 2 * sw + "px", top:H / 2 - (y0 + y1) / 2 * sh + "px" });
+}
+
+let cur = 0;
+function go(i){
+  cur = Math.max(0, Math.min(STEPS.length - 1, i));
+  const s = STEPS[cur];
+  imgs.forEach((im, j) => im.classList.toggle("on", j <= cur));   // 晚的疊在上面：往後淡入、往回淡出
+  labels.forEach((el, j) => { el.classList.toggle("off", cur < LABELS[j].from); el.classList.toggle("hi", s.hi.includes(LABELS[j].id)); });
+  btns.forEach((b, j) => b.setAttribute("aria-selected", j === cur));
+  document.getElementById("ctitle").textContent = s.title;
+  document.getElementById("ctext").textContent = s.text;
+}
+
+// 自動輪播：畫框露出六成以上才播、每步 7 秒、播完從頭；讀者點、滑、按鍵後就不再自動播
+let timer = null, held = matchMedia("(prefers-reduced-motion:reduce)").matches;
+const play = () => { if (!timer && !held) timer = setInterval(() => go((cur + 1) % STEPS.length), 7000); };
+const stop = () => { clearInterval(timer); timer = null; };
+function hold(){ held = true; stop(); }
+new IntersectionObserver(([e]) => e.isIntersecting ? play() : stop(), { threshold:.6 }).observe(frame);
+
+let sx = null, sy = 0;   // 左右滑換年份；上下照樣捲文章（touch-action:pan-y）
+frame.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; });
+frame.addEventListener("pointercancel", () => { sx = null; });
+frame.addEventListener("pointerup", e => { if (sx === null) return;
+  const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)){ hold(); go(cur + (dx < 0 ? 1 : -1)); } });
+addEventListener("keydown", e => { if (e.key === "ArrowRight" || e.key === "ArrowLeft"){ hold(); go(cur + (e.key === "ArrowRight" ? 1 : -1)); } });
+
+layout(); go(0);
+addEventListener("resize", layout);
+</script>
+</body>
+</html>

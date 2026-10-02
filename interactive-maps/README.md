@@ -21,6 +21,7 @@ interactive-maps/
     boundaries/          自動抓後快取於此（land/subdiv.geojson + places.json + geocode.json）
     <MAP_FILE> + article-preview.html   ← 產生
   tuvalu/                 吐瓦魯，富納富提：長型、環礁底圖、用到下面的選用設定
+    coast/                海岸線變化：五個日期的衛星影像配字卡（獨立一頁，不經 gen_map，見該夾 README）
   assets/                 共用圖檔（環資 logo）
     wide/                 同一份內容的橫版（整張圖轉 90 度），實例名 `tuvalu/wide`
   video/                  地圖 → 直式短影音（見母 README 為何不搬去 data-shorts）

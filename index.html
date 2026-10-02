@@ -75,6 +75,12 @@
     <span class="used">使用的文章：<a href="https://www.e-info.org.tw/feature/36">吐瓦魯：海浪帶不走的家</a></span>
   </div>
 
+  <div class="row">
+    <a href="interactive-maps/tuvalu/coast/tuvalu-coast.html">吐瓦魯，富納富提 海岸線變化 →</a>
+    <span class="desc">2022 到 2026 年五個時間點的衛星影像配字卡，看填海造陸怎麼改寫主島海岸。測試中，還不要拿去發稿</span>
+    <button type="button" class="copy" data-title="吐瓦魯，富納富提 海岸線變化" data-frame="aspect-ratio:1/1" data-narrow-frame="aspect-ratio:2/3">複製嵌入碼</button>
+  </div>
+
   <p class="said" id="said" role="status" aria-live="polite"></p>
 </div>
 
@@ -102,9 +108,25 @@
   // data-frame 是外框的尺寸（長型固定高度 height:1080px、橫版 aspect-ratio:720/480），最外層不留上下 margin
   // （owner 09-30：e-info 的嵌入框自己有 32px）；data-narrow 是畫面 700px 以下改嵌的那一版（橫版手機排不下，換回長型），
   // data-narrow-frame 是它的外框。兩版都寫進嵌入碼，用 CSS 只顯示一版；藏起來的 iframe 有 loading="lazy"，不會載入。
+  // 同一張只換外框比例（data-narrow-frame、沒有 data-narrow，例：海岸線變化欄寬 600px 以下改 2:3）：用 container query 看欄寬、不看視窗寬，
+  // 平板的 528 欄寬也會換。class 取自檔名，同一頁嵌兩張不同的也不會互相蓋掉樣式；不支援的舊瀏覽器一律用 data-frame。
+  function sized(url, title, box, narrowBox) {
+    var c = 'eic-' + url.split('/').pop().replace(/\.html$/, '').replace(/[^\w-]/g, '');
+    return '<style>.' + c + '{container-type:inline-size;max-width:720px;margin:0 auto}.' + c + '>div{position:relative;' + box + '}' +
+           '@container (max-width:600px){.' + c + '>div{' + narrowBox + '}}</style>\n' +
+           '<div class="' + c + '">\n' +
+           '  <div>\n' +
+           '    <iframe src="' + url + '"\n' +
+           '            title="' + title.replace(/"/g, '&quot;') + '" loading="lazy" allowfullscreen\n' +
+           '            style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">\n' +
+           '    </iframe>\n' +
+           '  </div>\n' +
+           '</div>';
+  }
   function snippet(url, title, d) {
     d = d || {};
     if (!d.frame) return frame(url, title, 'aspect-ratio:720/476', '32px auto');
+    if (d.narrowFrame && !d.narrow) return sized(url, title, d.frame, d.narrowFrame);
     var main = frame(url, title, d.frame, '0 auto');
     if (!d.narrow) return main;
     return '<style>.tv-wide{display:block}.tv-tall{display:none}@media (max-width:700px){.tv-wide{display:none}.tv-tall{display:block}}</style>\n' +
@@ -162,6 +184,12 @@
       wide.indexOf('src="https://example.org/t.html"') < 0 || wide.indexOf('height:1080px') < 0 ||
       wide.indexOf('@media (max-width:700px)') < 0 || wide.indexOf('margin:0 auto') < 0 || wide.split('</iframe>').length !== 3) {
     said.textContent = '吐瓦魯的嵌入碼產生有問題，請先不要用，並告知維護者。';
+  }
+  var cq = snippet('https://example.org/x/c-d.html', 't', { frame: 'aspect-ratio:1/1', narrowFrame: 'aspect-ratio:2/3' });
+  if (cq.indexOf('src="https://example.org/x/c-d.html"') < 0 || cq.indexOf('container-type:inline-size') < 0 ||
+      cq.indexOf('.eic-c-d>div{position:relative;aspect-ratio:1/1}') < 0 || cq.indexOf('@container (max-width:600px){.eic-c-d>div{aspect-ratio:2/3}}') < 0 ||
+      cq.indexOf('max-width:720px') < 0 || cq.split('</iframe>').length !== 2) {
+    said.textContent = '海岸線變化的嵌入碼產生有問題，請先不要用，並告知維護者。';
   }
 })();
 </script>
