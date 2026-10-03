@@ -8,7 +8,7 @@
 名稱優先 name:zh（繁中受眾），退 name。Overpass 走多鏡像 fallback（主站常 504）。"""
 import urllib.request, urllib.parse, json, os, time
 
-UA = {"User-Agent": "research-lab-map-template/0.1 (gassaofilm@gmail.com)"}
+UA = {"User-Agent": "research-lab-map-template/0.1"}  # 只寫用途、不放聯絡方式（母層 CLAUDE.md 爬蟲匿名）
 OVERPASS = [
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass-api.de/api/interpreter",
