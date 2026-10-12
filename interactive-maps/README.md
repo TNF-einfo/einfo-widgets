@@ -108,7 +108,7 @@ offmap 的點影片版也畫上主圖、鏡頭直接飛過去，所以底圖要�
 兩點距離（用兩端縮放的中間值量）超過 2000px 的一段中途會先拉遠再推近、說明卡先收起，任何地圖都一樣（東京每段都不到）。
 實例見 `tuvalu/README.md` 的「短影音」。
 
-海岸線變化那頁不是 `gen_map` 產的，另用 `video/make_coast_video.mjs`：鏡頭不動、五個日期依序淡入，安全區相同，說明見 `tuvalu/coast/README.md`「影片版」。
+海岸線變化那頁不是 `gen_map` 產的，另用 `video/make_coast_video.mjs`：五個日期依序淡入、鏡頭慢慢推近，安全區相同，說明見 `tuvalu/coast/README.md`「影片版」。
 
 ## 重產（自動排版測試版）
 ```
