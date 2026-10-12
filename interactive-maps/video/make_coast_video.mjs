@@ -1,7 +1,7 @@
 // 海岸線變化互動頁（tuvalu/coast/tuvalu-coast.html）→ 直式短影音 1080×1920。
 // 頁面本身不改（它嵌在正式站 node/243890），影片版的版面用注入的 CSS 蓋過去；安全區照 make_video.mjs：上 12%、下 15%、左右 9%。
-// 縮時：每個月一張沒雲的影像快速接續（tuvalu/coast/build_timelapse.py 產的，沒有就只用五個階段那五張），
-// 到了五個階段停 3 秒配字卡；左下的年月跟著跑；鏡頭整支片從影像剛好鋪滿畫面慢慢推近 10%。
+// 縮時：雲不太多的每一景一秒 5 張接續（tuvalu/coast/build_timelapse.py 產的，沒有就只用五個階段那五張），
+// 到了五個階段停 3 秒配字卡；字卡上排目前那一格跟著跑年月，到下一個階段跳下一格；鏡頭整支片從影像剛好鋪滿畫面慢慢推近 10%。
 // 用法（在 video/ 底下）：node make_coast_video.mjs            → out/tuvalu-coast_1080x1920.mp4
 //                        node make_coast_video.mjs --preview  → out/preview_coast_step<N>.png（五個階段停住那段的中間）
 // 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
@@ -15,8 +15,9 @@ const PAGE = new URL("../tuvalu/coast/tuvalu-coast.html", import.meta.url).href;
 const TIMELAPSE = fileURLToPath(new URL("../tuvalu/coast/img/timelapse/list.json", import.meta.url));
 const OUT = fileURLToPath(new URL("out/", import.meta.url));
 const W = 1080, H = 1920, FPS = 30, PREVIEW = process.argv.includes("--preview");
-// 五個階段：淡入 0.8 秒、停 3 秒（owner：「停三秒就好」）；縮時每張淡入 0.2 秒、停 0.1 秒
-const SEC = { first: 3, keyFade: .8, hold: 3, tlFade: .2, tlDwell: .1, end: 1.5 };
+// owner：「字卡停一秒，兩半秒給縮時如何」「一秒五幀好了」。相鄰兩個階段之間的縮時連同淡入下一個階段共 2.5 秒，
+// 那一段有幾張就平分（10 張就是一秒 5 張，每張六成時間淡入、四成停住）；階段淡入 0.5 秒、字卡停 1 秒，最後多停 1.5 秒
+const SEC = { first: 1, segment: 2.5, keyFade: .5, hold: 1, end: 1.5 };
 const PUSH = 1.10;   // 推近到起點的幾倍；推太多新生地會跑進標題框或字卡底下（會先被下面的 fit 擋住）
 // 新生地連同它左邊的地名，要落在標題框與字卡之間（北、西、南、東）：北端是 2026-09 北段新填地，
 // 南端取第二階段的地名一帶；再往南的尾巴推近到最後可以被字卡蓋到
@@ -35,13 +36,11 @@ const CSS = `
   .titlebar p{ font-size:26px!important; margin-top:8px!important }
   .card{ left:9%!important; right:9%!important; bottom:15%!important; width:auto!important; padding:16px 40px 34px!important; border-radius:28px }
   .tabs{ margin:0 -12px 12px!important }
-  .tabs button{ font-size:28px!important; padding:10px 12px!important }
+  .tabs button{ font-size:28px!important; padding:10px 12px!important; flex:1; text-align:center; font-variant-numeric:tabular-nums }   /* 等寬，年月跑動時分頁才不會左右晃 */
   .card h2{ font-size:46px!important; margin-bottom:14px!important }
   .card p{ font-size:30px!important; line-height:1.6!important }
   .lbl{ font-size:32px; text-shadow:0 0 4px rgba(0,0,0,.95), 0 2px 7px rgba(0,0,0,.85), 0 0 22px rgba(0,0,0,.6) }
   .lbl.sea{ font-size:34px; letter-spacing:.4em }
-  #vdate{ position:absolute; left:9%; color:#fff; font-size:76px; font-weight:700; letter-spacing:.02em; font-variant-numeric:tabular-nums;
-    text-shadow:0 0 6px rgba(0,0,0,.9), 0 3px 12px rgba(0,0,0,.8), 0 0 30px rgba(0,0,0,.5) }
   .attrib{ font-size:17px!important; padding:3px 10px!important }   /* Copernicus 出處是授權條件，要讀得到 */
 `;
 
@@ -73,12 +72,10 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
     return { im, k, label: s.label };
   });
   await Promise.all(seq.map(s => s.im.decode())); await document.fonts.ready;
-  const vdate = document.createElement("div"); vdate.id = "vdate"; document.getElementById("frame").appendChild(vdate);
   layout();
   // 新生地要放進的那一帶：左右安全區之間、標題框下緣到最高那張字卡的上緣（各留 24px）
   const cardTop = Math.min(...STEPS.map((s, i) => { go(i); return document.querySelector(".card").getBoundingClientRect().top; }));
   go(0);
-  vdate.style.bottom = H - cardTop + 24 + "px";   // 字卡正上方，左邊是潟湖
   const x0 = W * .09, x1 = W * .91, y0 = document.querySelector(".titlebar").getBoundingClientRect().bottom + 24, y1 = cardTop - 24;
   const [n, w, s, e] = focus, fw = (fx(e) - fx(w)) * IW, fh = (fy(s) - fy(n)) * IH;
   const k0 = Math.max(W / IW, H / IH);   // 起點：影像剛好鋪滿畫面（再小就露出影像邊緣）
@@ -91,7 +88,7 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
     Object.assign(stage.style, { width: sw + "px", height: sh + "px", left: left + "px", top: top + "px" });
   };
   // 畫面停在第 a 張、第 b 張淡入到 t（0→1；b 是 null＝停住）。b 是五個階段之一時：新地名跟著淡入，
-  // 字卡文字前四分之一淡出、換字、再淡入。年月過了一半換成 b 的
+  // 字卡文字前四分之一淡出、換字、再淡入，分頁同時跳到下一格。縮時的年月顯示在目前那一格（過了一半換成 b 的），其他格照原本的日期
   window.__show = (a, b, t) => {
     const ease = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2, q = .25;
     seq.forEach((s, r) => { s.im.style.opacity = r === a ? 1 : r === b ? ease : 0; });
@@ -102,7 +99,8 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
       const c = t < q ? 1 - t / q : Math.min(1, (t - q) / q);
       for (const id of ["ctitle", "ctext"]) document.getElementById(id).style.opacity = c;
     }
-    vdate.textContent = seq[b !== null && t >= .5 ? b : a].label;
+    const shown = seq[b !== null && t >= (k >= 0 ? q : .5) ? b : a];
+    btns.forEach((btn, j) => { btn.textContent = j === cur && shown.k < 0 ? shown.label : STEPS[j].tab; });
   };
   __show(0, null, 0);
   return { k0: +k0.toFixed(3), k1: +k1.toFixed(3), band: [Math.round(y0), Math.round(y1)], keys: seq.map(s => s.k) };
@@ -110,11 +108,15 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
 console.log("鏡頭", JSON.stringify({ k0: cam.k0, k1: cam.k1, band: cam.band }), `推近 ${((cam.k1 / cam.k0 - 1) * 100).toFixed(1)}%`,
   `共 ${cam.keys.length} 張（五個階段 ${cam.keys.filter(k => k >= 0).length} 張）`);
 
-// 時間軸：第一張停住 → 每一張淡入再停住（五個階段停 3 秒，其餘一閃而過）→ 最後多停一下
+// 時間軸：第一個階段停住 → 每段縮時（平分 2.5 秒扣掉階段淡入）→ 淡入下一個階段、字卡停住 → 最後多停一下。清單的最後一張一定是階段
 const segs = [{ a: 0, b: null, sec: SEC.first }];
-for (let r = 1; r < cam.keys.length; r++) {
-  const key = cam.keys[r] >= 0;
-  segs.push({ a: r - 1, b: r, sec: key ? SEC.keyFade : SEC.tlFade }, { a: r, b: null, sec: key ? SEC.hold : SEC.tlDwell });
+for (let r = 1; r < cam.keys.length;) {
+  let s = r;
+  while (cam.keys[s] < 0) s++;   // s＝下一個階段
+  const per = (SEC.segment - SEC.keyFade) / Math.max(1, s - r);
+  for (let i = r; i < s; i++) segs.push({ a: i - 1, b: i, sec: per * .6 }, { a: i, b: null, sec: per * .4 });
+  segs.push({ a: s - 1, b: s, sec: SEC.keyFade }, { a: s, b: null, sec: SEC.hold });
+  r = s + 1;
 }
 segs.at(-1).sec += SEC.end;
 const total = segs.reduce((a, s) => a + Math.round(s.sec * FPS), 0);
