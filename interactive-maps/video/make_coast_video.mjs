@@ -1,7 +1,7 @@
 // 海岸線變化互動頁（tuvalu/coast/tuvalu-coast.html）→ 直式短影音 1080×1920。
 // 頁面本身不改（它嵌在正式站 node/243890），影片版的版面用注入的 CSS 蓋過去；安全區照 make_video.mjs：上 12%、下 15%、左右 9%。
-// 縮時：雲不太多的每一景一秒 5 張接續（tuvalu/coast/build_timelapse.py 產的，沒有就只用五個階段那五張），
-// 到了五個階段停 3 秒配字卡；字卡上排目前那一格跟著跑年月，到下一個階段跳下一格；鏡頭整支片從影像剛好鋪滿畫面慢慢推近 10%。
+// 縮時：五個階段之間照時間平均抽的影像一秒約 5 張接續（tuvalu/coast/build_timelapse.py 產的，沒有就只用五個階段那五張），
+// 到了階段那張字卡就換、不停；字卡上排目前那一格跟著跑年月，到下一個階段跳下一格；鏡頭整支片從影像剛好鋪滿畫面慢慢推近 10%。
 // 用法（在 video/ 底下）：node make_coast_video.mjs            → out/tuvalu-coast_1080x1920.mp4
 //                        node make_coast_video.mjs --preview  → out/preview_coast_step<N>.png（五個階段停住那段的中間）
 // 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
@@ -15,9 +15,9 @@ const PAGE = new URL("../tuvalu/coast/tuvalu-coast.html", import.meta.url).href;
 const TIMELAPSE = fileURLToPath(new URL("../tuvalu/coast/img/timelapse/list.json", import.meta.url));
 const OUT = fileURLToPath(new URL("out/", import.meta.url));
 const W = 1080, H = 1920, FPS = 30, PREVIEW = process.argv.includes("--preview");
-// owner：「字卡停一秒，兩半秒給縮時如何」「一秒五幀好了」。相鄰兩個階段之間的縮時連同淡入下一個階段共 2.5 秒，
-// 那一段有幾張就平分（10 張就是一秒 5 張，每張六成時間淡入、四成停住）；階段淡入 0.5 秒、字卡停 1 秒，最後多停 1.5 秒
-const SEC = { first: 1, segment: 2.5, keyFade: .5, hold: 1, end: 1.5 };
+// owner：「一秒五幀好了」「字卡不要停好了，都給縮時」。相鄰兩個階段之間每段 3.5 秒，那段的縮時圖連同下一個階段那張平分
+// （17 張就是一秒 5 張，每張六成時間淡入、四成停住），字卡到了階段那張就換、不停；第一張停 0.5 秒，最後多停 1.5 秒
+const SEC = { first: .5, segment: 3.5, end: 1.5 };
 const PUSH = 1.10;   // 推近到起點的幾倍；推太多新生地會跑進標題框或字卡底下（會先被下面的 fit 擋住）
 // 新生地連同它左邊的地名，要落在標題框與字卡之間（北、西、南、東）：北端是 2026-09 北段新填地，
 // 南端取第二階段的地名一帶；再往南的尾巴推近到最後可以被字卡蓋到
@@ -108,14 +108,13 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
 console.log("鏡頭", JSON.stringify({ k0: cam.k0, k1: cam.k1, band: cam.band }), `推近 ${((cam.k1 / cam.k0 - 1) * 100).toFixed(1)}%`,
   `共 ${cam.keys.length} 張（五個階段 ${cam.keys.filter(k => k >= 0).length} 張）`);
 
-// 時間軸：第一個階段停住 → 每段縮時（平分 2.5 秒扣掉階段淡入）→ 淡入下一個階段、字卡停住 → 最後多停一下。清單的最後一張一定是階段
+// 時間軸：第一張停一下 → 每段縮時連同下一個階段那張平分 3.5 秒 → 最後多停一下。清單的最後一張一定是階段
 const segs = [{ a: 0, b: null, sec: SEC.first }];
 for (let r = 1; r < cam.keys.length;) {
   let s = r;
   while (cam.keys[s] < 0) s++;   // s＝下一個階段
-  const per = (SEC.segment - SEC.keyFade) / Math.max(1, s - r);
-  for (let i = r; i < s; i++) segs.push({ a: i - 1, b: i, sec: per * .6 }, { a: i, b: null, sec: per * .4 });
-  segs.push({ a: s - 1, b: s, sec: SEC.keyFade }, { a: s, b: null, sec: SEC.hold });
+  const per = SEC.segment / (s - r + 1);
+  for (let i = r; i <= s; i++) segs.push({ a: i - 1, b: i, sec: per * .6 }, { a: i, b: null, sec: per * .4 });
   r = s + 1;
 }
 segs.at(-1).sec += SEC.end;
