@@ -5,7 +5,8 @@
    「字卡停一秒，兩半秒給縮時如何」），只給影片用（video/make_coast_video.mjs），互動頁不用。
    挑法：相鄰兩個階段之間切成 --per-segment 格（預設 16），每格挑離中點最近、雲量不超過 --max-cloud（預設 25%）的一天，
    整格都太多雲就空著。雲量是拉這個範圍的 SCL（場景分類）小圖，算雲（8、9、10）與雲影（3）占的比例；
-   SCL 會把浪花、白沙也算成雲，晴天也有 2～4%。同一天有兩個處理版本取雲少的。五個階段那天直接用 build_images.py 那五景。
+   SCL 會把浪花、白沙也算成雲，晴天也有 2～4%。同一天有兩個處理版本取雲少的。五個階段那天用 build_images.py 那五景，
+   但跟縮時圖一樣另做一張無損 PNG（互動頁那五張是有損 WebP，影片用了畫質會差）。
    圖存 img/timelapse/（不進 repo），挑片結果存 img/timelapse/list.json（進 repo）。
    有 list.json 就照它補抓缺的圖、不重挑（加 --reselect 才重挑）；小圖的雲量快取在同一夾。需連網，第一次要半小時以上。
 
@@ -86,8 +87,8 @@ def select(items, frac, worst, n):
                     out.append({"date": d, "item": best, "key": False, "cloud": round(frac(best), 4)})
                     break
     out.sort(key=lambda c: c["date"])
-    for c in out:
-        c["file"] = f"../s2_{c['date'].replace('-', '')}.webp" if c["key"] else f"s2_{c['date'].replace('-', '')}.webp"
+    for c in out:   # 影片用無損 PNG（owner 10-12：「圖層畫質沒問題嗎」），五個階段也另做一張，不用互動頁那五張有損 WebP
+        c["file"] = f"s2_{c['date'].replace('-', '')}.png"
     return out
 
 
@@ -149,19 +150,19 @@ def match_clear(src, ref, ms, mr):
 
 
 def fetch(chosen, bbox, w, h):
-    """清單裡還沒有圖的做出來（加 --force 全部重做）：照 2026-01-05 那景調色（排除雲）、放大兩倍、銳化（同 build_images.py）。
-       五個階段用 img/ 那五張。"""
+    """清單裡還沒有圖的做出來（加 --force 全部重做）：照 2026-01-05 那景調色（排除雲）、放大兩倍、銳化（同 build_images.py），
+       存無損 PNG。五個階段也照同樣做法另做一張。"""
     ref = None
     for c in chosen:
         out = TL / c["file"]
-        if c["key"] or out.exists() and "--force" not in sys.argv:
+        if out.exists() and "--force" not in sys.argv:
             continue
         ref = ref or raw(SCENES[REF], bbox, w, h)   # 調色的參考景要原始解析度，跟 build_images.py 一樣是 2026-01-05 那景
         rgb, clear = raw(c["item"], bbox, w, h)
         if clear.mean() < .2:   # 幾乎整片是雲，排除後剩的太少，退回整張一起算
             clear = np.ones_like(clear)
         big = Image.fromarray(match_clear(rgb, ref[0], clear, ref[1])).resize((w * 2, h * 2), Image.LANCZOS)
-        big.filter(ImageFilter.UnsharpMask(radius=1.6, percent=55, threshold=2)).save(out, quality=85, method=6)
+        big.filter(ImageFilter.UnsharpMask(radius=1.6, percent=55, threshold=2)).save(out)
         print("寫出", out.name, flush=True)
     print(f"共 {len(chosen)} 張（五個階段 {sum(c['key'] for c in chosen)} 張）")
 

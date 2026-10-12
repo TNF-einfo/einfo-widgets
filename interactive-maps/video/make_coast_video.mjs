@@ -1,7 +1,8 @@
 // 海岸線變化互動頁（tuvalu/coast/tuvalu-coast.html）→ 直式短影音 1080×1920。
 // 頁面本身不改（它嵌在正式站 node/243890），影片版的版面用注入的 CSS 蓋過去；安全區照 make_video.mjs：上 12%、下 15%、左右 9%。
 // 縮時：五個階段之間照時間平均抽的影像一秒約 5 張接續（tuvalu/coast/build_timelapse.py 產的，沒有就只用五個階段那五張），
-// 到了階段那張字卡就換、不停；字卡上排目前那一格跟著跑年月，到下一個階段跳下一格；鏡頭整支片從影像剛好鋪滿畫面慢慢推近 10%。
+// 到了階段那張字卡就換、不停；字卡上排目前那一格跟著跑年月，到下一個階段跳下一格；鏡頭固定（owner：「不需要推進，保持固定鏡頭就好」）。
+// 影像用 build_timelapse.py 另做的無損 PNG（五個階段也是），不用互動頁的有損 WebP。
 // 用法（在 video/ 底下）：node make_coast_video.mjs            → out/tuvalu-coast_1080x1920.mp4
 //                        node make_coast_video.mjs --preview  → out/preview_coast_step<N>.png（五個階段停住那段的中間）
 // 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
@@ -18,10 +19,9 @@ const W = 1080, H = 1920, FPS = 30, PREVIEW = process.argv.includes("--preview")
 // owner：「一秒五幀好了」「字卡不要停好了，都給縮時」。相鄰兩個階段之間每段 3.5 秒，那段的縮時圖連同下一個階段那張平分
 // （17 張就是一秒 5 張，每張六成時間淡入、四成停住），字卡到了階段那張就換、不停；第一張停 0.5 秒，最後多停 1.5 秒
 const SEC = { first: .5, segment: 3.5, end: 1.5 };
-const PUSH = 1.10;   // 推近到起點的幾倍；推太多新生地會跑進標題框或字卡底下（會先被下面的 fit 擋住）
-// 新生地連同它左邊的地名，要落在標題框與字卡之間（北、西、南、東）：北端是 2026-09 北段新填地，
-// 南端取第二階段的地名一帶；再往南的尾巴推近到最後可以被字卡蓋到
-const FOCUS = [-8.5120, 179.1830, -8.5300, 179.2005];
+// 新生地連同它左邊的地名，要落在標題框與字卡之間（北、西、南、東）：北端是 2026-09 北段新填地，南端是第二階段的尾巴。
+// 鏡頭就定在剛好放得下這一塊的縮放（不小於影像鋪滿畫面），放得越小，10 公尺的影像看起來越不糊
+const FOCUS = [-8.5120, 179.1830, -8.5315, 179.2005];
 const OCEAN = [-8.5285, 179.2000];   // 「太平洋」：頁面上的位置在 1080 寬會落到右緣安全區外，影片版往內移到離岸約 400 公尺
 
 const CSS = `
@@ -56,17 +56,18 @@ const p = await b.newPage();
 await p.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
 await p.goto(PAGE, { waitUntil: "networkidle0", timeout: 60000 });
 
-const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
+const cam = await p.evaluate(async (css, focus, ocean, W, H, spec) => {
   hold(); removeEventListener("resize", layout);   // 停掉自動輪播；畫框位置下面自己算
   document.head.insertAdjacentHTML("beforeend", `<style>${css}</style>`);
   const oi = LABELS.findIndex(l => l.id === "ocean");
   labels[oi].style.left = fx(ocean[1]) * 100 + "%"; labels[oi].style.top = fy(ocean[0]) * 100 + "%";
-  // 播放順序裡的每一張：五個階段用頁面原本的影像，其餘新增在同一個 stage、同樣範圍；晚的疊在上面
-  const base = name => name.split("/").pop();
+  // 播放順序裡的每一張：五個階段沿用頁面原本的 <img>（換成無損 PNG），其餘新增在同一個 stage、同樣範圍；晚的疊在上面
+  const stem = name => name.split("/").pop().replace(/\.\w+$/, "");
   spec = spec || STEPS.map(s => ({ src: s.img, label: s.tab }));
   const seq = spec.map((s, r) => {
-    const k = STEPS.findIndex(st => base(st.img) === base(s.src));
-    const im = k >= 0 ? imgs[k] : Object.assign(new Image(), { src: s.src, alt: "", decoding: "async" });
+    const k = STEPS.findIndex(st => stem(st.img) === stem(s.src));
+    const im = k >= 0 ? imgs[k] : Object.assign(new Image(), { alt: "", decoding: "async" });
+    im.src = s.src;
     if (k < 0) stage.insertBefore(im, labels[0]);
     im.style.zIndex = r + 1;
     return { im, k, label: s.label };
@@ -78,15 +79,12 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
   go(0);
   const x0 = W * .09, x1 = W * .91, y0 = document.querySelector(".titlebar").getBoundingClientRect().bottom + 24, y1 = cardTop - 24;
   const [n, w, s, e] = focus, fw = (fx(e) - fx(w)) * IW, fh = (fy(s) - fy(n)) * IH;
-  const k0 = Math.max(W / IW, H / IH);   // 起點：影像剛好鋪滿畫面（再小就露出影像邊緣）
-  const k1 = Math.max(k0, Math.min(k0 * PUSH, (x1 - x0) / fw, (y1 - y0) / fh));
+  // 固定鏡頭：剛好把新生地放進那一帶的縮放，但不小於影像鋪滿畫面（再小就露出影像邊緣）；新生地對準那一帶的中心
+  const k = Math.max(W / IW, H / IH, Math.min((x1 - x0) / fw, (y1 - y0) / fh)), sw = IW * k, sh = IH * k;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  window.__cam = u => {   // u：整支片的進度 0→1。新生地對準那一帶的中心，影像不能露出邊緣
-    const k = k0 + (k1 - k0) * u, sw = IW * k, sh = IH * k;
-    const left = clamp((x0 + x1) / 2 - (fx(w) + fx(e)) / 2 * sw, W - sw, 0);
-    const top = clamp((y0 + y1) / 2 - (fy(n) + fy(s)) / 2 * sh, H - sh, 0);
-    Object.assign(stage.style, { width: sw + "px", height: sh + "px", left: left + "px", top: top + "px" });
-  };
+  Object.assign(stage.style, { width: sw + "px", height: sh + "px",
+    left: clamp((x0 + x1) / 2 - (fx(w) + fx(e)) / 2 * sw, W - sw, 0) + "px",
+    top: clamp((y0 + y1) / 2 - (fy(n) + fy(s)) / 2 * sh, H - sh, 0) + "px" });
   // 畫面停在第 a 張、第 b 張淡入到 t（0→1；b 是 null＝停住）。b 是五個階段之一時：新地名跟著淡入，
   // 字卡文字前四分之一淡出、換字、再淡入，分頁同時跳到下一格。縮時的年月顯示在目前那一格（過了一半換成 b 的），其他格照原本的日期
   window.__show = (a, b, t) => {
@@ -103,9 +101,9 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, PUSH, spec) => {
     btns.forEach((btn, j) => { btn.textContent = j === cur && shown.k < 0 ? shown.label : STEPS[j].tab; });
   };
   __show(0, null, 0);
-  return { k0: +k0.toFixed(3), k1: +k1.toFixed(3), band: [Math.round(y0), Math.round(y1)], keys: seq.map(s => s.k) };
-}, CSS, FOCUS, OCEAN, W, H, PUSH, spec);
-console.log("鏡頭", JSON.stringify({ k0: cam.k0, k1: cam.k1, band: cam.band }), `推近 ${((cam.k1 / cam.k0 - 1) * 100).toFixed(1)}%`,
+  return { k: +k.toFixed(3), band: [Math.round(y0), Math.round(y1)], keys: seq.map(s => s.k) };
+}, CSS, FOCUS, OCEAN, W, H, spec);
+console.log("鏡頭", JSON.stringify({ k: cam.k, band: cam.band }),
   `共 ${cam.keys.length} 張（五個階段 ${cam.keys.filter(k => k >= 0).length} 張）`);
 
 // 時間軸：第一張停一下 → 每段縮時連同下一個階段那張平分 3.5 秒 → 最後多停一下。清單的最後一張一定是階段
@@ -126,7 +124,7 @@ if (PREVIEW) {
   for (const s of segs) {
     const n = Math.round(s.sec * FPS);
     if (s.b === null && cam.keys[s.a] >= 0) {
-      await p.evaluate((a, u) => { if (a > 0) __show(a - 1, a, 1); __show(a, null, 0); __cam(u); }, s.a, (f + n / 2) / (total - 1));   // 先走完淡入，字卡與地名才會換
+      await p.evaluate(a => { if (a > 0) __show(a - 1, a, 1); __show(a, null, 0); }, s.a);   // 先走完淡入，字卡與地名才會換
       await p.screenshot({ path: `${OUT}preview_coast_step${cam.keys[s.a]}.png` });
     }
     f += n;
@@ -135,13 +133,15 @@ if (PREVIEW) {
 }
 
 const outfile = `${OUT}tuvalu-coast_1080x${H}.mp4`;
+// 壓縮品質：縮時每幀都在換、細節多，預設 CRF 23 會糊成方塊（owner 10-12：「影片畫質感覺有點差」），改 CRF 17＋slow
 const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
-  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", outfile], { stdio: ["pipe", "inherit", "inherit"] });
+  "-c:v", "libx264", "-crf", "17", "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", outfile],
+  { stdio: ["pipe", "inherit", "inherit"] });
 let f = 0;
 for (const s of segs) {
   const n = Math.round(s.sec * FPS);
-  for (let j = 1; j <= n; j++, f++) {   // 鏡頭一直在推，每一幀都要重截
-    await p.evaluate((a, bb, t, u) => { __show(a, bb, t); __cam(u); }, s.a, s.b, s.b === null ? 0 : j / n, f / (total - 1));
+  for (let j = 1; j <= n; j++, f++) {   // 縮時每 0.2 秒就換一張，停住的段落也只有幾幀，逐幀截就好
+    await p.evaluate((a, bb, t) => __show(a, bb, t), s.a, s.b, s.b === null ? 0 : j / n);
     const buf = await p.screenshot({ type: "png", optimizeForSpeed: true });
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once("drain", r));
   }
