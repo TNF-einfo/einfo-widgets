@@ -1,9 +1,9 @@
 // 海岸線變化互動頁（tuvalu/coast/tuvalu-coast.html）→ 直式短影音 1080×1920。
 // 頁面本身不改（它嵌在正式站 node/243890），影片版的版面用注入的 CSS 蓋過去；安全區照 make_video.mjs：上 12%、下 15%、左右 9%。
-// 縮時：五個階段之間照時間平均抽的影像一秒約 5 張接續（tuvalu/coast/build_timelapse.py 產的，沒有就只用五個階段那五張），
+// 縮時：五個階段之間照時間平均抽、沒有雲的影像接續（tuvalu/coast/build_timelapse.py 產的，沒有就只用五個階段那五張），
 // 到了階段那張字卡就換、不停；字卡上排目前那一格跟著跑年月，到下一個階段跳下一格；鏡頭固定（owner：「不需要推進，保持固定鏡頭就好」）。
 // 影像用 build_timelapse.py 另做的無損 PNG（五個階段也是），不用互動頁的有損 WebP。
-// 用法（在 video/ 底下）：node make_coast_video.mjs            → out/tuvalu-coast_1080x1920.mp4
+// 用法（在 video/ 底下）：node make_coast_video.mjs            → out/tuvalu-coast_<VERSION>_1080x1920.mp4
 //                        node make_coast_video.mjs --preview  → out/preview_coast_step<N>.png（五個階段停住那段的中間）
 // 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
 import puppeteer from "puppeteer-core";
@@ -16,6 +16,8 @@ const PAGE = new URL("../tuvalu/coast/tuvalu-coast.html", import.meta.url).href;
 const TIMELAPSE = fileURLToPath(new URL("../tuvalu/coast/img/timelapse/list.json", import.meta.url));
 const OUT = fileURLToPath(new URL("out/", import.meta.url));
 const W = 1080, H = 1920, FPS = 30, PREVIEW = process.argv.includes("--preview");
+// 檔名的版號，重產新的一版就加一，舊的不會被蓋掉。v2（10-19）：抽掉有雲的影格；10-12 那版（64008c0）檔名沒有版號
+const VERSION = "v2";
 // owner：「一秒五幀好了」「字卡不要停好了，都給縮時」。相鄰兩個階段之間每段 3.5 秒，那段的縮時圖連同下一個階段那張平分
 // （17 張就是一秒 5 張，每張六成時間淡入、四成停住），字卡到了階段那張就換、不停；第一張停 0.5 秒，最後多停 1.5 秒
 const SEC = { first: .5, segment: 3.5, end: 1.5 };
@@ -47,7 +49,7 @@ const CSS = `
 // 播放順序：縮時清單（照日期）；沒有就只用五個階段。src 相對於頁面
 const list = existsSync(TIMELAPSE) ? JSON.parse(readFileSync(TIMELAPSE, "utf8")) : null;
 const label = d => `${+d.slice(0, 4)}.${+d.slice(5, 7)}`;   // 2023-06-05 → 2023.6，跟字卡上排的日期一樣
-const spec = list ? list.map(c => ({ src: "img/timelapse/" + c.file, label: label(c.date) })) : null;
+const spec = list ? list.map(c => ({ src: "img/timelapse/" + c.file, label: label(c.date), key: c.key })) : null;
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: true,
   userDataDir: "C:\\Users\\shawn\\AppData\\Local\\Temp\\claude-chrome-video",
@@ -61,11 +63,12 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, spec) => {
   document.head.insertAdjacentHTML("beforeend", `<style>${css}</style>`);
   const oi = LABELS.findIndex(l => l.id === "ocean");
   labels[oi].style.left = fx(ocean[1]) * 100 + "%"; labels[oi].style.top = fy(ocean[0]) * 100 + "%";
-  // 播放順序裡的每一張：五個階段沿用頁面原本的 <img>（換成無損 PNG），其餘新增在同一個 stage、同樣範圍；晚的疊在上面
-  const stem = name => name.split("/").pop().replace(/\.\w+$/, "");
-  spec = spec || STEPS.map(s => ({ src: s.img, label: s.tab }));
+  // 播放順序裡的每一張：五個階段沿用頁面原本的 <img>（換成無損 PNG），其餘新增在同一個 stage、同樣範圍；晚的疊在上面。
+  // 第幾個階段照清單的 key 數，不比檔名：影片換掉的階段影像（build_timelapse.py 的 SWAP）日期跟頁面不同
+  spec = spec || STEPS.map(s => ({ src: s.img, label: s.tab, key: true }));
+  let step = 0;
   const seq = spec.map((s, r) => {
-    const k = STEPS.findIndex(st => stem(st.img) === stem(s.src));
+    const k = s.key ? step++ : -1;
     const im = k >= 0 ? imgs[k] : Object.assign(new Image(), { alt: "", decoding: "async" });
     im.src = s.src;
     if (k < 0) stage.insertBefore(im, labels[0]);
@@ -82,9 +85,8 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, spec) => {
   // 固定鏡頭：剛好把新生地放進那一帶的縮放，但不小於影像鋪滿畫面（再小就露出影像邊緣）；新生地對準那一帶的中心
   const k = Math.max(W / IW, H / IH, Math.min((x1 - x0) / fw, (y1 - y0) / fh)), sw = IW * k, sh = IH * k;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  Object.assign(stage.style, { width: sw + "px", height: sh + "px",
-    left: clamp((x0 + x1) / 2 - (fx(w) + fx(e)) / 2 * sw, W - sw, 0) + "px",
-    top: clamp((y0 + y1) / 2 - (fy(n) + fy(s)) / 2 * sh, H - sh, 0) + "px" });
+  const left = clamp((x0 + x1) / 2 - (fx(w) + fx(e)) / 2 * sw, W - sw, 0), top = clamp((y0 + y1) / 2 - (fy(n) + fy(s)) / 2 * sh, H - sh, 0);
+  Object.assign(stage.style, { width: sw + "px", height: sh + "px", left: left + "px", top: top + "px" });
   // 畫面停在第 a 張、第 b 張淡入到 t（0→1；b 是 null＝停住）。b 是五個階段之一時：新地名跟著淡入，
   // 字卡文字前四分之一淡出、換字、再淡入，分頁同時跳到下一格。縮時的年月顯示在目前那一格（過了一半換成 b 的），其他格照原本的日期
   window.__show = (a, b, t) => {
@@ -101,9 +103,11 @@ const cam = await p.evaluate(async (css, focus, ocean, W, H, spec) => {
     btns.forEach((btn, j) => { btn.textContent = j === cur && shown.k < 0 ? shown.label : STEPS[j].tab; });
   };
   __show(0, null, 0);
-  return { k: +k.toFixed(3), band: [Math.round(y0), Math.round(y1)], keys: seq.map(s => s.k) };
+  // view＝畫面露出的影像範圍（影像像素，左上右下），build_timelapse.py 的 VIEW 照這個算雲量
+  return { k: +k.toFixed(3), band: [Math.round(y0), Math.round(y1)], keys: seq.map(s => s.k),
+    view: [-left / k, -top / k, (W - left) / k, (H - top) / k].map(Math.round) };
 }, CSS, FOCUS, OCEAN, W, H, spec);
-console.log("鏡頭", JSON.stringify({ k: cam.k, band: cam.band }),
+console.log("鏡頭", JSON.stringify({ k: cam.k, band: cam.band, view: cam.view }),
   `共 ${cam.keys.length} 張（五個階段 ${cam.keys.filter(k => k >= 0).length} 張）`);
 
 // 時間軸：第一張停一下 → 每段縮時連同下一個階段那張平分 3.5 秒 → 最後多停一下。清單的最後一張一定是階段
@@ -132,7 +136,7 @@ if (PREVIEW) {
   await b.close(); console.log(`wrote ${OUT}preview_coast_step*.png`); process.exit(0);
 }
 
-const outfile = `${OUT}tuvalu-coast_1080x${H}.mp4`;
+const outfile = `${OUT}tuvalu-coast_${VERSION}_1080x${H}.mp4`;
 // 壓縮品質：縮時每幀都在換、細節多，預設 CRF 23 會糊成方塊（owner 10-12：「影片畫質感覺有點差」），改 CRF 17＋slow
 const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(FPS), "-i", "-",
   "-c:v", "libx264", "-crf", "17", "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", outfile],
