@@ -90,7 +90,7 @@ UNDP 的頁面擋 WebFetch，是用 crawl4ai 渲染抓的。中央社的 MCP 當
 直式 1080×1920、約 17 秒的縮時，安全區照 `video/make_video.mjs`：上 12%、下 15%、左右 9%。
 同一天改了好幾版：鏡頭不動、每步停 7 秒、41 秒（`b878d55`）→ 每步 5 秒加慢慢推近（`e17204f`）→
 每月一張的縮時、階段停 3 秒、左下跑年月（`a8be750`）→ 現在這版
-（左下的年月拿掉、改在字卡上排的分頁跟著跳，字卡不停、時間都給縮時，修了調色變暗與畫質，鏡頭固定不推近）。
+（左下的年月拿掉、改在字卡上排的分頁跟著跳，縮時加密到一秒五張，字卡不停、時間都給縮時，修了調色變暗與畫質，鏡頭固定不推近）。
 ```
 python interactive-maps/tuvalu/coast/build_timelapse.py   # 縮時用圖，照 img/timelapse/list.json 補抓缺的（需連網）
 cd interactive-maps/video        # 第一次先 npm ci；要有 Chrome 與 ffmpeg
