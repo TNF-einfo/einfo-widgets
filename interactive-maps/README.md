@@ -33,7 +33,8 @@ interactive-maps/
    **不要**設 `BOUNDARIES`（留空才會自動抓那一帶的行政界線）。
    > 現成的範本：原本有一份 `demo-kaohsiung/`（無 `BOUNDARIES`、自動抓界線，證明任意城市可用），
    > 2026-08-25 已從這個公開 repo 移除。要照抄的話，它還在 git 歷史裡
-   > （`git log --diff-filter=D -- interactive-maps/demo-kaohsiung`），也還在 `gassao1998/einfo-scratch`。
+   > （`git log --diff-filter=D -- interactive-maps/demo-kaohsiung`），也在 `gassao1998/einfo-scratch`（私有）的 git 歷史裡，
+   > 那邊的 `tokyo-bousai-map/` 已於 2026-11-07 刪除。
    > 注意**不要**複製 `tokyo-autolayout-test/` 當範本——那個實例設了 `BOUNDARIES`，不會自動抓界線。
 2. `python template/gen_map.py <yourcity>` → 首次會抓界線（需連網、快取進 boundaries/），之後離線可重跑。
 3. 嵌入碼到 <https://tnf-einfo.github.io/einfo-widgets/> 按「複製嵌入碼」拿（尺寸規則已固定，別自己改）。
