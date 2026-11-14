@@ -8,7 +8,7 @@ import osm2geojson
 from shapely.geometry import shape, mapping, Polygon
 
 BBOX = (-8.72, 178.98, -8.40, 179.26)          # s,w,n,e：整個環礁
-UA = {"User-Agent": "research-lab-map-template/0.1"}  # 匿名：不放個人聯絡資訊（owner 2026-09-09）
+UA = {"User-Agent": "research-lab-map-template/0.1"}  # 匿名：不放個人聯絡資訊（2026-09-09 定）
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "boundaries")
 SIMPLIFY = 0.00003                              # 約 3 公尺；嵌入檔要小，這個比例尺看不出差別
 

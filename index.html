@@ -107,7 +107,7 @@
   }
   // 按鈕沒寫 data-frame＝東京那套（上面說的尺寸）。吐瓦魯的外框不同（見 interactive-maps/tuvalu/README.md「嵌入」）：
   // data-frame 是外框的尺寸（長型固定高度 height:1080px、橫版 aspect-ratio:720/480），最外層不留上下 margin
-  // （owner 09-30：e-info 的嵌入框自己有 32px）；data-narrow 是畫面 700px 以下改嵌的那一版（橫版手機排不下，換回長型），
+  // （09-30 回報：e-info 的嵌入框自己有 32px）；data-narrow 是畫面 700px 以下改嵌的那一版（橫版手機排不下，換回長型），
   // data-narrow-frame 是它的外框。兩版都寫進嵌入碼，用 CSS 只顯示一版；藏起來的 iframe 有 loading="lazy"，不會載入。
   // 同一張只換外框比例（data-narrow-frame、沒有 data-narrow，例：海岸線變化欄寬 600px 以下改 2:3）：用 container query 看欄寬、不看視窗寬，
   // 平板的 528 欄寬也會換。class 取自檔名，同一頁嵌兩張不同的也不會互相蓋掉樣式；不支援的舊瀏覽器一律用 data-frame。

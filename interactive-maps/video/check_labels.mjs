@@ -34,7 +34,7 @@ for (const s of sizes.split(",")) {
       const bx = box(l), n = +l.dataset.spot;
       const d = q => Math.hypot(Math.max(bx.x1 - q.cx, 0, q.cx - bx.x2), Math.max(bx.y1 - q.cy, 0, q.cy - bx.y2));
       const own = d(pins.find(q => q.n === n)), near = pins.filter(q => q.n !== n && d(q) < own).map(q => q.n);
-      const fixed = (spots.find(s => s.n === n) || {}).label;   // spots.py 指定邊的名字是 owner 點名的位置，不算
+      const fixed = (spots.find(s => s.n === n) || {}).label;   // spots.py 指定邊的名字是維護者點名的位置，不算
       if (near.length && !fixed) out.amb.push(`${l.textContent}→${near.join(",")}`);
       pins.forEach(q => { if (q.n !== n && hit(bx, q)) out.hit.push(`${l.textContent}壓${q.n}`); });
       vis.slice(i + 1).forEach(m => { if (hit(bx, box(m))) out.hit.push(`${l.textContent}疊${m.textContent}`); });

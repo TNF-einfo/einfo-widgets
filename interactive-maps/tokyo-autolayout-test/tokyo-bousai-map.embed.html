@@ -222,7 +222,7 @@ function baseObstacles(){
   showSpot(1);
   const ir = document.getElementById('info').getBoundingClientRect();
   if (ir.width > 1) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
-  const tb = document.querySelector('.titlebar');   // 標題框也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
+  const tb = document.querySelector('.titlebar');   // 標題框也當障礙（影片版定案；回報：北本被標題壓）——手機隱藏時 width≈0 自動略過
   if (tb){ const tr = tb.getBoundingClientRect();
     if (tr.width > 1) occ.push({ x1:tr.left-6, y1:tr.top-6, x2:tr.right+6, y2:tr.bottom+6 }); }
   return occ;
@@ -332,7 +332,7 @@ function placeLabels(occ, frame){   // 原介面（make_video 依賴，勿改）
   }
 }
 
-// gen_map 靜態圖專用（make_video 不呼叫）：行政區地名 只避「標題框＋popup」與彼此（**可被 pin／pin 名蓋，owner 定**）；
+// gen_map 靜態圖專用（make_video 不呼叫）：行政區地名 只避「標題框＋popup」與彼此（**可被 pin／pin 名蓋，維護者定**）；
 // 先為每個地名找框內候選位，再篩最多 10——先放 big（縣/市/灣＝本在邊緣＝四散），其餘 farthest-point 填、四散全圖不集中中間。
 function placeDistricts(frame){
   labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];

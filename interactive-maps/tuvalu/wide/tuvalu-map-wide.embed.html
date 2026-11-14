@@ -136,7 +136,7 @@
   }
 
   /* ── 衛星主題（有 TILES 時 .frame 加 .tiles；插畫風地圖不受影響）──
-     配色取自環資颱風短影音（深綠＋黃）。原則是能拿掉的框線都拿掉（owner 09-29：圖示包太多框線）：
+     配色取自環資颱風短影音（深綠＋黃）。原則是能拿掉的框線都拿掉（09-29 回報：圖示包太多框線）：
      圖釘只剩實心圓點＋一層淡陰影；地名白字深色描邊、不用底；卡片與標題框只靠陰影分邊。 */
   .frame.tiles{ --glass:rgba(16,42,31,.84); --cream:#f6f3e7; --mute:#aebfb5; --gold:#f0b429; --deep:#10231b;
     --serif:&quot;Noto Serif TC&quot;,&quot;Source Han Serif TC&quot;,&quot;Songti TC&quot;,&quot;PMingLiU&quot;,serif; background:#0f2a22 }
@@ -146,7 +146,7 @@
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px) }
   .frame.tiles .corner{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; position:absolute; right:12px; top:12px; z-index:6;
     transition:top .3s ease-out }   /* POPUP_FLOAT 時跟著捲動（不能拖） */
-  .frame.tiles .corner > .titlebar, .frame.tiles .corner > .legend{ position:static }   /* 標題疊在圖例上面、都靠右（owner 09-29） */
+  .frame.tiles .corner > .titlebar, .frame.tiles .corner > .legend{ position:static }   /* 標題疊在圖例上面、都靠右（09-29 定） */
   .frame.tiles .titlebar{ padding:10px 14px 11px; border-radius:12px; text-align:right }
   .frame.tiles .info.float{ transition:top .3s ease-out; touch-action:none; cursor:grab; -webkit-user-select:none; user-select:none }   /* 浮動卡片：可拖曳、跟著捲動 */
   .frame.tiles .info.float img{ -webkit-touch-callout:none }   /* iOS 長按照片不跳「儲存圖片」選單，按住照片也能拖 */
@@ -185,7 +185,7 @@
   .frame.tiles .info{ padding:0; border-radius:14px }
   .frame.tiles .card{ display:flex; flex-direction:column; padding:10px 13px 13px }
   .frame.tiles .card img.photo{ order:-1; width:calc(100% + 26px); margin:-10px -13px 10px; border-radius:14px 14px 0 0; background:#1d3a30;
-    height:auto; aspect-ratio:3/2; object-fit:cover }   /* 3:2＝相機原圖比例（owner：固定高度裁得太扁） */
+    height:auto; aspect-ratio:3/2; object-fit:cover }   /* 3:2＝相機原圖比例（回報：固定高度裁得太扁） */
   .frame.tiles .card .meta{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap }
   .frame.tiles .card .tag{ background:transparent!important; padding:0; border-radius:0; color:var(--cream);
     font-size:10.5px; font-weight:600; letter-spacing:.14em; display:inline-flex; align-items:center; gap:6px }
@@ -201,7 +201,7 @@
   .frame.tiles .leaflet-control-attribution{ background:rgba(8,20,16,.55)!important; color:#c9d6cf }
   .frame.tiles .leaflet-control-attribution a{ color:#fff }
   /* 放大（雙指）：只有底圖（圖磚、影像）用 CSS scale 放大，畫面座標＝平移 (--ztx,--zty)＋倍率 --zs × 原座標（原點在畫框左上）；
-     圖釘、地名不放大、只照放大後的位置移動（各自的錨點 --px/--py），字才不會糊（owner 09-29：放大時地名糊掉）。
+     圖釘、地名不放大、只照放大後的位置移動（各自的錨點 --px/--py），字才不會糊（09-29 回報：放大時地名糊掉）。
      變數註冊成可過渡，彈回時底圖與圖釘同步；手指移動中（.zooming）不過渡才跟得上 */
   @property --zs { syntax:'<number>'; inherits:true; initial-value:1 }
   @property --ztx { syntax:'<length>'; inherits:true; initial-value:0px }
@@ -215,10 +215,10 @@
   .frame.tiles #map, .frame.tiles #toplabels{ -webkit-user-select:none; user-select:none }   /* 按住拖著看時不要反白地名 */
   @media (prefers-reduced-motion:reduce){ .frame.tiles, .frame.tiles .pin, .frame.tiles .toplabel, .frame.tiles .corner, .frame.tiles .info.float{ transition:none } }
   @media (max-width:719.98px){
-    .frame.tiles .titlebar{ display:block; padding:8px 12px 9px }   /* 手機、平板也放標題（owner 09-29），比桌機小一點；圖例照樣藏 */
+    .frame.tiles .titlebar{ display:block; padding:8px 12px 9px }   /* 手機、平板也放標題（09-29 定），比桌機小一點；圖例照樣藏 */
     .frame.tiles .titlebar .mark{ font-size:10px; letter-spacing:.2em }
     .titlebar .mark .logo{ height:22px }
-    .frame.tiles .titlebar h1{ font-size:19px; margin-top:2px }   /* 16px 太小（owner：「手機版標題大點」） */
+    .frame.tiles .titlebar h1{ font-size:19px; margin-top:2px }   /* 16px 太小（回報：「手機版標題大點」） */
     .frame.tiles .inset{ width:100px } .frame.tiles .inset .cap{ left:7px; top:5px; font-size:9px; letter-spacing:0 }
     .frame.tiles .ipin span{ font-size:10.5px }
     .frame.tiles .card{ padding:8px 9px 9px }
@@ -226,12 +226,12 @@
     .frame.tiles .card h3{ font-size:14px; margin-top:4px }
     .frame.tiles .card .ja{ margin-bottom:5px }
   }
-  @media (max-width:527.98px){   /* 手機說明卡放大一點（owner 09-29）：寬 40% → 50%，名稱加大 */
+  @media (max-width:527.98px){   /* 手機說明卡放大一點（09-29 定）：寬 40% → 50%，名稱加大 */
     .frame.tiles .info{ width:50%; max-width:none }
     .frame.tiles .card h3{ font-size:15px }
   }
   /* CARD=&quot;row&quot;（橫版地圖）：照片在左、文字在右，卡片矮，才放得進島上方那條潟湖、不蓋到島 */
-  /* 整張卡等比縮成 4/5（owner 09-30：橫版字卡整體小個 1/4，接著改口「1/5 好了」）：外框縮成 4/5，裡面的卡片與關閉鈕用 zoom 縮，
+  /* 整張卡等比縮成 4/5（09-30 定：橫版字卡整體小個 1/4，接著改口「1/5 好了」）：外框縮成 4/5，裡面的卡片與關閉鈕用 zoom 縮，
      卡片內容照原本的 440px（平板 62%）排版，字、照片、留白一起縮，比例不變 */
   .frame.tiles.cardrow .info{ width:352px; max-width:49.6% }
   .frame.tiles.cardrow .card, .frame.tiles.cardrow .info .x{ zoom:.8 }
@@ -415,7 +415,7 @@ function baseObstacles(){
   showSpot(1);
   const ir = document.getElementById('info').getBoundingClientRect();   // 浮動卡片會被拖走、跟著捲動，不當障礙
   if (ir.width > 1 &amp;&amp; !POPUP_FLOAT) occ.push({ x1:ir.left-4, y1:ir.top-4, x2:ir.right+4, y2:ir.bottom+4 });
-  // 標題框、圖例（＋小地圖）也當障礙（影片版定案；owner：北本被標題壓）——手機隱藏時 width≈0 自動略過
+  // 標題框、圖例（＋小地圖）也當障礙（影片版定案；回報：北本被標題壓）——手機隱藏時 width≈0 自動略過
   occ.push(...fixedRects(6));
   return occ;
 }
@@ -483,7 +483,7 @@ function liftPinNames(occ, frame){
     const lr = lab.getBoundingClientRect(), lw = lr.width/2, lh = lr.height/2, G = P.hw + 12, V = P.hh + 12, D = P.hw + 4;
     // 右→上→左→下→右上→左上；斜角的名字框角貼近圖釘（D），跟上下左右一樣離圖釘約 10px，不會飄在半空（09-30 橫版集會所飄到潟湖裡）
     let cands = [[G+lw,0],[0,-(V+lh)],[-(G+lw),0],[0,V+lh],[D+lw,-(D+lh)],[-(D+lw),-(D+lh)]];
-    const sp = spots.find(s => s.n === spot) || {}, side = sp.label;   // spots.py 指定 &quot;label&quot;: right／up／left／down 就只放那邊（owner 點名的）
+    const sp = spots.find(s => s.n === spot) || {}, side = sp.label;   // spots.py 指定 &quot;label&quot;: right／up／left／down 就只放那邊（維護者點名的）
     if (side){ const [ox, oy] = cands[['right', 'up', 'left', 'down'].indexOf(side)]; cands = [[ox, oy + (sp.label_dy || 0)]]; }   // label_dy：再上下微調幾 px，負＝往上
     let best = cands[0], bestPen = Infinity, bestOv = 0;
     for (const [ox,oy] of cands){
@@ -509,7 +509,7 @@ function liftPinNames(occ, frame){
     lab.style.transform = `translate(${ox}px,${oy}px) translate(-50%,-50%)`;
   });
   // 擠不下的名字：等其他名字都排好，再往外找一塊不壓圖釘、不壓別的名字的空地，放在那裡、平常就顯示
-  // （owner 09-30：輪到才出現的話「農場還是會消失」、「地名拉遠點」；拉線也不要）。
+  // （09-30 定：輪到才出現的話「農場還是會消失」、「地名拉遠點」；拉線也不要）。
   // 連空地都找不到才維持藏著，輪到才出現在上面壓最少的位置、淡掉疊到的名字（unveil）
   for (const { lab, P, lw, lh } of crowd){
     const o = openSpot(P, lw, lh, pins, occ, placed, fr);
@@ -570,7 +570,7 @@ function placeLabels(occ, frame){   // 原介面（make_video 依賴，勿改）
   }
 }
 
-// gen_map 靜態圖專用（make_video 不呼叫）：行政區地名 只避「標題框＋popup」與彼此（**可被 pin／pin 名蓋，owner 定**）；
+// gen_map 靜態圖專用（make_video 不呼叫）：行政區地名 只避「標題框＋popup」與彼此（**可被 pin／pin 名蓋，維護者定**）；
 // 先為每個地名找框內候選位，再篩最多 10——先放 big（縣/市/灣＝本在邊緣＝四散），其餘 farthest-point 填、四散全圖不集中中間。
 function placeDistricts(frame){
   labelMarkers.forEach(m => map.removeLayer(m)); labelMarkers = [];
@@ -661,7 +661,7 @@ function highlight(n){   // 圖釘、浮層地名、小地圖上的點一起標 
   unveil();
 }
 // 藏起來的名字（.crowd）在輪播或點到那個點（.hi）、滑鼠移到圖釘上（.peek）時出現，跟它疊到的名字先淡掉（.dim）
-// （owner 09-30：藏起來的名字要看得到，但不要拉線）
+// （09-30 定：藏起來的名字要看得到，但不要拉線）
 function unveil(){
   const on = [...document.querySelectorAll('.toplabel.crowd.hi, .toplabel.crowd.peek')].map(el => el.getBoundingClientRect());
   document.querySelectorAll('.toplabel').forEach(el => { const r = el.getBoundingClientRect();
@@ -684,14 +684,14 @@ function showSpot(n){
 // 看得到哪一段：沿地圖高度鋪 108 條看不見的細條、用 IntersectionObserver 看哪幾條在畫面裡。
 // 只觀察整張地圖不行：地圖比螢幕高時，捲到中段可見比例不變、不會通知。這招在跨網域 iframe 裡也拿得到，不必外頁配合。
 const flt = { x:null, dy:0, visTop:0, visBot:null, dragged:false };
-function floatBase(){   // 卡片置中於可見段落（可見段落比卡片矮時對齊上緣）；手機檔貼可見段落的下緣（owner 09-29：手機預設出現在左下角）
+function floatBase(){   // 卡片置中於可見段落（可見段落比卡片矮時對齊上緣）；手機檔貼可見段落的下緣（09-29 定：手機預設出現在左下角）
   const H = document.querySelector('.frame').clientHeight, bot = flt.visBot === null ? H : flt.visBot;
   if (POPUP_FLOAT === 'top') return flt.visTop;
   if (!window.matchMedia('(max-width:527.98px)').matches) return flt.visTop + Math.max(0, (bot - flt.visTop - info.offsetHeight) / 2);
   const h = info.offsetHeight, w = info.offsetWidth, x = flt.x === null ? 8 : flt.x, top = flt.visTop + 8;
   const yMax = Math.max(top, bot - h - 22);   // 可見下緣會多算一條細條（10px），實際離底約 12px
   if (flt.dragged) return yMax;               // 讀者拖過就照他放的位置（下緣＋拖的偏移）
-  // 會蓋到圖釘或名稱就每次往上 20px 找不蓋的地方，找不到取蓋最少的；正在介紹的點重罰、幾乎不會被蓋（owner 09-29：要記得不要被遮到）
+  // 會蓋到圖釘或名稱就每次往上 20px 找不蓋的地方，找不到取蓋最少的；正在介紹的點重罰、幾乎不會被蓋（09-29 定：要記得不要被遮到）
   const fr = document.querySelector('.frame').getBoundingClientRect();
   const obs = [...document.querySelectorAll('.pin-anchor .pin, .toplabel:not(.crowd), .toplabel.crowd.hi')].filter(e => e.getClientRects().length).map(e => {
     const r = e.getBoundingClientRect(); return { x1:r.left - fr.left, y1:r.top - fr.top, x2:r.right - fr.left, y2:r.bottom - fr.top, w:e.closest('.hi') ? 100 : 1 }; });
@@ -713,7 +713,7 @@ function placeFloat(){
   info.style.right = info.style.bottom = 'auto'; info.style.transform = 'none';
 }
 const corner = document.querySelector('.corner');
-function placeCorner(){   // 標題框＋圖例：停在看得到那一段的上緣，跟著捲動但不能拖（owner 09-29）；手機檔本來就藏起來
+function placeCorner(){   // 標題框＋圖例：停在看得到那一段的上緣，跟著捲動但不能拖（09-29 定）；手機檔本來就藏起來
   const H = document.querySelector('.frame').clientHeight;
   corner.style.top = Math.max(12, Math.min(flt.visTop + 12, H - corner.offsetHeight - 12)) + 'px';
 }
@@ -745,7 +745,7 @@ function initFloat(){
   info.addEventListener('pointerup', end); info.addEventListener('pointercancel', end);
 }
 if (POPUP_FLOAT) initFloat();
-// 輪播時頁面跟著捲到正在介紹的點：owner 09-30 說不需要了，拿掉；做法留在 git 歷史 7c17240 的 followSpot。
+// 輪播時頁面跟著捲到正在介紹的點：09-30 說不需要了，拿掉；做法留在 git 歷史 7c17240 的 followSpot。
 // 把地圖裡高度 y（畫框座標）的地方平滑捲到畫面中間（放大彈回時用）。探針一定要放在 body 底下：放在 overflow:hidden 的地圖裡，
 // scrollIntoView 會連地圖容器本身一起捲，整張圖內部被捲走。嵌在文章的 iframe 裡也捲得動外頁
 const probe = document.createElement('div');
@@ -777,9 +777,9 @@ for (const [key,c] of Object.entries(CAT)){
   legend.appendChild(chip);
 }
 
-// 放大（衛星主題、觸控）：雙指捏開就放大、原地縮放；放手後停 0.5 秒再彈回原尺寸（owner 09-29：1.5 秒改 0.5 秒）。
+// 放大（衛星主題、觸控）：雙指捏開就放大、原地縮放；放手後停 0.5 秒再彈回原尺寸（09-29 定：1.5 秒改 0.5 秒）。
 // 只放大底圖（CSS 變數見 .frame.tiles），圖釘與地名只跟著移位置、字不糊；不動 Leaflet 的縮放級，彈回後不必重排。說明卡、標題、小地圖不動。
-// 只做觸控（owner 09-29 晚：桌機不要放大；桌機按住放大的版本在 git 歷史 8ebbddb）。
+// 只做觸控（09-29 晚上定：桌機不要放大；桌機按住放大的版本在 git 歷史 8ebbddb）。
 if (SAT){
   const fr = document.querySelector('.frame'), mapEl = map.getContainer(), cur = { s:1, t:[0, 0] };
   let backT = null, drag = null, pinch = null;   // drag＝放大後單指拖 { p:起點, t:當時的平移 }；pinch＝雙指捏 { d:兩指距離, m:中點, s, t }
@@ -788,11 +788,11 @@ if (SAT){
     t = [Math.min(0, Math.max(W * (1 - s), t[0])), Math.min(0, Math.max(H * (1 - s), t[1]))];
     Object.assign(cur, { s, t });
     fr.classList.toggle('zooming', live);   // 拖曳、捏的當下不過渡；彈回照 CSS 過渡
-    fr.classList.toggle('zoomed', s > 1);   // 放大中小地圖先淡出（owner 09-29：地名會跑到小地圖上、在上面也拖不動）
+    fr.classList.toggle('zoomed', s > 1);   // 放大中小地圖先淡出（09-29 回報：地名會跑到小地圖上、在上面也拖不動）
     [['--zs', s], ['--ztx', t[0] + 'px'], ['--zty', t[1] + 'px']].forEach(([k, v]) => fr.style.setProperty(k, v));
   };
   // 彈回時頁面跟著捲：看得到那一段正中間現在顯示的那塊地圖，彈回後捲到畫面中間，停在移動後的地方
-  // （owner 09-29：放大移動後會彈回最初放大的地方）
+  // （09-29 回報：放大移動後會彈回最初放大的地方）
   const springBack = () => { clearTimeout(backT); backT = setTimeout(() => {
     const H = fr.clientHeight, c = POPUP_FLOAT &amp;&amp; flt.visBot !== null ? (flt.visTop + flt.visBot) / 2 : H / 2, qy = (c - cur.t[1]) / cur.s;
     if (Math.abs(qy - c) > 20) scrollFrameY(qy);
@@ -812,7 +812,7 @@ if (SAT){
   mapEl.addEventListener('touchmove', e => {
     if (pinch &amp;&amp; e.touches.length === 2){
       e.preventDefault();
-      // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間（owner 09-29：縮小時不要跑回原本放大的地方）
+      // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間（09-29 定：縮小時不要跑回原本放大的地方）
       const s = Math.min(4, Math.max(1, pinch.s * gap(e.touches) / pinch.d)), m = mid(e.touches), k = s / pinch.s;
       setZoom(s, [m[0] - (pinch.m[0] - pinch.t[0]) * k, m[1] - (pinch.m[1] - pinch.t[1]) * k], true);
     } else if (drag &amp;&amp; e.touches.length === 1){
@@ -830,7 +830,7 @@ if (SAT){
 }
 
 refit(); relayout(); syncCar();   // 初次：fit → 自動排標籤（此時 showSpot 已定義）→ 開輪播
-// 直接開網址（不是嵌在文章裡）：一載入就定在第一個點，不要先停在北端、過半秒再滑下去（owner 09-29）。
+// 直接開網址（不是嵌在文章裡）：一載入就定在第一個點，不要先停在北端、過半秒再滑下去（09-29 定）。
 // 嵌在文章裡不這樣做：外頁的捲動是讀者在控制，載入時硬跳會把人拉走
 if (POPUP_FLOAT &amp;&amp; window.self === window.top){
   const el = document.querySelector('.pin-anchor[data-spot=&quot;' + curSpot + '&quot;]');

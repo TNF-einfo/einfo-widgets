@@ -8,7 +8,7 @@
 //     --image ../tuvalu/basemap/video/s2_20260105_atoll_2x.webp   # 範圍小的地圖要自己給景點 zoom；--image＝影片專用底圖
 // 需要：Chrome（系統）＋ ffmpeg（系統 PATH）。
 // 衛星主題的地圖（.frame.tiles，例如吐瓦魯）照地圖的深色卡片、白字地名。offmap 的點影片版也畫上主圖、鏡頭直接飛過去
-// （owner 09-30：僅限影片版），所以底圖要鋪到那裡：--image 換掉地圖的 IMAGE，bounds 讀同名 .json（tuvalu/build_video_basemap.py 產的）。
+// （09-30 定：僅限影片版），所以底圖要鋪到那裡：--image 換掉地圖的 IMAGE，bounds 讀同名 .json（tuvalu/build_video_basemap.py 產的）。
 import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -26,14 +26,14 @@ const HEIGHT = RAWH % 2 ? RAWH - 1 : RAWH;    // H.264/yuv420p 需偶數高；�
 if (HEIGHT !== RAWH) console.log(`note: 高度 ${RAWH} 是奇數，改用 ${HEIGHT}（H.264 需偶數）`);
 const W = 1080, FPS = 30, PREVIEW = args.includes("--preview");
 const SAFE_TOP = 0.12, SAFE_X = 0.09;                  // 社群安全區（參颱風片 上12/左右9%），不畫綠框
-const SAFE_BOT = HEIGHT >= 1600 ? 0.15 : 0.085;        // 下留白：4:5(1305) 縮小→popup 往下長（owner）
-const POPUP_X = HEIGHT >= 1600 ? SAFE_X : 0.155;       // popup 左右留白：4:5(1305) 加大＝卡片變窄、照片不那麼寬扁（owner）
+const SAFE_BOT = HEIGHT >= 1600 ? 0.15 : 0.085;        // 下留白：4:5(1305) 縮小→popup 往下長（維護者定）
+const POPUP_X = HEIGHT >= 1600 ? SAFE_X : 0.155;       // popup 左右留白：4:5(1305) 加大＝卡片變窄、照片不那麼寬扁（維護者定）
 const POPUP_H = 0.36;                     // popup 卡高度（佔畫面比例）
 const SPOT_Y = 0.30;                     // 景點目標 y（上半，避開下方 popup＋頂端標題）
 const opt = (k, d) => args.includes(k) ? +args[args.indexOf(k) + 1] : d;
 const IMAGE_FILE = args.includes("--image") ? resolve(args[args.indexOf("--image") + 1]) : null;
 const SPOT_ZOOM = opt("--zoom", 12.2);   // 景點鏡頭 zoom（東京 12.2；吐瓦魯這種小範圍要 16 上下）
-const ESTAB_OUT = opt("--estab-out", HEIGHT >= 1600 ? 0.55 : 1.15);  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（owner）
+const ESTAB_OUT = opt("--estab-out", HEIGHT >= 1600 ? 0.55 : 1.15);  // 大遠景在 fit 上再拉遠；短版(4:5/1305)縮更多（維護者定）
 // 特寫垂直中心＝執行期實測「標題框下緣～該景點 popup 上緣」的中點（每景點卡高不同→逐點量；勿用寫死比例，4:5 會偏低）
 const SEC = { estab: 2, zoom: 1.5, hold: 2, pan: 1.5, end: 1.2 };
 const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;  // easeInOutQuad
@@ -45,12 +45,12 @@ const VIDEO_CSS = `
     max-width:none!important;aspect-ratio:auto!important;border-radius:0!important;box-shadow:none!important}
   #map{width:100%!important;height:100%!important;border-radius:0!important}
   #info{display:none!important}                     /* 藏原本的小角卡 */
-  .legend{ display:none!important }                 /* 移掉右上圖示範例（owner） */
-  .titlebar{ left:50%!important; right:auto!important; transform:translateX(-50%)!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:82%!important; padding:26px 44px!important; z-index:55!important }  /* 背景框置中；內文靠左（環境資訊中心/標題都靠左，owner） */
+  .legend{ display:none!important }                 /* 移掉右上圖示範例（維護者定） */
+  .titlebar{ left:50%!important; right:auto!important; transform:translateX(-50%)!important; top:${(SAFE_TOP*100).toFixed(1)}%!important; max-width:82%!important; padding:26px 44px!important; z-index:55!important }  /* 背景框置中；內文靠左（環境資訊中心/標題都靠左，維護者定） */
   .titlebar h1{ font-size:50px; line-height:1.1; white-space:nowrap }                  /* 標題不換行、縮字剛好一行 */
   .titlebar .mark{ font-size:22px }
   .titlebar .mark .logo{ height:58px; margin:0 0 6px }   /* 地圖設了 LOGO：logo 跟標題一樣靠左、放大到配 50px 的標題 */
-  .rlabel{ font-size:25px; font-weight:800 } .rlabel.big{ font-size:28px; font-weight:800 }  /* 行政區地名：~10 個、放大（owner） */
+  .rlabel{ font-size:25px; font-weight:800 } .rlabel.big{ font-size:28px; font-weight:800 }  /* 行政區地名：~10 個、放大（維護者定） */
   .pin-anchor{ transform:scale(2.1)!important; transform-origin:11px 23px!important }  /* pin 圖示＋地名放大 */
   .pin-name{ font-size:18px }   /* 原生 pin 名（會被抽到 #toplabels 浮層；此處只留基本樣式） */
   #toplabels{ position:absolute; inset:0; z-index:50; pointer-events:none; overflow:hidden }   /* pin 名浮層：在地圖之上、popup(z60) 之下 → 永遠壓在所有 pin 之上、框不被蓋 */
@@ -62,7 +62,7 @@ const VIDEO_CSS = `
     background:#fff;z-index:60;box-shadow:0 12px 40px rgba(90,70,40,.3);
     border-radius:26px;padding:30px 40px;box-sizing:border-box;display:none;overflow:hidden}
   #vpop.show{display:block}
-  #vpop .card{display:block;overflow:visible}      /* 卡片高度隨內容自動＝描述完整不裁切（owner） */
+  #vpop .card{display:block;overflow:visible}      /* 卡片高度隨內容自動＝描述完整不裁切（維護者定） */
   #vpop .vhdr{display:flex;align-items:center;gap:12px}            /* 種類標籤＋地名同一行、靠左上 */
   #vpop .card .tag{font-size:22px;padding:5px 16px;border-radius:20px;flex:none}
   #vpop .card .area{font-size:22px;color:#a2957f;flex:none;margin:0}
@@ -113,7 +113,7 @@ await p.evaluate((css, out) => {
   try { stopCar(); } catch (e) {}       // 保險再殺一次
   const maxT = setInterval(() => {}, 1e9); for (let i = 1; i <= maxT; i++) clearInterval(i);  // 硬清所有 timer（輪播）
   document.querySelectorAll(".hi").forEach(e => e.classList.remove("hi"));  // 清掉輪播 pin 高亮
-  // offmap 的點（吐瓦魯的富納法拉）影片版也畫上主圖，鏡頭直接飛過去（owner 09-30：僅限影片版）；圖釘照地圖的寫法。
+  // offmap 的點（吐瓦魯的富納法拉）影片版也畫上主圖，鏡頭直接飛過去（09-30 定：僅限影片版）；圖釘照地圖的寫法。
   // 不加進 fit 的範圍，大遠景還是主島那段
   for (const s of spots.filter(s => s.offmap)) {
     L.marker([s.lat, s.lng], { keyboard: false, zIndexOffset: 1000, icon: L.divIcon({ className: "",
@@ -170,7 +170,7 @@ async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避
     const anchors = [...document.querySelectorAll(".pin-anchor")];
     const onScreen = () => anchors.map(a => { const r = a.querySelector(".pin").getBoundingClientRect(); return { cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, hw: (r.right - r.left) / 2, hh: (r.bottom - r.top) / 2, spot: +a.dataset.spot }; });
     anchors.forEach(a => { const name = a.querySelector(".pin-name"); if (!name) return; const lab = document.createElement("div"); lab.className = "toplabel"; lab.textContent = name.textContent; lab.dataset.spot = a.dataset.spot; top.appendChild(lab); name.style.display = "none"; });
-    const tb = document.querySelector(".titlebar");   // 標題框也當障礙（owner：北本被標題壓）
+    const tb = document.querySelector(".titlebar");   // 標題框也當障礙（回報：北本被標題壓）
     const titleBox = tb ? (() => { const r = tb.getBoundingClientRect(); return { x1: r.left - 6, y1: r.top - 6, x2: r.right + 6, y2: r.bottom + 6 }; })() : null;
     const outFrame = bx => Math.max(0, fr.left - bx.x1) + Math.max(0, bx.x2 - fr.right) + Math.max(0, fr.top - bx.y1) + Math.max(0, bx.y2 - fr.bottom);
     const labs = [...top.querySelectorAll(".toplabel")].map(el => { const r = el.getBoundingClientRect(), spot = +el.dataset.spot;
@@ -204,7 +204,7 @@ async function liftPinNames() {   // pin 名抽到 #toplabels 浮層＋自做避
     if (!sat) far = near = place(scr, six, (bx, P, pins, placed) =>   // 插畫風（東京）照原本：一套，在大遠景排
       over(bx, placed) + (titleBox ? oA(bx, titleBox) * 8 : 0) + outFrame(bx) * 3);
     else {
-      // 衛星主題（吐瓦魯）點很密，遠景、特寫各排一套，setCam 依縮放在兩套之間滑動（owner 09-30：遠景名字不能不見）。
+      // 衛星主題（吐瓦魯）點很密，遠景、特寫各排一套，setCam 依縮放在兩套之間滑動（09-30 定：遠景名字不能不見）。
       // 特寫：照特寫縮放下的距離排（讀者在特寫時讀名字），標題框與畫框不管（每點的鏡頭不同）
       const atZ = scr.map(q => { const s = spots.find(s => s.n === q.spot), c = map.project([s.lat, s.lng], SZ); return { ...q, cx: c.x, cy: c.y }; });
       const nearMis = misread(400);
@@ -245,7 +245,7 @@ async function setPopup(n) {
   }, n);
 }
 const lerp = (a, b, t) => a + (b - a) * t;
-async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避開 pin+彼此、遠景也顯示) ＋ 行政區 ~10 個(彼此不重疊；被 pin/名蓋到沒關係 owner)
+async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避開 pin+彼此、遠景也顯示) ＋ 行政區 ~10 個(彼此不重疊；被 pin/名蓋到沒關係，維護者定)
   await p.evaluate(() => {   // ① 放置
     const fr = document.querySelector(".frame").getBoundingClientRect();
     const frame = { x1: fr.left, y1: fr.top, x2: fr.right, y2: fr.bottom };
@@ -266,7 +266,7 @@ async function placeDistricts() {   // 全景放一次：pin 名 auto-layout(避
     const keptB = [], keptM = [];
     const tryAdd = c => { if (keptM.length < 10 && !keptB.some(k => ov(c.box, k))) { keptB.push(c.box); keptM.push(c.m); return true; } return false; };
     for (const c of cands.filter(c => c.big)) if (!tryAdd(c)) map.removeLayer(c.m);   // 先放 big（縣/市/灣，本就在邊緣＝四散）
-    const pool = cands.filter(c => !c.big);   // 其餘用 farthest-point 填到 10＝四散全圖、不集中中間（owner）
+    const pool = cands.filter(c => !c.big);   // 其餘用 farthest-point 填到 10＝四散全圖、不集中中間（維護者定）
     while (keptM.length < 10 && pool.length) {
       let bi = -1, bd = -1;
       for (let i = 0; i < pool.length; i++) {
@@ -316,7 +316,7 @@ for (let i = 1; i < cams.length; i++) {
   segs.push({ kind: "move", from: cams[i - 1], to: cams[i], pop: cams[i - 1].n, popAtEnd: cams[i].n, sec: SEC.pan });
   segs.push({ kind: "hold", from: cams[i], to: cams[i], pop: cams[i].n, sec: SEC.hold });
 }
-segs.push({ kind: "move", from: cams.at(-1), to: estab, pop: null, sec: SEC.zoom });   // 結尾 zoom out 回大遠景（owner）：popup 先收、鏡頭拉回全圖
+segs.push({ kind: "move", from: cams.at(-1), to: estab, pop: null, sec: SEC.zoom });   // 結尾 zoom out 回大遠景（維護者定）：popup 先收、鏡頭拉回全圖
 segs.push({ kind: "hold", from: estab, to: estab, pop: null, sec: SEC.end });
 // 兩點太遠（用兩端縮放的中間值量，超過 2000px；吐瓦魯 ⑧→⑨ 約 2900px、⑪→⑫ 富納法拉約 9000px）就中途先拉遠再推近，免得像甩鏡頭：
 // 拉遠到中途的平移速度跟東京最遠那段（1344px）差不多，拉得越遠這段越長（每拉遠一級多 0.6 秒）。東京每段都不到 2000px，不受影響

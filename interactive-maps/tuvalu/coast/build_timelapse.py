@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """海岸線影片的縮時用圖：五個階段之間照時間平均抽的 Sentinel-2，範圍、調色、放大銳化都跟 build_images.py 一樣。
 
-   owner 2026-10-12 要的（「有沒有辦法你去多抓幾張圖，生成一個縮時感覺的」「多塞幾幀，一秒五幀好了」
+   2026-10-12 要的（「有沒有辦法你去多抓幾張圖，生成一個縮時感覺的」「多塞幾幀，一秒五幀好了」
    「字卡停一秒，兩半秒給縮時如何」），只給影片用（video/make_coast_video.mjs），互動頁不用。
    挑法：相鄰兩個階段之間切成 --per-segment 格（預設 16），每格挑離中點最近、雲量不超過 --max-cloud（預設 3%）、
    而且眼睛看過沒雲（不在 REJECT）的一天，整格都沒有就空著。同一天有兩個處理版本取雲少的。
    雲量是 SCL（場景分類）小圖在影片畫面露出的那塊（VIEW）裡，雲（8、9、10）與雲影（3）占的比例，扣掉浪花、白沙這些
-   固定被判成雲的像素（見 cloud_fracs）。2026-10-19 owner 要「把有雲的抽掉」，從整個範圍 25% 改成這樣；SCL 抓不到小積雲和霧，
+   固定被判成雲的像素（見 cloud_fracs）。2026-10-19 要「把有雲的抽掉」，從整個範圍 25% 改成這樣；SCL 抓不到小積雲和霧，
    所以候選還是逐張裁成影片畫面看過，看到雲、雲影、霧的記進 REJECT。
    五個階段用 build_images.py 那五景，畫面裡有雲的換同一個月更晴的一景（SWAP，互動頁照舊），
    跟縮時圖一樣另做一張無損 PNG（互動頁那五張是有損 WebP，影片用了畫質會差）。
@@ -32,7 +32,7 @@ CLOUDY = {3, 8, 9, 10}   # SCL：雲影、雲（中、高機率）、卷雲
 # 門檻：晴天扣掉固定誤判後多半在 0.1～0.7%；施工中剛填的白沙、濁水變得快，扣不掉，晴天也會到 2.5%（2025-02-14），所以放到 3%，
 # 這一帶有雲的靠下面 REJECT 擋
 WORST = float(sys.argv[sys.argv.index("--max-cloud") + 1]) if "--max-cloud" in sys.argv else .03
-# 相鄰兩個階段之間抽幾張：owner 要一秒 5 張、字卡不停（「字卡不要停好了，都給縮時」），每段 3.5 秒，扣掉階段那張 16 張
+# 相鄰兩個階段之間抽幾張：要一秒 5 張、字卡不停（「字卡不要停好了，都給縮時」），每段 3.5 秒，扣掉階段那張 16 張
 PER = int(sys.argv[sys.argv.index("--per-segment") + 1]) if "--per-segment" in sys.argv else 16
 VIEW = (133, 0, 748, 1094)   # 影片畫面露出的範圍（2 倍影像的像素：左、上、右、下），make_coast_video.mjs 印的 view；鏡頭改了要跟著改
 # 影片的階段影像，畫面裡看得到雲的換掉：原日期 → 換用的景號（互動頁照舊用 build_images.py 那五景）。
@@ -146,7 +146,7 @@ def select(items, frac, worst, n):
                     out.append({"date": d, "item": best, "key": False, "cloud": round(frac(best), 4)})
                     break
     out.sort(key=lambda c: c["date"])
-    for c in out:   # 影片用無損 PNG（owner 10-12：「圖層畫質沒問題嗎」），五個階段也另做一張，不用互動頁那五張有損 WebP
+    for c in out:   # 影片用無損 PNG（10-12 回報：「圖層畫質沒問題嗎」），五個階段也另做一張，不用互動頁那五張有損 WebP
         c["file"] = f"s2_{c['date'].replace('-', '')}.png"
     return out
 
@@ -186,7 +186,7 @@ def raw(item, bbox, w, h):
 
 def match_clear(src, ref, ms, mr):
     """直方圖匹配（同 build_images.match），但分布只拿沒雲的像素算。整張一起算的話，大片雲占掉亮部，
-       陸地和海會被壓暗，看起來像晚上（owner 10-12：「你有用晚上的嗎？」）。雲比晴空最亮的還亮，對到參考圖的最亮。"""
+       陸地和海會被壓暗，看起來像晚上（10-12 回報：「你有用晚上的嗎？」）。雲比晴空最亮的還亮，對到參考圖的最亮。"""
     out = np.empty_like(src)
     for c in range(3):
         s, r = np.sort(src[..., c][ms]), np.sort(ref[..., c][mr])
