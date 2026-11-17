@@ -36,6 +36,8 @@
   /* 地圖只畫在標題與出處之間這塊板子裡，上下是直切的邊、不做漸層（top／bottom 由 layout() 量）；
      傾斜時地圖頂端往後倒，SVG 比框大一圈（大小與 transform-origin 也由 layout() 量），邊角才不會露底 */
   .mapwin{ position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; background:var(--sea) }
+  /* 觸控：直向捲動交給瀏覽器，橫向與捏由 JS 處理（縣市、小地圖的 manipulation 跟這裡取交集，也只剩 pan-y） */
+  .mapwin, .isles{ touch-action:pan-y }
   #map{ position:absolute; width:100%; height:100%; display:block }
   /* 縣市的洞（新北包臺北、嘉義縣包嘉義市）靠 evenodd；線寬不跟著縮放 */
   #map path, .isle path{ fill-rule:evenodd; vector-effect:non-scaling-stroke }
@@ -79,7 +81,7 @@
 
   .cardpos{ position:absolute; left:4%; right:4%; bottom:44px; z-index:4; pointer-events:none }
   /* 卡片浮在地圖板子上：淺色主題白卡、深色主題比海面淺一階；圓角 8px，跟小地圖底塊、按鈕同一組 */
-  .card{ pointer-events:auto; box-sizing:border-box; max-height:45vh; overflow:auto; overscroll-behavior:contain;
+  .card{ pointer-events:auto; box-sizing:border-box; max-height:45vh; overflow:auto; overscroll-behavior:auto;   /* 卡片捲到底就接著捲文章；contain 會讓手指在卡片上直滑時整頁卡住（11-17） */
     background:var(--card); border-radius:8px; padding:12px 14px 13px; outline:none; box-shadow:var(--card-shadow) }
   .card.measure{ position:absolute; left:0; right:0; bottom:0; visibility:hidden }
   .card h2{ margin:0; font-size:17px; line-height:1.3 }
@@ -308,7 +310,8 @@ function buildTour() {
   const add = (f, to, dur, cf, ct) => { const s = seg(f, to, dur, cf, ct, t); S.push(s); t += s.dur; };
   add("pano", "pano", 3000, null, null);
   add("pano", SIX[0], 1500, null, SIX[0]);
-  SIX.forEach((c, i) => { add(c, c, 6000, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
+  // 每個六都停 3.5 秒（11-17：原本 6 秒）
+  SIX.forEach((c, i) => { add(c, c, 3500, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
   add(SIX[5], "pano", 1500, SIX[5], null);
   const ev = S.flatMap(s => s.ev);
   tour = { S, cycle: t, ev, holdStart: Object.fromEntries(S.filter(s => s.a === s.b && s.cardFrom).map(s => [s.cardFrom, s.t0])) };
@@ -325,7 +328,7 @@ let foCode = null;   // 鍵盤聚焦中的縣市（焦點外緣畫在它身上�
 let curBase = null;   // 輪播或點選給的鏡頭（curCam 是疊上讀者縮放後、畫面上實際的鏡頭）
 // 讀者的觸控縮放：疊在基準鏡頭上的一層，平面座標（傾斜前的框內座標）P' = (Z.x, Z.y) + Z.s × P；zb＝放手後的彈回
 let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };   // BD：地圖板子的上下緣（平移夾在這裡面）
-const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused || Z.s !== 1 || zb != null;
+const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused || moved() || zb != null;
 
 function cardAt(evs, t) {   // 最後一次換卡與前一次 → [現在, 前一張, 換了多久]
   let i = -1; for (let j = 0; j < evs.length; j++) if (evs[j][0] <= t) i = j;
@@ -354,7 +357,7 @@ function draw(now) {
   if (zb && now >= zb.t0) {   // 放手停 ZWAIT 後彈回；減少動態直接切回去
     const u = RM.matches ? 1 : clamp((now - zb.t0) / ZBACK), e = easeOut(u);
     Z = u >= 1 ? { s: 1, x: 0, y: 0 } : { s: zb.s + (1 - zb.s) * e, x: zb.x * (1 - e), y: zb.y * (1 - e) };
-    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 20 秒
+    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 5 秒
   }
   curBase = st.cam;
   const c = curCam = zcam(st.cam);
@@ -435,7 +438,7 @@ function maybeResume(now) {
     if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
     return;
   }
-  if (paused() || now - lastInteract < 20000 || now < userSeg.t0 + userSeg.dur) return;
+  if (paused() || now - lastInteract < 5000 || now < userSeg.t0 + userSeg.dur) return;   // 5 秒沒動作就接著輪（11-17：原本 20 秒）
   const n = (lastSix + 1) % 6;
   userEv = userEv.filter(e => e[0] <= now).slice(-1);
   userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
@@ -461,11 +464,12 @@ addEventListener("pointerup", () => held = false); addEventListener("pointercanc
 homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
 pauseBtn.addEventListener("click", () => {
   userPaused = !userPaused; pauseBtn.textContent = userPaused ? "繼續輪播" : "暫停輪播";
-  if (!userPaused && mode === "user") lastInteract = -1e9;   // 按繼續就接著輪，不再等 20 秒
+  if (!userPaused && mode === "user") lastInteract = -1e9;   // 按繼續就接著輪，不再等 5 秒
 });
 
 // ── 觸控縮放：照吐瓦魯地圖（template/gen_map.py）的捏開放大改寫。只做觸控，桌機不縮放、滾輪不攔 ──
-// 雙指捏：目前鏡頭的 0.5 到 2 倍、原地縮放，兩指一起移動可平移；縮放中單指拖就移動畫面；放手停 0.5 秒彈回基準鏡頭。
+// 雙指捏：目前鏡頭的 0.5 到 2 倍、原地縮放，兩指一起移動可平移；縮放中單指拖就移動畫面；1 倍時橫向起手的單指拖也移動；
+// 放手停 0.5 秒彈回基準鏡頭。
 // 走鏡頭本身：Z 換算成鏡頭再改 viewBox，向量照樣清楚、線寬不變，浮起與斜線也照放大後的鏡頭算。
 // 傾斜不收平：手指位置用 unproj 照目前的傾斜反算回平面，捏的那一點照樣留在兩指中間；收平的話一開始捏，地圖就在手指底下變形
 const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
@@ -474,8 +478,10 @@ function zcam(b) {   // 基準鏡頭疊上 Z：平面座標 P = (w − b)·k + �
   return { x: b.x + (W / 2 * (1 - Z.s) - Z.x) / (Z.s * b.k), y: b.y + (H / 2 * (1 - Z.s) - Z.y) / (Z.s * b.k), k: b.k * Z.s, t: b.t };
 }
 function setZ(s, x, y) {   // 夾住平移：放大時板子一直被地圖蓋滿，縮小時縮小的畫面整塊留在板子裡，拖不出邊界
-  const cl = (v, a, b) => Math.min(Math.max(a, b), Math.max(Math.min(a, b), v));
-  Z = { s, x: cl(x, W * (1 - s), 0), y: cl(y, BD.b * (1 - s), BD.t * (1 - s)) };
+  // 這條規則在 1 倍時一步都不能動，所以另給一段餘裕：1 倍時可拖開半個板子，往 2 倍、0.5 倍漸漸收回，到兩端跟原規則一樣
+  const f = Math.max(0, 1 - Math.abs(Math.log2(s))), mx = W / 2 * f, my = (BD.b - BD.t) / 2 * f;
+  const cl = (v, a, b, m) => Math.min(Math.max(a, b) + m, Math.max(Math.min(a, b) - m, v));
+  Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
 }
 function holdCam(now) {   // 讀者開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格
   lastInteract = now; zb = null;
@@ -485,20 +491,29 @@ function holdCam(now) {   // 讀者開始捏或拖：輪播停住、飛行中就
   userEv = [[-1e9, curCard]]; mode = "user"; resumeTo = -1; drop = null;
   userSeg = seg(atP ? P : b, atP ? P : b, 0, curCard, curCard, curLift.code === key ? now - 1e4 : now, key);   // 已經抬著就維持抬著，否則現在抬起
 }
-const zoomed = () => Z.s !== 1;
+const moved = () => Z.s !== 1 || Z.x !== 0 || Z.y !== 0;   // 縮放過或拖開過（還沒彈回）
 const plane = (x, y) => { const r = frame.getBoundingClientRect(); return unproj(x - r.left, y - r.top, curBase.t * TILT); };
 const mid = ts => plane((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
 const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
 const grab = t => ({ p: plane(t.clientX, t.clientY), x: Z.x, y: Z.y });
-let pinch = null, drag = null;   // pinch＝雙指捏 { d:兩指距離, m:中點, s, x, y }；drag＝縮放中單指拖 { p:起點, x, y }
+let pinch = null, drag = null, aim = null;   // pinch＝雙指捏 { d:兩指距離, m:中點, s, x, y }；drag＝單指拖 { p:起點, x, y }；aim＝1 倍時單指的起點，還沒判方向
+const AIM = 8;   // 1 倍時手指走超過 8px 才判方向：橫向起手就拖地圖，直向起手交給瀏覽器捲文章
 const springBack = () => { lastInteract = performance.now(); zb = { ...Z, t0: performance.now() + ZWAIT }; };
 for (const el of [mapwin, isles]) {   // 小地圖淡出前也收得到，手指壓在它上面一樣能捏
-  // 沒縮放時單指照樣捲文章，只有捏、或縮放中的拖才擋瀏覽器預設
+  // 只有捏、縮放或拖開中的拖、1 倍時橫向起手的拖才擋瀏覽器預設；CSS 的 touch-action:pan-y 讓直向捲動一直歸瀏覽器
   el.addEventListener("touchstart", e => {
+    aim = null;
     if (e.touches.length === 2) { holdCam(performance.now()); drag = null; pinch = { d: gap(e.touches), m: mid(e.touches), s: Z.s, x: Z.x, y: Z.y }; }
-    else if (e.touches.length === 1 && zoomed()) { holdCam(performance.now()); drag = grab(e.touches[0]); }
+    else if (e.touches.length === 1 && moved()) { holdCam(performance.now()); drag = grab(e.touches[0]); }
+    else if (e.touches.length === 1) aim = [e.touches[0].clientX, e.touches[0].clientY];
   }, { passive: true });
   el.addEventListener("touchmove", e => {
+    if (aim && e.touches.length === 1) {
+      const t = e.touches[0], dx = t.clientX - aim[0], dy = t.clientY - aim[1];
+      if (Math.hypot(dx, dy) < AIM) return;
+      if (Math.abs(dx) > Math.abs(dy)) { holdCam(performance.now()); drag = { p: plane(...aim), x: Z.x, y: Z.y }; }   // 從起點算，先走的那幾 px 也補上
+      aim = null;   // 直向起手：這一筆都不攔，讓頁面捲
+    }
     if (pinch && e.touches.length === 2) {
       e.preventDefault();
       // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間
@@ -513,8 +528,9 @@ for (const el of [mapwin, isles]) {   // 小地圖淡出前也收得到，手指
   const untouch = e => {
     if (pinch && e.touches.length < 2) {   // 放開一指就接著用剩下那指拖
       pinch = null;
-      if (e.touches.length === 1 && zoomed()) drag = grab(e.touches[0]); else springBack();
+      if (e.touches.length === 1 && moved()) drag = grab(e.touches[0]); else springBack();
     } else if (drag && !e.touches.length) { drag = null; springBack(); }
+    if (!e.touches.length) aim = null;
   };
   el.addEventListener("touchend", untouch); el.addEventListener("touchcancel", untouch);
 }

@@ -60,7 +60,7 @@ for (const size of SIZES) {
   console.log(size, `一輪 ${(segs.at(-1).t0 + segs.at(-1).dur) / 1000} 秒`, segs.map(s => `${s.card ?? "全景"} ${(s.dur / 1000).toFixed(2)}s${s.dip ? ` 拉遠 ${s.dip.toFixed(2)} 級` : ""}`).join("｜"));
   const out = n => resolve("preview/shots", `${basename(map, ".html")}_${size}_${n}.png`);
   await shot(out("00_pano"), seek, 1000);
-  for (const s of segs.filter(s => s.dur === 6000)) await shot(out(`10_${s.card}`), seek, s.t0 + 3000);   // 每個六都停著的中段
+  for (const s of segs.filter(s => s.dur === 3500)) await shot(out(`10_${s.card}`), seek, s.t0 + s.dur / 2);   // 每個六都停著的中段
   // 每段移動飛到一半（2022 資料量下來沒有一段要拉遠飛越，所以全截）
   for (const [i, s] of segs.entries()) if (s.dip || s.dur === 1500) await shot(out(`20_fly${i}_${s.card ?? "pano"}`), seek, s.t0 + s.dur / 2);
   for (const c of ["10020", "09020", "09007", "10018", "10016"]) await shot(out(`30_click_${c}`), select, c);   // 嘉義市、金門、連江、新竹市、澎湖
