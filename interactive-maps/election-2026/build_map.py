@@ -209,17 +209,18 @@ def main():
     # 縣市依中心由北到南排（Tab 順序）；金門、連江只放 defs 給小地圖用
     order = sorted(geoms, key=lambda k: -geoms[k].representative_point().y)
     paths, defs, hits = [], [], []
+    # 外緣、浮起的板子、小地圖都用 <use> 複製路徑，CSS 的 vector-effect 不會跟過去，要寫成屬性線寬才不跟著縮放
+    nss = 'vector-effect="non-scaling-stroke"'
     for code in order:
         g, c = geoms[code], res[code]
         d = geom_d(g)
         attrs = f'data-code="{code}" tabindex="0" role="button" aria-label="{aria(c)}"'
         if code in ISLES:
-            # 小地圖用 <use> 複製，CSS 的 vector-effect 不會跟過去，要寫成屬性外緣才是 2px
-            defs.append(f'<path id="p{code}" vector-effect="non-scaling-stroke" d="{d}"/>')
+            defs.append(f'<path id="p{code}" {nss} d="{d}"/>')
             continue
-        paths.append(f'<g class="cty g-{c["group"]}" {attrs}><path id="p{code}" d="{d}"/></g>')
+        paths.append(f'<g class="cty g-{c["group"]}" {attrs}><path id="p{code}" {nss} d="{d}"/></g>')
         if any(p.interiors for p in polys(g)):   # 外緣只框自己（新北不框到臺北、嘉義縣不框到嘉義市）
-            defs.append(f'<path id="o{code}" d="{geom_d(g, holes=False)}"/>')
+            defs.append(f'<path id="o{code}" {nss} d="{geom_d(g, holes=False)}"/>')
         c["bbox"] = bbox(g)
         if code == "10016":   # 澎湖：點群島範圍
             hits.append(f'<path class="hit" data-code="{code}" d="{geom_d(g.convex_hull)}"/>')

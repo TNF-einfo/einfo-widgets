@@ -9,29 +9,37 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&display=swap&text={{FONT_TEXT}}">
 <style>
   :root{
-    --kmt:#2d63d8; --dpp:#167a3e; --tpp:#1f9ea8; --oth:#bababa; --pend:#eceff2; --pend-line:#c3c9d1;
-    --ink:#1f2328; --mute:#5c6670; --inset:#f1f3f5; --ease-out:cubic-bezier(0.23,1,0.32,1);
+    /* 政黨色在深底 --sea 上用 validate_palette.js 驗過（SPEC「配色」）；-hi 是浮起時打亮的版本（OKLCH 亮度 +0.07） */
+    --kmt:#3567de; --dpp:#0b8932; --tpp:#12a5b1; --oth:#b8bdc4; --pend:#263041; --pend-line:#55637b;
+    --kmt-hi:#497df6; --dpp-hi:#309f47; --tpp-hi:#3abbc7; --oth-hi:#ced3db;
+    --sea:#1a2332; --raise:#2d3748; --raise-2:#364257; --raise-3:#3e4b61; --ink:#f4f6f8; --mute:#a9b4c2; --win:#dd8346;
+    --inset:#222d3f; --ease-out:cubic-bezier(0.23,1,0.32,1);
   }
   html{ -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100% }
-  html,body{ margin:0; height:100%; background:#fff; overflow:hidden }
+  html,body{ margin:0; height:100%; background:var(--sea); overflow:hidden }
   body{ font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; color:var(--ink) }
-  .frame{ position:relative; width:100vw; height:100vh; overflow:hidden; background:#fff }
+  .frame{ position:relative; width:100vw; height:100vh; overflow:hidden; background:var(--sea) }
+  /* 傾斜時地圖頂端往後倒，SVG 比框大一圈（大小與 transform-origin 由 layout() 量），邊角才不會露底 */
   #map{ position:absolute; inset:0; width:100%; height:100%; display:block }
-  /* 縣市的洞（新北包臺北、嘉義縣包嘉義市）靠 evenodd；線寬不跟著縮放，小地圖用 <use> 複製的外緣也吃這條 */
-  #map path{ fill-rule:evenodd; vector-effect:non-scaling-stroke }
+  /* 縣市的洞（新北包臺北、嘉義縣包嘉義市）靠 evenodd；線寬不跟著縮放 */
+  #map path, #lift use{ fill-rule:evenodd; vector-effect:non-scaling-stroke }
   .g-kmt{ fill:var(--kmt); background:var(--kmt) } .g-dpp{ fill:var(--dpp); background:var(--dpp) }
   .g-tpp{ fill:var(--tpp); background:var(--tpp) } .g-oth{ fill:var(--oth); background:var(--oth) }
   .g-pend{ fill:url(#hatch); background:repeating-linear-gradient(-45deg,var(--pend-line) 0 1.2px,var(--pend) 1.2px 4px) }
+  /* 打亮：浮起的板子與點到的離島小地圖 */
+  #lc.g-kmt, .isle.on .g-kmt{ fill:var(--kmt-hi) } #lc.g-dpp, .isle.on .g-dpp{ fill:var(--dpp-hi) }
+  #lc.g-tpp, .isle.on .g-tpp{ fill:var(--tpp-hi) } #lc.g-oth, .isle.on .g-oth{ fill:var(--oth-hi) } #lc.g-pend{ fill:url(#hatchH) }
   .cty{ cursor:pointer; outline:none; touch-action:manipulation }
-  .cty path{ stroke:#fff; stroke-width:1; stroke-linejoin:round; vector-effect:non-scaling-stroke }
+  .cty path, #lc{ stroke:var(--sea); stroke-width:1; stroke-linejoin:round }
   .hit{ fill:none; pointer-events:all; cursor:pointer; touch-action:manipulation }
-  #ol,#fo,.iol{ fill:none; stroke:var(--ink); stroke-width:2; stroke-linejoin:round; vector-effect:non-scaling-stroke; pointer-events:none }
+  #lift{ pointer-events:none } #sh{ fill:#05080d; stroke:none }
+  #ol,#fo,.iol{ fill:none; stroke:#fff; stroke-width:2; stroke-linejoin:round; vector-effect:non-scaling-stroke; pointer-events:none }
   .iol{ display:none } .isle.on .iol, .isle.focus .iol{ display:inline }
 
   header{ position:absolute; left:0; right:0; top:0; z-index:3; padding:12px 12px 16px; pointer-events:none;
-    background:linear-gradient(#fff 72%, rgba(255,255,255,0)) }
+    background:linear-gradient(var(--sea) 72%, rgba(26,35,50,0)) }
   .ttl{ display:flex; align-items:center; gap:8px; margin:0 }
-  .ttl img{ height:17px; width:auto; filter:brightness(0); opacity:.86 }
+  .ttl img{ height:17px; width:auto }
   h1{ margin:0; font:700 18px/1.25 "Noto Serif TC",serif; letter-spacing:.04em }  .legend{ display:flex; flex-wrap:wrap; gap:4px 12px; list-style:none; margin:7px 0 0; padding:0; font-size:13px }
   .legend li{ display:flex; align-items:center; gap:5px }
   .sw{ display:inline-block; width:10px; height:10px; flex:none }
@@ -43,9 +51,10 @@
   .isle span{ display:block; margin-top:3px; font-size:11px; line-height:1.2; color:var(--mute); text-align:center }
 
   .cardpos{ position:absolute; left:4%; right:4%; bottom:44px; z-index:4; pointer-events:none }
+  /* 深色卡，照官網捐款視窗：比海面淺一階的 --raise，陰影壓在地圖上 */
   .card{ pointer-events:auto; box-sizing:border-box; max-height:45vh; overflow:auto; overscroll-behavior:contain;
-    background:#fff; border-radius:14px; padding:12px 14px 13px; outline:none;
-    box-shadow:0 8px 28px rgba(31,35,40,.16), 0 1px 3px rgba(31,35,40,.08) }
+    background:var(--raise); border-radius:14px; padding:12px 14px 13px; outline:none;
+    box-shadow:0 12px 32px rgba(5,8,13,.5), 0 1px 3px rgba(5,8,13,.35) }
   .card.measure{ position:absolute; left:0; right:0; bottom:0; visibility:hidden }
   .card h2{ margin:0; font-size:17px; line-height:1.3 }
   .card .st{ margin:2px 0 0; font-size:13px; color:var(--mute) }
@@ -54,28 +63,29 @@
   .card li + li{ margin-top:5px }
   .card li .sw{ align-self:start; margin-top:.36em }
   .card .nm b{ font-weight:500 } .card li.win .nm b{ font-weight:700 }
-  .card .nm em{ font-style:normal; font-size:11.5px; font-weight:700; color:#fff; background:var(--ink); padding:1px 5px; border-radius:4px; margin-left:6px; white-space:nowrap }
+  /* 「當選」用官網的橘，不用綠（綠是民進黨） */
+  .card .nm em{ font-style:normal; font-size:11.5px; font-weight:700; color:var(--sea); background:var(--win); padding:1px 5px; border-radius:4px; margin-left:6px; white-space:nowrap }
   .card .nm small{ font-size:12px; color:var(--mute); margin-left:6px; white-space:nowrap }
   .card .v, .card .pc{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap }
   .card .note{ margin:7px 0 0; font-size:12px; color:var(--mute) }
-  .card blockquote{ margin:10px 0 0; padding:9px 0 0; border-top:1px solid #eceff2 }
+  .card blockquote{ margin:10px 0 0; padding:9px 0 0; border-top:1px solid rgba(255,255,255,.12) }
   .card blockquote .k{ font-size:11.5px; font-weight:700; color:var(--mute) }
   .card blockquote p{ margin:2px 0 3px; font-size:14px; line-height:1.55 }
   .card cite{ display:block; font-size:11.5px; font-style:normal; color:var(--mute) }
 
   footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
-    padding:12px 10px 8px 12px; font-size:10px; color:var(--mute); background:linear-gradient(rgba(255,255,255,0), #fff 40%) }
+    padding:12px 10px 8px 12px; font-size:10px; color:var(--mute); background:linear-gradient(rgba(26,35,50,0), var(--sea) 40%) }
   .src{ margin:0; line-height:1.45; min-width:0 } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
   .btns{ display:flex; gap:4px; flex:none }
-  button{ font:inherit; font-size:12px; color:var(--ink); background:#f1f3f5; border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
+  button{ font:inherit; font-size:12px; color:var(--ink); background:var(--raise); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
     touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
-  button:active{ transform:scale(.97); background:#e4e7eb }
+  button:active{ transform:scale(.97); background:var(--raise-3) }
   #home[aria-hidden="true"]{ visibility:hidden }
   .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
-  :focus-visible{ outline:2px solid var(--ink); outline-offset:2px }
+  :focus-visible{ outline:2px solid #fff; outline-offset:2px }
   .cty:focus-visible, .isle:focus-visible{ outline:none }
   @media (hover:hover) and (pointer:fine){
-    .cty:hover{ opacity:.86 } .isle:hover svg{ background:#e8ebee } button:hover{ background:#e8ebee }
+    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--raise) } button:hover{ background:var(--raise-2) }
   }
 
   /* 橫式（框比 1:1 寬）：資訊卡在右側，標題與圖例同一列 */
@@ -106,12 +116,16 @@
   </header>
   <svg id="map" viewBox="0 0 8000 10000" role="group" aria-label="22 縣市當選地圖，可用 Tab 選縣市、Enter 看結果、Esc 回全台">
     <defs>
-      <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="#eceff2"/><rect width="1.3" height="6" fill="#c3c9d1"/></pattern>
-      <pattern id="hatchI" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="#eceff2"/><rect width="1.3" height="6" fill="#c3c9d1"/></pattern>
+      <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="#263041"/><rect width="1.3" height="6" fill="#55637b"/></pattern>
+      <pattern id="hatchI" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="#263041"/><rect width="1.3" height="6" fill="#55637b"/></pattern>
+      <pattern id="hatchH" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="#384254"/><rect width="1.3" height="6" fill="#697790"/></pattern>
+      <!-- 浮起的影子：模糊與位移以使用者單位寫，layout 與拉近時換算成螢幕 px；只在停住、板子抬起時掛上 -->
+      <filter id="soft" x="-25%" y="-25%" width="150%" height="160%"><feGaussianBlur stdDeviation="8"/><feOffset dy="4"/></filter>
       {{DEFS}}
     </defs>
     <g id="counties">{{PATHS}}</g>
-    <use id="ol" href=""/><use id="fo" href=""/>
+    <g id="lift"><use id="sk" href=""/><use id="sh" href="" filter="url(#soft)"/><g id="lt"><use id="lc" href=""/><use id="ol" href=""/></g></g>
+    <use id="fo" href=""/>
     <g id="hits">{{HITS}}</g>
   </svg>
   <div class="isles">{{ISLES}}</div>
@@ -130,7 +144,8 @@
 const D = {{DATA}};
 const $ = s => document.querySelector(s);
 const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
-const hatch = $("#hatch"), hatchI = $("#hatchI"), ol = $("#ol"), fo = $("#fo"), isles = $(".isles"), homeBtn = $("#home"), pauseBtn = $("#pause");
+const hatch = $("#hatch"), hatchH = $("#hatchH"), hatchI = $("#hatchI"), ol = $("#ol"), fo = $("#fo"), isles = $(".isles"), homeBtn = $("#home"), pauseBtn = $("#pause");
+const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), blur = $("#soft feGaussianBlur"), shOff = $("#soft feOffset");
 const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
 const SIX = D.six, ISLE = new Set(D.isles);
 const RM = matchMedia("(prefers-reduced-motion: reduce)");
@@ -165,11 +180,31 @@ const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;   // eas
 const easeInv = v => v < .5 ? Math.sqrt(v / 2) : 1 - Math.sqrt((1 - v) / 2);   // 鏡頭走到幾成是在第幾成時間
 const clamp = v => Math.min(1, Math.max(0, v));
 
+// ── 傾斜（2.5D）：拉近出卡時地圖往後倒一點，全景是平的。鏡頭的 t 是傾斜的幾成（0 平、1 最斜） ──
+const TILT_DEG = 16, LIFT = 5, SH_OFF = 5, SH_BLUR = 7, UP = 260, DOWN = 180;   // 浮起：抬 5px、影子往下 5px 模糊 7px；抬起 260ms、放下 180ms
+let TILT = 0, O = { x: 0, y: 0, p: 1, ml: 0, mr: 0, mt: 0 };   // O：傾斜的軸心（框內座標）、透視距離、SVG 往外多長的邊
+function proj(px, py, t) {   // 框內平面座標 → 傾斜後的螢幕座標（CSS perspective(p) rotateX(t·TILT)，軸心 O）
+  if (!t || !TILT) return [px, py];
+  const a = t * TILT, dy = py - O.y, s = O.p / (O.p - dy * Math.sin(a));
+  return [O.x + (px - O.x) * s, O.y + dy * Math.cos(a) * s];
+}
+function unproj(X, Y) {   // 最斜時的反算：螢幕上的點原本在平面哪裡（量 SVG 要多大）
+  const yd = Y - O.y, dy = yd * O.p / (O.p * Math.cos(TILT) + yd * Math.sin(TILT)), s = O.p / (O.p - dy * Math.sin(TILT));
+  return [O.x + (X - O.x) / s, O.y + dy];
+}
+
 // ── 版面：量標題、出處、每張資訊卡，算每個縣市的鏡頭 ──
 let W, H, cams = {}, tour = null, smallHits = [];
-function fit(bb, R, pad) {
-  const k = Math.min((R.r - R.l) * (1 - 2 * pad) / (bb[2] - bb[0]), (R.b - R.t) * (1 - 2 * pad) / (bb[3] - bb[1]));
-  return { x: (bb[0] + bb[2]) / 2 - ((R.l + R.r) / 2 - W / 2) / k, y: (bb[1] + bb[3]) / 2 - ((R.t + R.b) / 2 - H / 2) / k, k };
+function fit(bb, R, pad, t) {   // 把縣市外框（傾斜後的梯形外框）塞進 R、四周留 pad
+  const tw = (R.r - R.l) * (1 - 2 * pad), th = (R.b - R.t) * (1 - 2 * pad), rx = (R.l + R.r) / 2, ry = (R.t + R.b) / 2;
+  let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]));
+  const box = () => { const p = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([mx, my]) => proj(W / 2 + (mx - x) * k, H / 2 + (my - y) * k, t));
+    const X = p.map(q => q[0]), Y = p.map(q => q[1]); return [Math.min(...X), Math.min(...Y), Math.max(...X), Math.max(...Y)]; };
+  for (let i = 0; i < (t && TILT ? 24 : 1); i++) {   // 平的一輪就準；斜的要迭代（透視不是線性）
+    let b = box(); k *= Math.min(tw / (b[2] - b[0]), th / (b[3] - b[1]));
+    b = box(); x += ((b[0] + b[2]) / 2 - rx) / k; y += ((b[1] + b[3]) / 2 - ry) / k;
+  }
+  return { x, y, k, t };
 }
 function layout() {
   W = frame.clientWidth; H = frame.clientHeight;
@@ -178,14 +213,22 @@ function layout() {
   const pos = $(".cardpos");
   pos.style.top = land ? hdrB + "px" : ""; pos.style.bottom = ftrH + "px";
   isles.style.top = hdrB + 4 + "px";
-  cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: W, b: H - ftrH }, land ? 0.02 : 0.025) };
   const pr = pos.getBoundingClientRect();
+  // 軸心放在留給縣市的空白中央，透視距離約框長邊的 2.2 倍（角度小、近大遠小也小）
+  TILT = RM.matches ? 0 : TILT_DEG * Math.PI / 180;
+  O = { x: land ? (pr.left - 8) / 2 : W / 2, y: (hdrB + H - ftrH) / 2, p: 2.2 * Math.max(W, H), ml: 0, mr: 0, mt: 0 };
+  if (TILT) { const a = unproj(0, 0), b = unproj(W, 0);
+    O.ml = Math.ceil(Math.max(0, -a[0])) + 2; O.mr = Math.ceil(Math.max(0, b[0] - W)) + 2; O.mt = Math.ceil(Math.max(0, -a[1])) + 2; }
+  Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
+    transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
+  lastTr = null;
+  cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };
   for (const c of D.counties) {
     if (ISLE.has(c.code)) { cams[c.code] = cams.pano; continue; }
     measure.innerHTML = HTML[c.code];
     const m = measure.parentNode.getBoundingClientRect();
     const R = land ? { l: 0, t: hdrB, r: pr.left - 8, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 };
-    cams[c.code] = fit(c.bbox, R, 0.1);
+    cams[c.code] = fit(c.bbox, R, 0.1, 1);
   }
   const ib = isles.getBoundingClientRect(), isv = isles.querySelector("svg").getBoundingClientRect();
   smallHits = [...document.querySelectorAll(".hit.dot")].map(el => ({ el, c: C[el.dataset.code] }));
@@ -199,7 +242,7 @@ function layout() {
 // ── 鏡頭：中心線性、縮放取對數內插；太遠就中途先拉遠再推近（照東京短影音） ──
 function lerpCam(a, b, t, dip) {
   const lk = Math.log2(a.k) + (Math.log2(b.k) - Math.log2(a.k)) * t - dip * Math.sin(Math.PI * t);
-  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk };
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk, t: a.t + (b.t - a.t) * t };   // 傾斜跟著拉近一起走
 }
 function seg(from, to, dur, cardFrom, cardTo, t0, keyTo) {
   const a = cams[from] || from, b = cams[to] || to, same = a.x === b.x && a.y === b.y && a.k === b.k;
@@ -236,7 +279,8 @@ function buildTour() {
 // ── 狀態 ──
 let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, userEv = [], resumeTo = -1, lastSix = -1;
 let hover = false, focusIn = false, held = false, inView = DEV, userPaused = false, lastInteract = 0;
-let curCam = null, curCard = null, shown = undefined, lastVB = "";
+let curCam = null, curCard = null, shown = undefined, lastVB = "", lastTr = null;
+let curLift = { code: null, v: 0 }, drop = null, liftKey = "";   // 浮起的縣市與抬了幾成；drop＝點別處時先放下
 const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused;
 
 function cardAt(evs, t) {   // 最後一次換卡與前一次 → [現在, 前一張, 換了多久]
@@ -248,27 +292,57 @@ function tourState(t) {
   let [cur, prev, el] = cardAt(tour.ev, t);
   if (el === 1e9) { const ev = tour.ev.at(-1); el = t + tour.cycle - ev[0]; prev = tour.ev.at(-2)[1]; }
   lastSix = SIX.indexOf(cur) >= 0 ? SIX.indexOf(cur) : (t < tour.S[2].t0 ? -1 : 5);
-  return { cam: camAt(s, t), cur, prev, el, atPano: s.a === cams.pano && s.b === cams.pano };
+  // 浮起只在停住的那段：抵達後抬起，離開前先放下
+  const hold = s.a === s.b && s.cardFrom && !ISLE.has(s.cardFrom);
+  const lift = hold ? { code: s.cardFrom, v: ease(clamp(Math.min((t - s.t0) / UP, (s.t0 + s.dur - t) / DOWN))) } : { code: null, v: 0 };
+  return { cam: camAt(s, t), cur, prev, el, atPano: s.a === cams.pano && s.b === cams.pano, lift };
 }
 function userState(now) {
-  const [cur, prev, el] = cardAt(userEv, now);
-  return { cam: camAt(userSeg, now), cur, prev, el, atPano: userSeg.b === cams.pano && now >= userSeg.t0 + userSeg.dur };
+  const [cur, prev, el] = cardAt(userEv, now), end = userSeg.t0 + userSeg.dur, to = userSeg.keyTo;
+  let lift = { code: null, v: 0 };
+  if (drop && now < drop.end) lift = { code: drop.code, v: drop.v * (1 - ease(clamp((now - drop.t0) / (drop.end - drop.t0)))) };
+  else if (to !== "pano" && now >= end) lift = { code: to, v: ease(clamp((now - end) / UP)) };
+  return { cam: camAt(userSeg, now), cur, prev, el, atPano: userSeg.b === cams.pano && now >= end, lift };
 }
 
 function draw(now) {
   const st = mode === "tour" ? tourState(tourT) : userState(now);
   const c = st.cam; curCam = c;
-  const w = W / c.k, h = H / c.k, vb = `${(c.x - w / 2).toFixed(1)} ${(c.y - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`;
+  const vb = [c.x - (W / 2 + O.ml) / c.k, c.y - (H / 2 + O.mt) / c.k, (W + O.ml + O.mr) / c.k, (H + O.mt) / c.k].map(v => v.toFixed(1)).join(" ");
+  const tr = TILT && c.t > 0.001 ? `perspective(${O.p.toFixed(0)}px) rotateX(${(c.t * TILT_DEG).toFixed(2)}deg)` : "";
+  if (tr !== lastTr) { lastTr = tr; svg.style.transform = tr; }
   if (vb !== lastVB) {
-    lastVB = vb; svg.setAttribute("viewBox", vb);
-    hatch.setAttribute("patternTransform", `rotate(45) scale(${(1 / c.k).toFixed(4)})`);
+    lastVB = vb; svg.setAttribute("viewBox", vb); liftKey = "";
+    for (const p of [hatch, hatchH]) p.setAttribute("patternTransform", `rotate(45) scale(${(1 / c.k).toFixed(4)})`);
     for (const { el, c: cc } of smallHits) { const size = Math.max(cc.bbox[2] - cc.bbox[0], cc.bbox[3] - cc.bbox[1]) * c.k;
       el.setAttribute("r", size < 44 ? (22 / c.k).toFixed(1) : 0); }
     const op = clamp(1 - Math.log2(c.k / cams.pano.k) / 0.4);   // 小地圖只在全景出現，一拉近就淡出
     isles.style.opacity = op; isles.style.pointerEvents = op > .5 ? "" : "none"; isles.style.visibility = op ? "" : "hidden";
   }
   renderCard(st.cur, st.prev, st.el);
+  renderLift(RM.matches ? { code: st.cur && !ISLE.has(st.cur) ? st.cur : null, v: 1 } : st.lift, c.k);
   homeBtn.setAttribute("aria-hidden", st.atPano && st.cur == null); homeBtn.tabIndex = st.atPano && st.cur == null ? -1 : 0;
+}
+// 浮起的板子：打亮的複本抬高 LIFT px，下面一層模糊的影子；v＝0（飛行途中）整組關掉，濾鏡不跑
+// 減少動態：只留打亮與外緣，不抬、不掛影子
+function renderLift(L, k) {
+  if (L.v <= 0) L = { code: null, v: 0 };
+  curLift = L;
+  const key = `${L.code} ${L.v.toFixed(3)}`;
+  if (key === liftKey) return;
+  liftKey = key;
+  const on = L.code != null, motion = on && !RM.matches;
+  lc.setAttribute("href", on ? "#p" + L.code : ""); lc.setAttribute("class", on ? "g-" + C[L.code].group : "");
+  lc.style.opacity = on ? L.v : 0;
+  lt.setAttribute("transform", motion ? `translate(0 ${(-LIFT * L.v / k).toFixed(2)})` : "");
+  sh.style.display = sk.style.display = motion ? "" : "none";
+  if (motion) {
+    // 板子底下先用同色蓋掉原本的界線（含線寬），影子落在上面才是柔的，不會多一條硬邊
+    const g = C[L.code].group, paint = g === "pend" ? "url(#hatch)" : `var(--${g})`;
+    sk.setAttribute("href", "#p" + L.code); sk.setAttribute("style", `fill:${paint};stroke:${paint};stroke-width:1.5`);
+    sh.setAttribute("href", "#p" + L.code); sh.style.opacity = (0.7 * L.v).toFixed(3);
+    blur.setAttribute("stdDeviation", (SH_BLUR / k).toFixed(2)); shOff.setAttribute("dy", (SH_OFF * L.v / k).toFixed(2));
+  }
 }
 function renderCard(cur, prev, el) {
   let show = cur, op = 1, ty = 0, inOp = 1;
@@ -290,9 +364,15 @@ function go(code, instant) {   // code＝縣市代碼，null＝回全台
   if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
   mode = "user";
   const to = code == null || ISLE.has(code) ? "pano" : code;
-  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now, to);
+  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
   userEv.push(...userSeg.ev);
   if (SIX.includes(code)) lastSix = SIX.indexOf(code);
+}
+function putDown(now, to, instant) {   // 板子還抬著就先放下再飛（放下的時間照抬了幾成）；回傳要等多久
+  drop = null;
+  if (instant || RM.matches || curLift.v <= 0 || curLift.code === to) return 0;
+  drop = { code: curLift.code, v: curLift.v, t0: now, end: now + DOWN * curLift.v };
+  return drop.end - now;
 }
 function maybeResume(now) {
   if (resumeTo >= 0) {
@@ -302,7 +382,7 @@ function maybeResume(now) {
   if (paused() || now - lastInteract < 20000 || now < userSeg.t0 + userSeg.dur) return;
   const n = (lastSix + 1) % 6;
   userEv = userEv.filter(e => e[0] <= now).slice(-1);
-  userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now); userEv.push(...userSeg.ev); resumeTo = n;
+  userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
 }
 function codeOf(e) { const t = e.target.closest("[data-code]"); return t && t.dataset.code; }
 svg.addEventListener("click", e => { const c = codeOf(e); go(c || null); });
@@ -326,6 +406,7 @@ pauseBtn.addEventListener("click", () => {
 });
 new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) started = true; }, { threshold: 0.25 }).observe(frame);
 new ResizeObserver(() => layout()).observe(frame);
+RM.addEventListener("change", () => { layout(); liftKey = ""; });   // 減少動態一切換，傾斜與取景跟著重算
 document.fonts && document.fonts.ready.then(layout);
 
 let last = performance.now();
