@@ -31,6 +31,7 @@ K = 2000          # 投影後每度經度 2000 單位：拉近臺北時一個螢
 LON0, LAT_TOP = 118.0, 26.6
 SIX = ["63000", "65000", "68000", "66000", "67000", "64000"]   # 輪播順序：臺北、新北、桃園、臺中、臺南、高雄
 ISLES = {"09020", "09007"}                                      # 金門、連江畫在左上角的小地圖
+FRAME_SOUTH_OF = {"10017": 25.3}   # 拉近取景只算這個緯度以南：基隆的彭佳嶼、棉花嶼、花瓶嶼離本島 30 到 60 公里，算進去基隆會縮成一小塊
 GROUP = {1: "kmt", 16: "dpp", 350: "tpp"}
 SHORT = {"中國國民黨": "國民黨", "民主進步黨": "民進黨", "台灣民眾黨": "民眾黨", "無黨籍及未經政黨推薦": "無黨籍",
          "時代力量": "時力", "台灣基進": "基進", "台灣團結聯盟": "台聯", "社會民主黨": "社民黨"}
@@ -240,6 +241,8 @@ def main():
         if any(p.interiors for p in polys(g)):   # 外緣只框自己（新北不框到臺北、嘉義縣不框到嘉義市）
             defs.append(f'<path id="o{code}" {nss} d="{geom_d(g, holes=False)}"/>')
         c["bbox"] = bbox(g)
+        if code in FRAME_SOUTH_OF:   # 拉近取景不算外海小島（島照樣畫）
+            c["bbox"] = bbox(shapely.MultiPolygon([p for p in polys(g) if p.representative_point().y < FRAME_SOUTH_OF[code]]))
         if code == "10016":   # 澎湖：點群島範圍
             hits.append(f'<path class="hit" data-code="{code}" d="{geom_d(g.convex_hull)}"/>')
         elif max(c["bbox"][2] - c["bbox"][0], c["bbox"][3] - c["bbox"][1]) < 600:   # 小縣市加看不見的點擊圓，半徑逐幀換算成 22px

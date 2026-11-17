@@ -238,7 +238,9 @@ function layout() {
   const land = matchMedia("(min-aspect-ratio: 1/1)").matches;
   // 地圖板子＝標題下緣到出處上緣；卡片與小地圖離板子邊 8px
   const hdrB = $("header").getBoundingClientRect().bottom, ftrH = H - $("footer").getBoundingClientRect().top;
-  mapwin.style.top = hdrB + "px"; mapwin.style.bottom = ftrH + "px";
+  // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom 22px），地圖才會從標題底下淡出；取景照樣從 hdrB 算
+  const mwT = Math.max(0, hdrB - 22);
+  mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px";
   const pos = $(".cardpos");
   pos.style.top = land ? hdrB + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
   isles.style.top = hdrB + 8 + "px";
@@ -249,7 +251,7 @@ function layout() {
   if (TILT) { const a = unproj(0, 0), b = unproj(W, 0);
     O.ml = Math.ceil(Math.max(0, -a[0])) + 2; O.mr = Math.ceil(Math.max(0, b[0] - W)) + 2; O.mt = Math.ceil(Math.max(0, -a[1])) + 2; }
   // SVG 放在板子裡，座標照樣以框為準（往上多扣板子的 top）
-  Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt - hdrB + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
+  Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt - mwT + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
     transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
   lastTr = null;
   cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };
@@ -258,7 +260,10 @@ function layout() {
     measure.innerHTML = HTML[c.code];
     const m = measure.parentNode.getBoundingClientRect();
     const R = land ? { l: 0, t: hdrB, r: pr.left - 8, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 };
-    cams[c.code] = fit(c.bbox, R, 0.1, 1);
+    // 縣市佔空白的四成（11-17：原本佔八成太大，縮一半）；花蓮、臺東這種長條縣縮一半會比全景還遠，退回八成
+    let f = fit(c.bbox, R, 0.3, 1);
+    if (f.k < cams.pano.k * 1.25) f = fit(c.bbox, R, 0.1, 1);
+    cams[c.code] = f;
   }
   const ib = isles.getBoundingClientRect(), isv = isles.querySelector("svg").getBoundingClientRect();
   smallHits = [...document.querySelectorAll(".hit.dot")].map(el => ({ el, c: C[el.dataset.code] }));
