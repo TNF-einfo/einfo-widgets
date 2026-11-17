@@ -15,7 +15,7 @@
     --frame:#ffffff; --mast:#ffffff; --mast-ink:#232333; --sea:#f2f3f1; --inset:#e6e8e5; --line:#ffffff; --sel:#ffffff;
     --kmt:#4170e9; --dpp:#218b30; --tpp:#26c0cf; --oth:#7d838b; --pend:#e3e6e9; --pend-line:#b5bcc5;
     --kmt-hi:#5283fe; --dpp-hi:#399e43; --tpp-hi:#45d4e3; --oth-hi:#8f959d; --pend-hi:#f7fafd; --pend-line-hi:#c8cfd8;
-    --shade-a:rgba(26,35,50,.18); --shade-b:rgba(26,35,50,.10); --shade-c:rgba(26,35,50,.05); --frame-0:rgba(255,255,255,0);
+    --shade-a:rgba(26,35,50,.18); --shade-b:rgba(26,35,50,.10); --shade-c:rgba(26,35,50,.05); --frame-rgb:255,255,255;
     --card:#ffffff; --card-shadow:0 6px 20px rgba(26,35,50,.14), 0 1px 3px rgba(26,35,50,.12);
     --ink:#232333; --body:#373740; --mute:#6e6e71; --rule:rgba(26,35,50,.12); --btn:#eef0f2; --btn-2:#e4e7eb; --btn-3:#d9dde2; --win:#dd8346; --win-ink:#1a2332;
   }
@@ -23,7 +23,7 @@
     --frame:#141b27; --mast:#141b27; --mast-ink:#f4f6f8; --sea:#1a2332; --inset:#222d3f; --line:#1a2332; --sel:#ffffff;
     --kmt:#3567de; --dpp:#0b8932; --tpp:#12a5b1; --oth:#b8bdc4; --pend:#263041; --pend-line:#55637b;
     --kmt-hi:#497df6; --dpp-hi:#309f47; --tpp-hi:#3abbc7; --oth-hi:#ced3db; --pend-hi:#384254; --pend-line-hi:#697790;
-    --shade-a:rgba(5,8,13,.42); --shade-b:rgba(5,8,13,.24); --shade-c:rgba(5,8,13,.12); --frame-0:rgba(20,27,39,0);
+    --shade-a:rgba(5,8,13,.42); --shade-b:rgba(5,8,13,.24); --shade-c:rgba(5,8,13,.12); --frame-rgb:20,27,39;
     --card:#2d3748; --card-shadow:0 12px 32px rgba(5,8,13,.5), 0 1px 3px rgba(5,8,13,.35);
     --ink:#f4f6f8; --body:#e2e6eb; --mute:#a9b4c2; --rule:rgba(255,255,255,.12); --btn:#2d3748; --btn-2:#364257; --btn-3:#3e4b61; --win:#dd8346; --win-ink:#1a2332;
   }
@@ -58,8 +58,11 @@
 
   /* 上緣漸層：地圖從標題底下淡出（第二版的做法，11-17 加回來）。下緣不加漸層也不墊底色（11-17 定），
      出處直接壓在地圖上，靠同海面色的字暈讀得到 */
-  header{ position:absolute; left:0; right:0; top:0; z-index:3; pointer-events:none; padding-bottom:22px;
-    background:linear-gradient(var(--frame) calc(100% - 22px), var(--frame-0)) }
+  /* 漸層 40px、兩端放慢（smoothstep 取樣），實心接漸層的地方才不會看到一條線；40 要跟 layout() 的 FADE 一樣 */
+  header{ position:absolute; left:0; right:0; top:0; z-index:3; pointer-events:none; padding-bottom:40px;
+    background:linear-gradient(rgb(var(--frame-rgb)) calc(100% - 40px), rgba(var(--frame-rgb),.97) calc(100% - 34px),
+      rgba(var(--frame-rgb),.87) calc(100% - 27px), rgba(var(--frame-rgb),.68) calc(100% - 20px), rgba(var(--frame-rgb),.43) calc(100% - 13px),
+      rgba(var(--frame-rgb),.18) calc(100% - 6px), rgba(var(--frame-rgb),0)) }
   .ttl{ display:flex; align-items:center; gap:8px; margin:0; padding:9px 12px; background:var(--mast); color:var(--mast-ink) }
   .ttl img{ height:18px; width:auto; flex:none; margin-left:auto }   /* logo 靠右 */
   /* 標題照官網段落標題 h2：黑體、字重 900，字級跟著框寬縮放；352.8 寬時約 21px，加上靠右的 logo 剛好一行 */
@@ -222,13 +225,13 @@ function unproj(X, Y) {   // 最斜時的反算：螢幕上的點原本在平面
 
 // ── 版面：量標題、出處、每張資訊卡，算每個縣市的鏡頭 ──
 let W, H, cams = {}, tour = null, smallHits = [];
-function fit(bb, R, pad, t) {   // 把縣市外框（傾斜後的梯形外框）塞進 R、四周留 pad
+function fit(bb, R, pad, t, kmax = Infinity, kmin = 0) {   // 把縣市外框（傾斜後的梯形外框）塞進 R、四周留 pad；縮放夾在 kmin 到 kmax
   const tw = (R.r - R.l) * (1 - 2 * pad), th = (R.b - R.t) * (1 - 2 * pad), rx = (R.l + R.r) / 2, ry = (R.t + R.b) / 2;
-  let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]));
+  let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.max(kmin, Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]), kmax));
   const box = () => { const p = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([mx, my]) => proj(W / 2 + (mx - x) * k, H / 2 + (my - y) * k, t));
     const X = p.map(q => q[0]), Y = p.map(q => q[1]); return [Math.min(...X), Math.min(...Y), Math.max(...X), Math.max(...Y)]; };
   for (let i = 0; i < (t && TILT ? 24 : 1); i++) {   // 平的一輪就準；斜的要迭代（透視不是線性）
-    let b = box(); k *= Math.min(tw / (b[2] - b[0]), th / (b[3] - b[1]));
+    let b = box(); k = Math.max(kmin, Math.min(k * Math.min(tw / (b[2] - b[0]), th / (b[3] - b[1])), kmax));
     b = box(); x += ((b[0] + b[2]) / 2 - rx) / k; y += ((b[1] + b[3]) / 2 - ry) / k;
   }
   return { x, y, k, t };
@@ -238,8 +241,8 @@ function layout() {
   const land = matchMedia("(min-aspect-ratio: 1/1)").matches;
   // 地圖板子＝標題下緣到出處上緣；卡片與小地圖離板子邊 8px
   const hdrB = $("header").getBoundingClientRect().bottom, ftrH = H - $("footer").getBoundingClientRect().top;
-  // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom 22px），地圖才會從標題底下淡出；取景照樣從 hdrB 算
-  const mwT = Math.max(0, hdrB - 22);
+  // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom），地圖才會從標題底下淡出；取景照樣從 hdrB 算
+  const FADE = 40, mwT = Math.max(0, hdrB - FADE);
   mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px";
   const pos = $(".cardpos");
   pos.style.top = land ? hdrB + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
@@ -255,15 +258,16 @@ function layout() {
     transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
   lastTr = null;
   cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };
+  const panoH = D.pano[3] - D.pano[1];   // 台灣（含澎湖）外框的高
   for (const c of D.counties) {
     if (ISLE.has(c.code)) { cams[c.code] = cams.pano; continue; }
     measure.innerHTML = HTML[c.code];
     const m = measure.parentNode.getBoundingClientRect();
     const R = land ? { l: 0, t: hdrB, r: pr.left - 8, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 };
-    // 縣市佔空白的四成（11-17：原本佔八成太大，縮一半）；花蓮、臺東這種長條縣縮一半會比全景還遠，退回八成
-    let f = fit(c.bbox, R, 0.3, 1);
-    if (f.k < cams.pano.k * 1.25) f = fit(c.bbox, R, 0.1, 1);
-    cams[c.code] = f;
+    // 縣市佔空白的四成（11-17：原本佔八成太大，縮一半）。拉近的上限：卡片以外的空白區至少放得下半個台灣的高度
+    // （11-17：臺中這類還是太大），最多全景的 2 倍；下限是全景，長條縣不會比全景還遠
+    const KMAX = Math.max(cams.pano.k, Math.min(cams.pano.k * 2, (R.b - R.t) / (0.5 * panoH)));
+    cams[c.code] = fit(c.bbox, R, 0.3, 1, KMAX, cams.pano.k);
   }
   const ib = isles.getBoundingClientRect(), isv = isles.querySelector("svg").getBoundingClientRect();
   smallHits = [...document.querySelectorAll(".hit.dot")].map(el => ({ el, c: C[el.dataset.code] }));
@@ -352,7 +356,9 @@ function draw(now) {
     for (const p of [hatch, hatchH]) p.setAttribute("patternTransform", `rotate(45) scale(${(1 / c.k).toFixed(4)})`);
     for (const { el, c: cc } of smallHits) { const size = Math.max(cc.bbox[2] - cc.bbox[0], cc.bbox[3] - cc.bbox[1]) * c.k;
       el.setAttribute("r", size < 44 ? (22 / c.k).toFixed(1) : 0); }
-    const op = clamp(1 - Math.log2(c.k / cams.pano.k) / 0.4);   // 小地圖只在全景出現，一拉近就淡出
+    // 小地圖只在全景出現：拉近、平移或傾斜離開全景就淡出（手機上六都幾乎不放大、只平移，只看縮放會留著壓到地圖）
+    const pz = cams.pano, dk = Math.abs(Math.log2(c.k / pz.k)), dp = Math.hypot((c.x - pz.x) * pz.k / W, (c.y - pz.y) * pz.k / H);
+    const op = clamp(1 - Math.max(dk / 0.4, dp / 0.08, c.t / 0.3));
     isles.style.opacity = op; isles.style.pointerEvents = op > .5 ? "" : "none"; isles.style.visibility = op ? "" : "hidden";
   }
   renderCard(st.cur, st.prev, st.el);
