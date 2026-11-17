@@ -218,8 +218,9 @@ function proj(px, py, t) {   // 框內平面座標 → 傾斜後的螢幕座標�
   const a = t * TILT, dy = py - O.y, s = O.p / (O.p - dy * Math.sin(a));
   return [O.x + (px - O.x) * s, O.y + dy * Math.cos(a) * s];
 }
-function unproj(X, Y) {   // 最斜時的反算：螢幕上的點原本在平面哪裡（量 SVG 要多大）
-  const yd = Y - O.y, dy = yd * O.p / (O.p * Math.cos(TILT) + yd * Math.sin(TILT)), s = O.p / (O.p - dy * Math.sin(TILT));
+function unproj(X, Y, a = TILT) {   // 反算：傾斜 a 時螢幕上的點原本在平面哪裡（預設最斜，量 SVG 要多大；觸控縮放換算手指位置）
+  if (!a) return [X, Y];
+  const yd = Y - O.y, dy = yd * O.p / (O.p * Math.cos(a) + yd * Math.sin(a)), s = O.p / (O.p - dy * Math.sin(a));
   return [O.x + (X - O.x) / s, O.y + dy];
 }
 
@@ -243,7 +244,7 @@ function layout() {
   const hdrB = $("header").getBoundingClientRect().bottom, ftrH = H - $("footer").getBoundingClientRect().top;
   // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom），地圖才會從標題底下淡出；取景照樣從 hdrB 算
   const FADE = 40, mwT = Math.max(0, hdrB - FADE);
-  mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px";
+  mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px"; BD = { t: mwT, b: H - ftrH };
   const pos = $(".cardpos");
   pos.style.top = land ? hdrB + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
   isles.style.top = hdrB + 8 + "px";
@@ -321,7 +322,10 @@ let hover = false, focusIn = false, held = false, inView = DEV, userPaused = fal
 let curCam = null, curCard = null, shown = undefined, lastVB = "", lastTr = null;
 let curLift = { code: null, v: 0 }, drop = null, liftKey = "";   // 浮起的縣市與抬了幾成；drop＝點別處時先放下
 let foCode = null;   // 鍵盤聚焦中的縣市（焦點外緣畫在它身上）
-const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused;
+let curBase = null;   // 輪播或點選給的鏡頭（curCam 是疊上讀者縮放後、畫面上實際的鏡頭）
+// 讀者的觸控縮放：疊在基準鏡頭上的一層，平面座標（傾斜前的框內座標）P' = (Z.x, Z.y) + Z.s × P；zb＝放手後的彈回
+let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };   // BD：地圖板子的上下緣（平移夾在這裡面）
+const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused || Z.s !== 1 || zb != null;
 
 function cardAt(evs, t) {   // 最後一次換卡與前一次 → [現在, 前一張, 換了多久]
   let i = -1; for (let j = 0; j < evs.length; j++) if (evs[j][0] <= t) i = j;
@@ -347,7 +351,13 @@ function userState(now) {
 
 function draw(now) {
   const st = mode === "tour" ? tourState(tourT) : userState(now);
-  const c = st.cam; curCam = c;
+  if (zb && now >= zb.t0) {   // 放手停 ZWAIT 後彈回；減少動態直接切回去
+    const u = RM.matches ? 1 : clamp((now - zb.t0) / ZBACK), e = easeOut(u);
+    Z = u >= 1 ? { s: 1, x: 0, y: 0 } : { s: zb.s + (1 - zb.s) * e, x: zb.x * (1 - e), y: zb.y * (1 - e) };
+    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 20 秒
+  }
+  curBase = st.cam;
+  const c = curCam = zcam(st.cam);
   const vb = [c.x - (W / 2 + O.ml) / c.k, c.y - (H / 2 + O.mt) / c.k, (W + O.ml + O.mr) / c.k, (H + O.mt) / c.k].map(v => v.toFixed(1)).join(" ");
   const tr = TILT && c.t > 0.001 ? `perspective(${O.p.toFixed(0)}px) rotateX(${(c.t * TILT_DEG).toFixed(2)}deg)` : "";
   if (tr !== lastTr) { lastTr = tr; svg.style.transform = tr; }
@@ -406,6 +416,7 @@ function renderCard(cur, prev, el) {
 // ── 互動 ──
 function go(code, instant) {   // code＝縣市代碼，null＝回全台
   const now = performance.now(); lastInteract = now; resumeTo = -1;
+  Z = { s: 1, x: 0, y: 0 }; zb = null;   // 放大中點縣市：從畫面上的樣子直接飛過去，讀者的縮放併進這段飛行
   if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
   mode = "user";
   const to = code == null || ISLE.has(code) ? "pano" : code;
@@ -452,6 +463,61 @@ pauseBtn.addEventListener("click", () => {
   userPaused = !userPaused; pauseBtn.textContent = userPaused ? "繼續輪播" : "暫停輪播";
   if (!userPaused && mode === "user") lastInteract = -1e9;   // 按繼續就接著輪，不再等 20 秒
 });
+
+// ── 觸控縮放：照吐瓦魯地圖（template/gen_map.py）的捏開放大改寫。只做觸控，桌機不縮放、滾輪不攔 ──
+// 雙指捏：目前鏡頭的 0.5 到 2 倍、原地縮放，兩指一起移動可平移；縮放中單指拖就移動畫面；放手停 0.5 秒彈回基準鏡頭。
+// 走鏡頭本身：Z 換算成鏡頭再改 viewBox，向量照樣清楚、線寬不變，浮起與斜線也照放大後的鏡頭算。
+// 傾斜不收平：手指位置用 unproj 照目前的傾斜反算回平面，捏的那一點照樣留在兩指中間；收平的話一開始捏，地圖就在手指底下變形
+const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
+function zcam(b) {   // 基準鏡頭疊上 Z：平面座標 P = (w − b)·k + 框中心，解出新的鏡頭
+  if (Z.s === 1 && !Z.x && !Z.y) return b;
+  return { x: b.x + (W / 2 * (1 - Z.s) - Z.x) / (Z.s * b.k), y: b.y + (H / 2 * (1 - Z.s) - Z.y) / (Z.s * b.k), k: b.k * Z.s, t: b.t };
+}
+function setZ(s, x, y) {   // 夾住平移：放大時板子一直被地圖蓋滿，縮小時縮小的畫面整塊留在板子裡，拖不出邊界
+  const cl = (v, a, b) => Math.min(Math.max(a, b), Math.max(Math.min(a, b), v));
+  Z = { s, x: cl(x, W * (1 - s), 0), y: cl(y, BD.b * (1 - s), BD.t * (1 - s)) };
+}
+function holdCam(now) {   // 讀者開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格
+  lastInteract = now; zb = null;
+  if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
+  const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
+  const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
+  userEv = [[-1e9, curCard]]; mode = "user"; resumeTo = -1; drop = null;
+  userSeg = seg(atP ? P : b, atP ? P : b, 0, curCard, curCard, curLift.code === key ? now - 1e4 : now, key);   // 已經抬著就維持抬著，否則現在抬起
+}
+const zoomed = () => Z.s !== 1;
+const plane = (x, y) => { const r = frame.getBoundingClientRect(); return unproj(x - r.left, y - r.top, curBase.t * TILT); };
+const mid = ts => plane((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
+const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+const grab = t => ({ p: plane(t.clientX, t.clientY), x: Z.x, y: Z.y });
+let pinch = null, drag = null;   // pinch＝雙指捏 { d:兩指距離, m:中點, s, x, y }；drag＝縮放中單指拖 { p:起點, x, y }
+const springBack = () => { lastInteract = performance.now(); zb = { ...Z, t0: performance.now() + ZWAIT }; };
+for (const el of [mapwin, isles]) {   // 小地圖淡出前也收得到，手指壓在它上面一樣能捏
+  // 沒縮放時單指照樣捲文章，只有捏、或縮放中的拖才擋瀏覽器預設
+  el.addEventListener("touchstart", e => {
+    if (e.touches.length === 2) { holdCam(performance.now()); drag = null; pinch = { d: gap(e.touches), m: mid(e.touches), s: Z.s, x: Z.x, y: Z.y }; }
+    else if (e.touches.length === 1 && zoomed()) { holdCam(performance.now()); drag = grab(e.touches[0]); }
+  }, { passive: true });
+  el.addEventListener("touchmove", e => {
+    if (pinch && e.touches.length === 2) {
+      e.preventDefault();
+      // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間
+      const s = Math.min(ZMAX, Math.max(ZMIN, pinch.s * gap(e.touches) / pinch.d)), m = mid(e.touches), k = s / pinch.s;
+      setZ(s, m[0] - (pinch.m[0] - pinch.x) * k, m[1] - (pinch.m[1] - pinch.y) * k);
+    } else if (drag && e.touches.length === 1) {
+      e.preventDefault();
+      const q = plane(e.touches[0].clientX, e.touches[0].clientY);
+      setZ(Z.s, drag.x + q[0] - drag.p[0], drag.y + q[1] - drag.p[1]);
+    }
+  }, { passive: false });
+  const untouch = e => {
+    if (pinch && e.touches.length < 2) {   // 放開一指就接著用剩下那指拖
+      pinch = null;
+      if (e.touches.length === 1 && zoomed()) drag = grab(e.touches[0]); else springBack();
+    } else if (drag && !e.touches.length) { drag = null; springBack(); }
+  };
+  el.addEventListener("touchend", untouch); el.addEventListener("touchcancel", untouch);
+}
 new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) started = true; }, { threshold: 0.25 }).observe(frame);
 new ResizeObserver(() => layout()).observe(frame);
 RM.addEventListener("change", () => { layout(); liftKey = ""; });   // 減少動態一切換，傾斜與取景跟著重算
