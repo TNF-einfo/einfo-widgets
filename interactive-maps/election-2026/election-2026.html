@@ -86,7 +86,6 @@
   .card .nm b{ font-weight:500 } .card li.win .nm b{ font-weight:700 }
   /* 「當選」用官網的橘，不用綠（綠是民進黨） */
   .card .nm em{ font-style:normal; font-size:11.5px; font-weight:700; color:var(--win-ink); background:var(--win); padding:1px 5px; border-radius:4px; margin-left:6px; white-space:nowrap }
-  .card .nm small{ font-size:12px; color:var(--mute); margin-left:6px; white-space:nowrap }
   .card .v, .card .pc{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--body) }
   .card .note{ margin:7px 0 0; font-size:12px; color:var(--mute) }
   .card blockquote{ margin:10px 0 0; padding:9px 0 0; border-top:1px solid var(--rule) }
@@ -114,8 +113,6 @@
     h1{ font-size:19px }
     .cardpos{ left:auto; right:16px; width:300px; top:56px; bottom:44px; display:flex; align-items:center }
     .card{ width:100%; max-height:100% }
-    /* 卡片只有 300px：「當選」標籤會把政黨名擠到下一行、跟沒標籤的那列對不齊，所以政黨名一律放在姓名下面 */
-    .card .nm small{ display:block; margin:1px 0 0 }
   }
   @media (min-aspect-ratio:1/1) and (max-width:620px){
     .ttl{ padding:7px 12px } h1{ font-size:16px } .ttl img{ height:15px } .legend{ font-size:12px; gap:3px 9px; padding:5px 12px 6px }
@@ -186,7 +183,7 @@ function cardHTML(c) {
   const st = statusLine(c);
   let h = `<h2>${c.name}</h2>` + (st ? `<p class="st">${st}</p>` : "");
   if (c.cands.length && c.status !== "pending") h += "<ol>" + c.cands.map(p =>
-    `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? "<em>當選</em>" : ""}<small>${p.party}</small></span>` +
+    `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? "<em>當選</em>" : ""}<span class="sr">（${p.party}）</span></span>` +
     `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span></li>`).join("") + "</ol>";
   if (c.note) h += `<p class="note">${c.note}</p>`;
   if (c.quote) h += `<blockquote><span class="k">環境${c.quote.kind}</span><p>${c.quote.text}</p><cite>${c.quote.source}</cite></blockquote>`;
