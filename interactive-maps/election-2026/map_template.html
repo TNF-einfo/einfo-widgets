@@ -316,6 +316,7 @@ let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, use
 let hover = false, focusIn = false, held = false, inView = DEV, userPaused = false, lastInteract = 0;
 let curCam = null, curCard = null, shown = undefined, lastVB = "", lastTr = null;
 let curLift = { code: null, v: 0 }, drop = null, liftKey = "";   // 浮起的縣市與抬了幾成；drop＝點別處時先放下
+let foCode = null;   // 鍵盤聚焦中的縣市（焦點外緣畫在它身上）
 const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused;
 
 function cardAt(evs, t) {   // 最後一次換卡與前一次 → [現在, 前一張, 換了多久]
@@ -377,6 +378,7 @@ function renderLift(L, k) {
     cv.style.fill = cv.style.stroke = g === "pend" ? "url(#hatch)" : g ? `var(--${g})` : "";   // 蓋掉自己的白界線，抬起後下緣才不會多一條白線
   }
   lc.style.opacity = on ? L.v : 0;
+  fo.style.visibility = on && foCode === L.code ? "hidden" : "";   // 抬起的那個已經有外緣，焦點外緣不要在原位再畫一圈
   lt.setAttribute("transform", motion ? `translate(0 ${(-LIFT * L.v / k).toFixed(2)})` : "");
   sh.style.display = sk.style.display = cv.style.display = motion ? "" : "none";
   if (motion) { sk.style.opacity = sh.style.opacity = L.v; sh.setAttribute("transform", `translate(0 ${(SH_OFF * L.v / k).toFixed(2)})`); }
@@ -428,8 +430,11 @@ frame.addEventListener("keydown", e => {
   if (e.key === "Escape") { go(null); return; }
   if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.code) { e.preventDefault(); go(e.target.dataset.code); }
 });
+// 焦點外緣只給鍵盤用：手指點縣市也會聚焦，原位多畫一圈白邊、跟抬起的外緣錯開 5px，iPhone 上看就是兩圈破掉的邊（11-17）
 frame.addEventListener("focusin", e => { focusIn = true; const c = e.target.dataset && e.target.dataset.code;
-  fo.setAttribute("d", c && !ISLE.has(c) ? dOf(c, true) : "");
+  const kb = e.target.matches && e.target.matches(":focus-visible");
+  foCode = kb && c && !ISLE.has(c) ? c : null;
+  fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", i === e.target)); });
 frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
 frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
