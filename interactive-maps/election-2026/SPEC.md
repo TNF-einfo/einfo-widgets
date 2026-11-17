@@ -50,7 +50,7 @@
 |---|---|
 | `data/mayor_2022.json` | 2022 年 22 縣市首長選舉：選舉人數、投票數、有效票、無效票、投票率；每位候選人姓名、推薦政黨、得票數、得票率、是否當選 |
 | `data/referendum21_2025.json` | 2025-08-23 公投第 21 案（核三繼續運轉）22 縣市的同意、不同意、投票率，與 2025 年那張圖的配色指標 |
-| `data/counties.geojson` | 22 縣市界，容差 0.002 度簡化，186 KB（gzip 47 KB） |
+| `data/counties.geojson` | 22 縣市界，容差 0.001 度簡化，313 KB（gzip 78 KB）；11-17 比過拉近畫面才從 0.002 度改過來 |
 | `data/worst_case.json` | 最壞資料，格式同 `mayor_2022.json`，見「極端資料」 |
 | `data/editorial_template.csv` | 六都政見／金句的填寫格式（內容是測試字） |
 

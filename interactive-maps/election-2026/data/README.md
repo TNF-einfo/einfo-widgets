@@ -9,7 +9,7 @@
 |---|---|---|
 | `mayor_2022.json` | 2022 年 22 縣市首長選舉結果：每縣市的選舉人數、投票數、有效票、無效票、投票率，以及每位候選人的姓名、政黨、得票數、得票率、是否當選，依得票數排序 | `scripts/fetch_cec.py` |
 | `referendum21_2025.json` | 2025-08-23 全國性公投第 21 案（核三繼續運轉）22 縣市的同意、不同意、有效、無效、投票權人數、投票率，與環資 2025 年地圖用的指標 `margin`＝（同意－不同意）／投票數（含無效票）×100 | `scripts/fetch_cec.py` |
-| `counties.geojson` | 22 縣市界，已簡化（容差 0.002 度、座標留 4 位小數），186 KB，gzip 後 47 KB。屬性只有 `code`（跟中選會同一套代碼）與 `name` | `scripts/build_counties.py` |
+| `counties.geojson` | 22 縣市界，已簡化（容差 0.001 度、座標留 4 位小數），313 KB，gzip 後 78 KB；0.002 度在臺北市拉近時看得出折角，11-17 截圖比過改用 0.001 度。屬性只有 `code`（跟中選會同一套代碼）與 `name` | `scripts/build_counties.py` |
 | `raw/cec_live_2022/` | 2022 年中選會開票網頁的兩段 HTML（Wayback 存檔）：屏東縣長候選人得票數（`TC_`）、臺北市長選舉概況（`SC_`），寫開票夜解析程式時拿來測 | Wayback Machine |
 | `worst_case.json` | 最壞資料（break-ui 用，只在本機切換），格式同 `mayor_2022.json`，另加 `status`、`stations`、`updated`、`note` 欄位，說明見檔內 `meta.note` | 一次性產生 |
 | `editorial_template.csv` | 六都環境政見／金句的填寫格式，內容是測試字，不是真實發言 | 手寫 |
@@ -18,7 +18,7 @@
 
 ```
 python -I scripts/fetch_cec.py            # 原始檔已在 raw/ 就不重抓，加 --force 重抓
-python -I scripts/build_counties.py 0.002 # 印出各種容差的大小，寫出指定容差那一份
+python -I scripts/build_counties.py 0.001 # 印出各種容差的大小，寫出指定容差那一份
 ```
 
 各種容差量到的大小（22 縣市、裁掉東沙南沙釣魚臺後）：
