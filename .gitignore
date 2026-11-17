@@ -7,3 +7,7 @@ interactive-maps/tuvalu/coast/img/timelapse/*
 !interactive-maps/tuvalu/coast/img/timelapse/list.json
 # 選舉地圖的縣市界原始壓縮檔（3.7 MB，國土測繪中心可重新下載，網址在 election-2026/data/README.md）
 interactive-maps/election-2026/data/raw/nlsc_county_1140318/*.zip
+# 選前的六都政見與金句（含佔位）不進公開 repo，結果篇上線前再放；預覽截圖與影片只給內部看
+interactive-maps/election-2026/data/editorial.csv
+interactive-maps/election-2026/data/editorial_sources.md
+interactive-maps/election-2026/preview/
