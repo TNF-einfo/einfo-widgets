@@ -287,7 +287,8 @@ function lerpCam(a, b, t, dip) {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk, t: a.t + (b.t - a.t) * t };   // 傾斜跟著拉近一起走
 }
 function seg(from, to, dur, cardFrom, cardTo, t0, keyTo) {
-  const a = cams[from] || from, b = cams[to] || to, same = a.x === b.x && a.y === b.y && a.k === b.k;
+  // 同一格：容許浮點誤差（飛到的鏡頭是內插算出來的，跟 cams 裡的差一點點，點金門、連江才不會原地「飛」1.5 秒）
+  const a = cams[from] || from, b = cams[to] || to, same = Math.hypot(a.x - b.x, a.y - b.y) * a.k < 0.01 && Math.abs(a.k / b.k - 1) < 1e-9;
   let dip = 0;
   if (same) dur = from === to && typeof from === "string" ? dur : 0;
   else { const d = Math.hypot(a.x - b.x, a.y - b.y) * Math.sqrt(a.k * b.k);   // 兩端縮放的中間值量距離
@@ -321,6 +322,7 @@ function buildTour() {
 
 // ── 狀態 ──
 let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, userEv = [], resumeTo = -1, lastSix = -1;
+let backAt = 0;   // 點六都以外的縣市（含金門、連江）：這個時刻自動回全台；0＝沒有排
 let hover = false, focusIn = false, held = false, inView = DEV, userPaused = false, lastInteract = 0;
 let curCam = null, curCard = null, shown = undefined, lastVB = "", lastTr = null;
 let curLift = { code: null, v: 0 }, drop = null, liftKey = "";   // 浮起的縣市與抬了幾成；drop＝點別處時先放下
@@ -411,7 +413,7 @@ function renderCard(cur, prev, el) {
   card.style.opacity = op; card.style.transform = ty ? `translateY(${ty.toFixed(2)}px)` : ""; cardIn.style.opacity = inOp;
   if (curCard !== cur) {   // 外緣跟資訊卡同一刻換
     curCard = cur;
-    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOf(cur, true) : "");
+    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOf(cur) : "");   // 連內環一起框：新北跟臺北、嘉義縣跟嘉義市的交界也畫白邊（11-17）
     isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("on", i.dataset.code === cur));
   }
 }
@@ -425,7 +427,10 @@ function go(code, instant) {   // code＝縣市代碼，null＝回全台
   const to = code == null || ISLE.has(code) ? "pano" : code;
   userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
   userEv.push(...userSeg.ev);
-  if (SIX.includes(code)) lastSix = SIX.indexOf(code);
+  // 點六都：輪播直接跳到那一站，飛到後照原本順序接著輪（11-17：原本停住等 5 秒）
+  if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
+  // 六都以外：抵達後停 3.5 秒自動回全台（金門、連江鏡頭不動，從現在算）；讀者中途再點、捏、拖、Esc、回全台都會蓋掉
+  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
 }
 function putDown(now, to, instant) {   // 板子還抬著就先放下再飛（放下的時間照抬了幾成）；回傳要等多久
   drop = null;
@@ -438,7 +443,12 @@ function maybeResume(now) {
     if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
     return;
   }
-  if (paused() || now - lastInteract < 5000 || now < userSeg.t0 + userSeg.dur) return;   // 5 秒沒動作就接著輪（11-17：原本 20 秒）
+  const end = userSeg.t0 + userSeg.dur;
+  if (paused() || now < end) return;
+  if (backAt) { if (now >= backAt) go(null, RM.matches); return; }   // 減少動態：直接切回全台，不飛
+  // 停在縣市：5 秒沒動作就接著輪（11-17：原本 20 秒）；回到全台：抵達後 4 秒沒動作就開始輪
+  const pano = userSeg.keyTo === "pano" && curCard == null;
+  if (pano ? now - Math.max(lastInteract, end) < 4000 : now - lastInteract < 5000) return;
   const n = (lastSix + 1) % 6;
   userEv = userEv.filter(e => e[0] <= now).slice(-1);
   userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
@@ -451,8 +461,9 @@ frame.addEventListener("keydown", e => {
   if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.code) { e.preventDefault(); go(e.target.dataset.code); }
 });
 // 焦點外緣只給鍵盤用：手指點縣市也會聚焦，原位多畫一圈白邊、跟抬起的外緣錯開 5px，iPhone 上看就是兩圈破掉的邊（11-17）
-frame.addEventListener("focusin", e => { focusIn = true; const c = e.target.dataset && e.target.dataset.code;
-  const kb = e.target.matches && e.target.matches(":focus-visible");
+// 只有鍵盤聚焦才算暫停：手指、滑鼠點縣市也會聚焦，算進去的話點過就再也不接著輪（11-17 發現）
+frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
+  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
   fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", i === e.target)); });
@@ -484,7 +495,7 @@ function setZ(s, x, y) {   // 夾住平移：放大時板子一直被地圖蓋�
   Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
 }
 function holdCam(now) {   // 讀者開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格
-  lastInteract = now; zb = null;
+  lastInteract = now; zb = null; backAt = 0;   // 捏、拖就不自動回全台
   if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
   const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
   const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
