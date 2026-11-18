@@ -465,9 +465,9 @@ function maybeResume(now) {
   const end = userSeg.t0 + userSeg.dur;
   if (paused() || now < end) return;
   if (backAt) { if (now >= backAt) go(null, RM.matches); return; }   // 減少動態：直接切回全台，不飛
-  // 停在縣市：5 秒沒動作就接著輪（11-17：原本 20 秒）；回到全台：抵達後 4 秒沒動作就開始輪
+  // 停在縣市或回到全台：2.5 秒沒動作就接著輪（11-18：原本縣市 5 秒、全台抵達後 4 秒；11-17 以前是 20 秒）
   const pano = userSeg.keyTo === "pano" && curCard == null;
-  if (pano ? now - Math.max(lastInteract, end) < 4000 : now - lastInteract < 5000) return;
+  if (now - (pano ? Math.max(lastInteract, end) : lastInteract) < 2500) return;
   const n = (lastSix + 1) % 6;
   userEv = userEv.filter(e => e[0] <= now).slice(-1);
   userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
