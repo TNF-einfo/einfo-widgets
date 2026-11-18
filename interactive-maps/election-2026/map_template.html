@@ -178,6 +178,7 @@ const hatch = $("#hatch"), hatchH = $("#hatchH"), hatchI = $("#hatchI"), ol = $(
 const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), mapwin = $(".mapwin");
 // 縣市路徑的 d（outer＝外緣只框自己，新北不框到臺北）；浮起、外緣、焦點都複製 d，不用 <use>
 const dOf = (code, outer) => code ? ((outer && document.getElementById("o" + code)) || document.getElementById("p" + code)).getAttribute("d") : "";
+const dOl = code => (document.getElementById("w" + code) || document.getElementById("p" + code)).getAttribute("d");   // 白色外框不框離島（產生器給的 w 路徑）
 const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
 const SIX = D.six, ISLE = new Set(D.isles);
 const RM = matchMedia("(prefers-reduced-motion: reduce)");
@@ -413,7 +414,7 @@ function renderCard(cur, prev, el) {
   card.style.opacity = op; card.style.transform = ty ? `translateY(${ty.toFixed(2)}px)` : ""; cardIn.style.opacity = inOp;
   if (curCard !== cur) {   // 外緣跟資訊卡同一刻換
     curCard = cur;
-    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOf(cur) : "");   // 連內環一起框：新北跟臺北、嘉義縣跟嘉義市的交界也畫白邊（11-17）
+    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOl(cur) : "");   // 連內環一起框：新北跟臺北、嘉義縣跟嘉義市的交界也畫白邊（11-17）；離島不框（11-18）
     isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("on", i.dataset.code === cur));
   }
 }

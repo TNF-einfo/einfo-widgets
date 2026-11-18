@@ -242,6 +242,11 @@ def main():
         paths.append(f'<g class="cty g-{c["group"]}" {attrs}><path id="p{code}" {nss} d="{d}"/></g>')
         if any(p.interiors for p in polys(g)):   # 外緣只框自己（新北不框到臺北、嘉義縣不框到嘉義市）
             defs.append(f'<path id="o{code}" {nss} d="{geom_d(g, holes=False)}"/>')
+        # 浮起的白色外框不框離島（11-18）：澎湖整個不框，其他縣市只框本島那塊（綠島、蘭嶼、小琉球、龜山島、基隆外海小島都不框）
+        if code == "10016":
+            defs.append(f'<path id="w{code}" d=""/>')
+        elif len(polys(g)) > 1:
+            defs.append(f'<path id="w{code}" {nss} d="{geom_d(max(polys(g), key=lambda p: p.area))}"/>')
         c["bbox"] = bbox(g)
         if code in FRAME_SOUTH_OF:   # 拉近取景不算外海小島（島照樣畫）
             c["bbox"] = bbox(shapely.MultiPolygon([p for p in polys(g) if p.representative_point().y < FRAME_SOUTH_OF[code]]))
