@@ -76,10 +76,10 @@ def overview_card(n, case):
         why = [w for ok, w in ((n["agree"] > n["disagree"], "同意票沒有多於不同意票"), (n["agree"] >= n["threshold"], "同意票未達門檻")) if not ok]
         res = '<em class="no">未通過</em><span>' + "、".join(why) + "</span>"
     scale = max(n["agree"] + n["disagree"], n["threshold"])
-    short = f"<b>{html.escape(case['short'])}</b>：" if case.get("short") else ""
-    return (f'<h2>全國{res}</h2><p class="q">{short}{html.escape(case["topic"])}</p>'
+    return (f'<h2>全國{res}</h2>'   # 簡稱與主文在標題下的副標（11-18 改，原本放在這裡）
             + bar(n["agree"], n["disagree"], scale, n["threshold"]) + rows(n["agree"], n["disagree"])
-            + f'<p class="kv"><span>投票率 <b>{p2(n["turnout"])}</b></span><span class="m">門檻是投票權人總額的四分之一</span></p>')
+            + f'<p class="kv"><span>投票率 <b>{p2(n["turnout"])}</b></span><span class="m">門檻是投票權人總額的四分之一</span></p>'
+            + '<p class="note"><span>地圖顏色＝（同意票－不同意票）</span><span>÷ 投票數（含無效票）</span></p>')   # 11-18 補色條說明；兩段各自不換行
 
 
 def load(path, codes):
@@ -172,8 +172,9 @@ def main():
         for k in ("09007", "09020"))
 
     date = case["vote_date"]
-    # 地圖上的標題不放簡稱（352.8 寬會斷成兩行），簡稱寫在總覽卡的主文前；分頁標題與螢幕閱讀器的表放全名
+    # 地圖上的標題不放簡稱（352.8 寬會斷成兩行），簡稱與主文寫在標題下的副標（11-18）；分頁標題與螢幕閱讀器的表放全名
     title = f"{date[:4]} 公投第 {case['no']} 案結果"
+    sub = (f"<b>{html.escape(case['short'])}</b>：" if case.get("short") else "") + html.escape(case["topic"])
     full = f"{date[:4]} 公投第 {case['no']} 案" + (f"（{case['short']}）" if case.get("short") else "") + "結果"
     source = meta["source"].split()[0].replace("中央選舉委員會", "中央選舉委員會<wbr>")   # 網址不印；字太長時在機關名後換行
     cards = {"TW": overview_card(nat, case), **{k: county_card(c) for k, c in res.items()}}
@@ -183,7 +184,7 @@ def main():
             "cards": cards, "pano": pano, "isles": sorted(ISLES)}
     page = (HERE / "referendum_template.html").read_text(encoding="utf-8")
     for k, v in {
-        "TITLE_FULL": full, "TITLE": title,
+        "TITLE_FULL": full, "TITLE": title, "SUB": sub,
         "LOGO": Path(os.path.relpath(HERE.parent / "assets" / "eic-logo-green.svg", out.parent)).as_posix(),
         "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits),
         "SRC": f"{source} <i>{date} 投票</i>", "TABLE": table,

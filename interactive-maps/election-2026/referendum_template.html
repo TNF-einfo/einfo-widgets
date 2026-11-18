@@ -74,7 +74,9 @@
     background:var(--card); border-radius:8px; padding:12px 14px 13px; outline:none; box-shadow:var(--card-shadow) }
   .card.measure{ position:absolute; left:0; right:0; bottom:0; visibility:hidden }
   .card h2{ margin:0; font-size:17px; line-height:1.3 }
-  .card .q{ margin:3px 0 0; font-size:12px; line-height:1.5; color:var(--mute) } .card .q b{ font-weight:700; color:var(--body) }
+  /* 副標：簡稱加主文，放在標題下（11-18 @gassao1998 要的；原本放在總覽卡裡） */
+  .sub{ margin:0; padding:0 12px 2px; background:var(--mast); font-size:13px; line-height:1.45; color:var(--mute) } .sub b{ font-weight:700; color:var(--body) }
+  .card .note{ margin:6px 0 0; font-size:11.5px; line-height:1.45; color:var(--mute) } .card .note span{ display:inline-block }   /* 總覽卡的色條說明（11-18），只在兩段之間換行 */
   /* 「通過」用官網的橘（跟選舉地圖的「當選」同一組），「未通過」用按鈕灰；原因接在後面 */
   .card h2 em{ font-style:normal; font-size:11.5px; font-weight:700; padding:1px 5px; border-radius:4px; margin-left:8px; white-space:nowrap; vertical-align:2px }
   .card h2 em.ok{ color:var(--win-ink); background:var(--win) } .card h2 em.no{ color:var(--ink); background:var(--btn-3) }
@@ -121,7 +123,8 @@
   @media (min-aspect-ratio:1/1) and (max-width:620px){
     .ttl{ padding:7px 12px } h1{ font-size:19px } .ttl img{ height:16px } .legend{ font-size:11px; padding:5px 12px 17px }
     .cardpos{ width:260px; right:12px }
-    .card{ padding:9px 12px } .card h2{ font-size:15px } .card .q{ font-size:11px; line-height:1.45 } .card h2 span{ font-size:12px }
+    .card{ padding:9px 12px } .card h2{ font-size:15px } .sub{ font-size:11px; line-height:1.35 } .card h2 span{ font-size:12px }
+    .card .note{ margin-top:3px; font-size:10.5px; line-height:1.35 }
     .bar{ margin-top:7px } .card ol{ margin-top:6px } .card li{ font-size:12.5px; column-gap:6px }
     .card dl, .card .kv{ margin-top:6px; padding-top:6px; font-size:12px } .card .kv .m{ font-size:10.5px }
     .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
@@ -133,6 +136,7 @@
 <div class="frame">
   <header>
     <div class="ttl"><h1>{{TITLE}}</h1><img src="{{LOGO}}" alt="環境資訊中心"></div>
+    <p class="sub">{{SUB}}</p>
     <div class="legend" role="img" aria-label="圖例：縣市顏色依同意票減不同意票占投票數的比例分五階，刻度 -10%、0、30%、60%">
       <span>不同意多</span>
       <div class="ramp"><i class="g-n2"></i><i class="g-n1"></i><i class="g-y1"></i><i class="g-y2"></i><i class="g-y3"></i>
@@ -350,6 +354,9 @@ function renderCard(cur, prev, el) {   // cur＝null 是全國總覽；換卡只
 }
 
 // ── 互動 ──
+// 點縣市（含金門、連江）：鏡頭到了停 3.5 秒自動回全國總覽，比照選舉地圖點非六都（11-18）。
+// 捏、拖就取消；滑鼠停在地圖上或鍵盤聚焦時先不回，離開後到時間就回
+let backAt = 0, hover = false, kbFocus = false;
 function go(code, instant) {   // code＝縣市代碼，null＝回全國總覽
   const now = performance.now();
   Z = { s: 1, x: 0, y: 0 }; zb = null;
@@ -357,7 +364,10 @@ function go(code, instant) {   // code＝縣市代碼，null＝回全國總覽
   const to = code == null || ISLE.has(code) ? "pano" : code;
   userSeg = seg(curCam, to, 1500, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
   userEv.push(...userSeg.ev);
+  backAt = code != null ? userSeg.t0 + userSeg.dur + 3500 : 0;
 }
+frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
+frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
 function putDown(now, to, instant) {
   drop = null;
   if (instant || RM.matches || curLift.v <= 0 || curLift.code === to) return 0;
@@ -378,11 +388,11 @@ frame.addEventListener("keydown", e => {
 });
 // 焦點外緣只給鍵盤用（手指點縣市也會聚焦，畫了會在 iPhone 上變成兩圈破邊）
 frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
-  const kb = e.target.matches && e.target.matches(":focus-visible");
+  const kb = e.target.matches && e.target.matches(":focus-visible"); kbFocus = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
   fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });
-frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
+frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { kbFocus = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
 homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
 
 // ── 觸控縮放：照選舉地圖。雙指 0.5 到 2 倍、縮放中單指拖、1 倍時橫向起手的單指拖；放手 0.5 秒後 0.3 秒彈回 ──
@@ -396,8 +406,8 @@ function setZ(s, x, y) {
   const cl = (v, a, b, m) => Math.min(Math.max(a, b) + m, Math.max(Math.min(a, b) - m, v));
   Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
 }
-function holdCam(now) {   // 開始捏或拖：飛行中就停在這一格，彈回也回到這一格
-  zb = null;
+function holdCam(now) {   // 開始捏或拖：飛行中就停在這一格，彈回也回到這一格；不再自動回全國總覽
+  zb = null; backAt = 0;
   if (now >= userSeg.t0 + userSeg.dur) return;
   const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
   userEv = [[-1e9, curCard]]; drop = null;
@@ -448,7 +458,11 @@ new ResizeObserver(() => layout()).observe(frame);
 RM.addEventListener("change", () => { layout(); liftKey = ""; });
 document.fonts && document.fonts.ready.then(layout);
 
-function loop() { draw(performance.now()); requestAnimationFrame(loop); }
+function loop() {
+  const now = performance.now();
+  if (backAt && !hover && !kbFocus && !pinch && !drag && now >= backAt) { backAt = 0; go(null, RM.matches); }   // 減少動態：直接切回，不飛
+  draw(now); requestAnimationFrame(loop);
+}
 layout(); draw(performance.now()); requestAnimationFrame(loop);
 
 if (DEV) window.__dev = { select(code) { go(code, true); draw(performance.now()); }, cams: () => cams };
