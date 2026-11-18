@@ -133,6 +133,7 @@ def load_results(path, party_table, codes, errors):
             "stations": c.get("stations"), "updated": (c.get("updated") or "")[11:16],
             "note": html.escape(c.get("note") or ("政黨代碼不認得，產生器已報錯" if bad else "")),
             "vote_date": c.get("vote_date", ""),
+            "all": [fix_name(p["name"]) for p in cands],   # 只給 load_editorial 核對姓名，寫進頁面前拿掉
             "cands": [{
                 "name": html.escape(fix_name(p["name"])),
                 "party": html.escape(SHORT.get(p["party"], p["party"])), "badge": html.escape(badge(p["party"])),
@@ -154,9 +155,8 @@ def load_editorial(path, res, errors):
             continue
         if len(text) > 60:
             print(f"警告：{c['name']} {cand} 的{row['kind']}有 {len(text)} 字，超過 60 字", file=sys.stderr)
-        names = [html.unescape(p["name"]) for p in c["cands"]]
-        if cand not in names:
-            print(f"警告：{c['name']} 的「{cand}」對不到前兩名（{'、'.join(names)}），這則不顯示", file=sys.stderr)
+        if cand not in c["all"]:   # 試算表列全部候選人，只有姓名打錯才報；沒當選的照樣不顯示
+            print(f"警告：{c['name']} 的「{cand}」對不到候選人名單（{'、'.join(c['all'])}），這則不顯示", file=sys.stderr)
             continue
         win = next((p for p in c["cands"] if p["elected"]), None)
         if win and html.unescape(win["name"]) == cand and text:
@@ -221,6 +221,8 @@ def main():
         print(f"警告：沒有 {a.editorial}，不放政見金句", file=sys.stderr)
         a.editorial = None
     load_editorial(a.editorial, res, errors)
+    for c in res.values():
+        del c["all"]
     if errors:
         print("\n".join("錯誤：" + e for e in errors), file=sys.stderr)
         if not a.keep_going:
