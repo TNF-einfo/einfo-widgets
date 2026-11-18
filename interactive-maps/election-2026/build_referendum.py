@@ -5,7 +5,7 @@
   python -I build_referendum.py --data data/referendum22_2026.json   # 開票夜：換成第 22 案的資料檔，網址不變
 資料檔格式同 data/referendum21_2025.json：case 寫案號、簡稱、主文、投票日、投票權人總額（null＝22 縣市加總），
 counties 寫各縣市的同意、不同意、投票數、投票權人數；margin、turnout 沒寫就自己算。
-標題、出處日期、門檻都照資料檔，不另外改程式。版面與鏡頭照選舉地圖，不輪播；共用的投影與路徑從 build_map.py 拿。
+標題、出處日期、門檻都照資料檔，不另外改程式。版面、鏡頭與六都輪播照選舉地圖；共用的投影、路徑與輪播順序從 build_map.py 拿。
 """
 import argparse
 import html
@@ -20,7 +20,7 @@ import shapely
 from shapely.geometry import shape
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # python -I 不把腳本所在資料夾放進 sys.path
-from build_map import FRAME_SOUTH_OF, HERE, ISLES, bbox, font_text, geom_d, polys, proj  # noqa: E402
+from build_map import FRAME_SOUTH_OF, HERE, ISLES, SIX, bbox, font_text, geom_d, polys, proj  # noqa: E402
 
 DEFAULT_OUT = HERE / "referendum-2026.html"
 # 五階：（同意－不同意）／投票數（含無效票）×100，刻度 -10、0、30、60（SPEC「公投地圖」）
@@ -181,7 +181,7 @@ def main():
     table = "".join(f'<tr><th scope="row">{c["name"]}</th><td>同意 {f(c["agree"])} 票，不同意 {f(c["disagree"])} 票，{gap_text(c)}，投票率 {p2(c["turnout"])}</td></tr>'
                     for c in (res[k] for k in order))
     data = {"counties": [{"code": c["code"], "tier": c["tier"], "bbox": c["bbox"]} for c in res.values()],
-            "cards": cards, "pano": pano, "isles": sorted(ISLES)}
+            "cards": cards, "pano": pano, "six": SIX, "isles": sorted(ISLES)}
     page = (HERE / "referendum_template.html").read_text(encoding="utf-8")
     for k, v in {
         "TITLE_FULL": full, "TITLE": title, "SUB": sub,

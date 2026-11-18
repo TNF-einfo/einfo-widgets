@@ -1,13 +1,13 @@
 <!doctype html>
 <!-- build_referendum.py 的模板：{{…}} 由產生器填入，不要直接改產出的 referendum-2026.html。
-     版面、鏡頭、浮起、觸控照 map_template.html（選舉地圖）抄，拿掉輪播；改那邊時記得看這邊要不要跟 -->
+     版面、鏡頭、六都輪播、浮起、觸控照 map_template.html（選舉地圖）抄，不放暫停與回全台鈕；改那邊時記得看這邊要不要跟 -->
 <html lang="zh-Hant-TW">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>2025 公投第 21 案（核三延役）結果｜環境資訊中心</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap&text=%21%22%23%24%25%26%27%28%29%2A%2B%2C-.%2F0123456789%3A%3B%3C%3D%3E%3F%40ABCDEFGHIJKLMNOPQRSTUVWXYZ%5B%5C%5D%5E_%60abcdefghijklmnopqrstuvwxyz%7B%7C%7D~%C3%B7%E3%80%81%E4%B8%80%E4%B8%89%E4%B8%8D%E4%B8%AD%E4%B8%BB%E4%B9%8B%E4%BA%94%E4%BA%BA%E4%BE%86%E4%BE%8B%E4%BE%9D%E5%85%A7%E5%85%A8%E5%85%AC%E5%88%86%E5%88%BB%E5%8C%96%E5%8C%97%E5%8D%97%E5%8D%A0%E5%8F%8A%E5%8F%AF%E5%8F%B0%E5%90%84%E5%90%8C%E5%90%A6%E5%90%AB%E5%93%A1%E5%98%89%E5%9B%9B%E5%9B%9E%E5%9C%8B%E5%9C%92%E5%9C%96%E5%9C%9F%E5%9C%B0%E5%9F%BA%E5%A2%83%E5%A4%9A%E5%A4%AE%E5%A7%94%E5%AE%89%E5%AE%9C%E5%B1%8F%E5%B7%AE%E5%B8%82%E5%BA%A6%E5%BA%AB%E5%BB%A0%E5%BB%B6%E5%BD%B0%E5%BD%B9%E5%BE%8C%E5%BF%83%E6%82%A8%E6%84%8F%E6%85%AE%E6%8A%95%E6%94%BF%E6%95%88%E6%95%B8%E6%96%99%E6%96%B0%E6%98%AF%E6%9C%83%E6%9C%AA%E6%9D%B1%E6%9E%97%E6%9E%9C%E6%A0%97%E6%A0%B8%E6%A1%83%E6%A1%88%E6%A9%9F%E6%AA%BB%E6%AC%8A%E6%AF%94%E6%B1%9F%E6%B8%9B%E6%B8%AC%E6%B9%96%E6%BA%90%E6%BE%8E%E7%84%A1%E7%8E%87%E7%92%B0%E7%94%A8%E7%95%8C%E7%96%91%E7%99%BC%E7%9A%84%E7%9C%8B%E7%A2%BA%E7%A5%A8%E7%AB%B9%E7%AC%AC%E7%AE%A1%E7%B5%90%E7%B6%93%E7%B8%A3%E7%B8%BD%E7%B9%AA%E7%B9%BC%E7%BA%8C%E7%BE%A9%E8%83%BD%E8%87%BA%E8%88%87%E8%88%89%E8%89%B2%E8%8A%B1%E8%8B%97%E8%93%AE%E8%98%AD%E8%A8%8A%E8%AA%8D%E8%B3%87%E8%B7%9D%E8%BD%89%E9%80%9A%E9%80%A3%E9%81%8B%E9%81%8E%E9%81%94%E9%81%B8%E9%83%A8%E9%87%91%E9%96%80%E9%97%9C%E9%9A%86%E9%9A%8E%E9%9B%84%E9%9B%B2%E9%9B%BB%E9%A1%8D%E9%A1%8F%E9%AB%98%EF%BC%88%EF%BC%89%EF%BC%8C%EF%BC%8D%EF%BC%9A%EF%BC%9B%EF%BC%9D%EF%BC%9F%EF%BD%9C">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap&text=%21%22%23%24%25%26%27%28%29%2A%2B%2C-.%2F0123456789%3A%3B%3C%3D%3E%3F%40ABCDEFGHIJKLMNOPQRSTUVWXYZ%5B%5C%5D%5E_%60abcdefghijklmnopqrstuvwxyz%7B%7C%7D~%C3%B7%E3%80%81%E4%B8%80%E4%B8%89%E4%B8%8D%E4%B8%AD%E4%B8%BB%E4%B9%8B%E4%BA%94%E4%BA%BA%E4%BE%86%E4%BE%8B%E4%BE%9D%E5%85%A7%E5%85%A8%E5%85%AC%E5%88%86%E5%88%BB%E5%8C%96%E5%8C%97%E5%8D%97%E5%8D%A0%E5%8F%8A%E5%8F%AF%E5%90%84%E5%90%8C%E5%90%A6%E5%90%AB%E5%93%A1%E5%98%89%E5%9B%9B%E5%9B%9E%E5%9C%8B%E5%9C%92%E5%9C%96%E5%9C%9F%E5%9C%B0%E5%9F%BA%E5%A2%83%E5%A4%9A%E5%A4%AE%E5%A7%94%E5%AE%89%E5%AE%9C%E5%B1%8F%E5%B7%AE%E5%B8%82%E5%BA%A6%E5%BA%AB%E5%BB%A0%E5%BB%B6%E5%BD%B0%E5%BD%B9%E5%BE%8C%E5%BF%83%E6%82%A8%E6%84%8F%E6%85%AE%E6%8A%95%E6%94%BF%E6%95%88%E6%95%B8%E6%96%99%E6%96%B0%E6%98%AF%E6%9C%83%E6%9C%AA%E6%9D%B1%E6%9E%97%E6%9E%9C%E6%A0%97%E6%A0%B8%E6%A1%83%E6%A1%88%E6%A9%9F%E6%AA%BB%E6%AC%8A%E6%AF%94%E6%B1%9F%E6%B8%9B%E6%B8%AC%E6%B9%96%E6%BA%90%E6%BE%8E%E7%84%A1%E7%8E%87%E7%92%B0%E7%94%A8%E7%95%8C%E7%96%91%E7%99%BC%E7%9A%84%E7%9C%8B%E7%A2%BA%E7%A5%A8%E7%AB%B9%E7%AC%AC%E7%AE%A1%E7%B5%90%E7%B6%93%E7%B8%A3%E7%B8%BD%E7%B9%AA%E7%B9%BC%E7%BA%8C%E7%BE%A9%E8%83%BD%E8%87%BA%E8%88%87%E8%88%89%E8%89%B2%E8%8A%B1%E8%8B%97%E8%93%AE%E8%98%AD%E8%A8%8A%E8%AA%8D%E8%B3%87%E8%B7%9D%E8%BD%89%E9%80%9A%E9%80%A3%E9%81%8B%E9%81%8E%E9%81%94%E9%81%B8%E9%83%A8%E9%87%91%E9%96%80%E9%97%9C%E9%9A%86%E9%9A%8E%E9%9B%84%E9%9B%B2%E9%9B%BB%E9%A1%8D%E9%A1%8F%E9%AB%98%EF%BC%88%EF%BC%89%EF%BC%8C%EF%BC%8D%EF%BC%9A%EF%BC%9B%EF%BC%9D%EF%BC%9F%EF%BD%9C">
 <style>
   /* 只有選舉地圖的 paper 淺底一套。五階：不同意多兩階紫、同意多三階黃褐（SPEC「公投地圖」，兩邊各自用 --ordinal 驗過）；
      -hi 是浮起時打亮的板面（OKLCH 亮度 +0.06） */
@@ -102,16 +102,11 @@
   footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
     padding:7px 10px 8px 12px; font-size:10px; color:var(--mute); background:none }
   .src{ margin:0; line-height:1.45; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
-  .btns{ display:flex; gap:4px; flex:none }
-  button{ font:inherit; font-size:12px; color:var(--ink); background:var(--btn); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
-    touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
-  button:active{ transform:scale(.97); background:var(--btn-3) }
-  #home[aria-hidden="true"]{ visibility:hidden }
   .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
   :focus-visible{ outline:2px solid var(--sel); outline-offset:2px }
   .cty:focus-visible, .isle:focus-visible{ outline:none }
   @media (hover:hover) and (pointer:fine){
-    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) } button:hover{ background:var(--btn-2) }
+    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) }
   }
 
   /* 橫式（框比 1:1 寬）：資訊卡在右側 */
@@ -129,7 +124,6 @@
     .card dl, .card .kv{ margin-top:6px; padding-top:6px; font-size:12px } .card .kv .m{ font-size:10.5px }
     .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
   }
-  @media (prefers-reduced-motion:reduce){ button{ transition:none } }
 </style>
 </head>
 <body>
@@ -155,28 +149,27 @@
   </div>
   <div class="isles"><div class="isle" data-code="09007" tabindex="0" role="button" aria-label="連江縣，同意多 1,993 票，占投票數 86.77%"><svg viewBox="3722 388 1397 1161" preserveAspectRatio="xMidYMid meet"><g class="lf"><path class="g-y3" d="M3928 1461l1 3-6 6-1-3 4-7 1-4 2 1zM3890 1382l7-1-2 6-2 0 0 3-9 9-5-3-4 4 2 3-7 7-7 1 3-6-5-4-3 3 0-4-7-10-3-5 6-5 9 0 4 3 8-4 3 3 2-3 8 0zM3839 1394l2-1-2 2zM3844 1390l0 1-1 0zM3845 1387l0 1-1-1zM3893 1379l0-1 1 0zM3890 1378l-1-1 1 0zM3889 1376l1 0 0 1zM3926 1148l-2 2-1-3zM3922 1145l1-1 0 1zM3837 950l3-1 1 5 3 2 6 1 7-1 0 4-5 0 0 5-5 9 2 6 9 1 3-3-1 7 2 2 8-4 2 3-1 9 7-4 6-6-4-7-1-9 10 2 9-5 6-2 2 2-1 4 2 3 4-8 10-1 9 4 0 3-4 3 1 4-2 1-1 7-5 2-5 10-4 5-5-6-5 0-3 3 1 8-4-1-2 5-4 2-4 6-8 0-2-7-5 1-2 4-3-1-6 7 3 2-6 1-6 5-3-4 3-3-2-2-5-1-8 2-8-5 0-4-6 3-2-3 3-5 0-5 9-8-2-3 4-2 3-5 0-3-4-2-6 1 5-7 5 1 0-7 2-5-3 0-4-4 4-4-3-2 2-7zM3898 903l-1 3-3-1zM3929 1459l0 1-1 0zM3935 1400l-6 3 1-3 0-4 2-2zM3931 1396l-1-1 1 0zM3933 1392l0 2-1-1zM3931 1017l-2 0 0-1zM3930 966l6-3-1 2zM3975 1405l2 5-8 8 1 4-9 6-4 0 1 7-4 1-2 2-3 0 0 4-3 0-3-5-8 10-4 0-1 5-4 1-2-3 5-13 2-1-1-4 6-3 3-3 4-8-1-5 7-4 8 0 0 3 7 1 2-3-2-2 4-4zM3976 1405l3-2 1 2zM3949 1398l-1 1 0-1zM3955 1395l-2 4-5 6 1-11zM3954 1394l-1 0 1-1zM3950 1393l0-1 1 0zM3954 1391l-2 1 0-1zM3949 1081l-1 1 0-1zM3946 1080l-1-1 1 0zM3946 971l1 0-1 1zM3947 970l-2 1-2 6-3-2 1-9 3-2zM3961 923l-1 0 0-2zM4000 808l3 10 7-2 3 1-2 9 2 2-6 12 5 1 1-7 6-3 9-1 3 3-5 6 3 2-8 5-1 3 3 5 0 7-4-1-1-8-3-2-2-7-6-1-6 9-3-1 3-5-4-2-3 10-8-1-5 9-3-2 1-4-4-3-7-1-3 4-8 3-1 2-4-1-7 8 1 5-3 4 2 3 1 11-3 4 4 4-1 6 6 1 0 3-5 2-1-5-4-1-7 3-2 0 0-10-1-2 1-10-2-3 4-4 2-6 5-7-5-6 1-7-3-1 0-5 7 1 8-7 2 1 5-6 3 2 7 0 10-12 9-8 0-5 5-4zM3967 834l-2 1 1-2zM3951 732l2-3 1 3zM3981 712l-4 3 1 4 4-2-2 4 3 0 1 5-7 5 0 4 4 1-5 8-6 0-5 1-4-1 1-4-4-2 2-4-3-2 10-3 2-5-1-3-5-3 11-5-2-3 6-3zM3980 710l1-3 1 1zM3973 706l1 0-1 1zM3980 706l1-1-1 2zM3973 703l1 0-1 2zM3984 1378l2-1-1 1zM4022 870l4-3 3 1-6 4zM4030 864l-6 1-1-3 4 0zM4032 862l0 1-1 0zM4125 818l1 0-1 1zM4122 809l3-1-1 2zM4028 807l-4 2 0 5-2 0 0-6 4-5zM4032 809l-3-3 4-1zM4012 780l-2 8-3-1 0 5-5 1-7 7-3 0-1-4 5-13 6 2 6-6zM4013 778l1 0 0 2zM4014 778l0-1 1 0zM4030 772l-4 4-11 1 2-2 2-5zM3985 768l1 0 0 1zM3987 766l0 1-1 0zM3985 765l1 0 0 1zM3985 765l-2-2 3 0zM3998 712l1 0-1 2zM3997 709l2 0-3 1zM3983 708l2 0-3 1zM4017 675l-1 0 1-2zM4165 486l1 0 0 1zM4165 487l-1-1 1-1zM4170 482l-4 0 7-2zM4809 987l4 4-1 2-6-3-2-3zM4432 592l1 1-1 0zM4428 591l1 1-1 1zM4455 570l-9 14-5 1 0 4-3 2-2-5 3-2 2-7 3 1 4-7 10-7 2 5zM4454 572l1 1-1 0zM4454 571l2 1-2 0zM4968 548l-2 3-2 2zM4971 547l0-1 1 1zM4988 543l1 0-2 1zM5022 526l1-1 0 1zM4961 489l4 1 2 8-3 7-1 6 9 3 4-4 1 2 8 0-1-8 3-6 5-3 7 0 2 5-4 6 2 2 4-1 2 4 7-4 2 1 3 7 5 3 1 7-3 1-4-2-3-3-3 3-4-8-3 1-1 6-5 9-5 2-5 9-2-5-8 4 0-4-5-1-1 2-1 6-6-6 2-4 2-7-2-2 5-2 0-8-9-4-6 8-1-4 1-11-3-2 2-7-2-2-2 4-4 3-4 8-4 2 0-3 2-5-3-4 6-5 5-2-1-6 6-2 0 3 5-2zM4968 494l0 1-1 0zM4967 493l1-1 1 1z"/></g></svg><span>連江縣</span></div><div class="isle" data-code="09020" tabindex="0" role="button" aria-label="金門縣，同意多 13,631 票，占投票數 87.42%"><svg viewBox="380 4537 619 413" preserveAspectRatio="xMidYMid meet"><g class="lf"><path class="g-y3" d="M469 5401l-4-1 1-5 4 1zM277 4930l1 1-1 1zM289 4926l-2-3 4-1zM286 4924l-2 1-1-2zM303 4914l4-3 10 3 10 2-8 7-9 0zM330 4897l3 1 6-1 3 1 2 5 3 0-5 5-4 2-5-5-9-2 0-6-5-5 0-4 3-3 5 2zM388 4886l-5-5 6-1zM463 4869l-5 0-1-4 4 0zM520 4759l4 8 8 6 6 1-2 14 3 5-6 6 2 2-4 10 2 3-3 6-4 2 0 4-5-1-1-3-8-2-8 4-4 4-3 5 3 2-9 10-4 1-4 5 0-7-4-1-8 1-6 3-6 10-4 1-3 6-5-3 0-3-9-4-11 0-4-5 4 0 6-2-4-2 4-12 2-3-1-16 5-8 3-2 6-9 0-7 5-11 2-7 6-9 6-4 4 0 6-3 6-2 4 3 5-3 19 2zM396 4794l3 0-2 1zM423 4762l-1 0 3-1zM421 4759l-3 1 2-4zM484 4743l1 0-1 1zM679 4898l-1 1 0-3zM876 4860l0-1 1 1zM878 4857l-1 0 0-1zM691 4857l2-1-1 2zM543 4758l-5 2 0-3 4-8 3-1 9 8 0 4zM829 4593l9-4 5 2 5 4 4-2 7 2 0 5 8 1 0 5-4 1 2 8 6 9 8 2 13 4 8 1 1 3-2 11 4 12 6 3 3 5-2 6 1 4 8 12 5 3 14 1 0 8-7 4-2 4-2 0 0 7 1 5 0 8 4 14 9 13 5 4 6 0 4 7-1 2-7-1-1 12-2 3 0 3-5 3-8-4-4 2-3 3 1 4-3-1-2 5 6 0 1 6 5 4-4 8-4 2-1 4-4 1-5-3 0 5-1 8-3 1 1 4-6 3 0 2-7-1-7 5 1 2-6 4-5 0-7 2-6 6-6-1-2 2-2-1-7 1 4-4 4 0 2-2-4-2 4-5 1-5 3-3-5-10-6-6-11-5-8-2-9 0-2-3-4 0-1-8-2 4-3-5-6-3-4-3-5-1-8 1-1-1-15 3-4-2-26 7-21 10-17 10-2 3-4 1-5 6-2 7-3 2-2 6-8 6-7 15-2 10-5 14-5 3-2 3-3 0-3 3-5-2-3 4-7 1-4-6-3 0-1-2-6-3-8 1 0-3-5-4-3-5-5-2-13 1-1-7-5-4-5-2 2-3-3-3-10-6-1-3-8-5-5-4 1-4 5-1 0-4 14-2 6-2 2-6 13-18 7-14 2-11-2-11-5-11-6-6-2-5 1-10-1-4-9-12-5-4 1-2-6-9 1-9 6-16 6-8 15-9 15-4 6-1 5 2 10 5 9 7 4 5 5 10 9 9 6 4 8 5 6 1 4-1 6 2 8 5 12 1 13-1 3-2 10-10 19-17 2-6 1-8 9-2 1-3-2-13-2-7 1-12 6-4 3 0 7-4 4-6 1-4 5-7 8-6-3-7-6-1 2-5 4-1 9 3 3-1 4-6 0-3-4 0 4-6 4 1 4 4-1 3zM792 4605l3 0-1 2zM878 4604l-7 3-1-1 8-6zM793 4602l1-1-1 2zM879 4857l0 1-1-1zM880 4855l-1-1 1 0zM917 4844l2 3-7 0 2-4zM895 4846l0-1 1 0zM915 4841l1-1 0 1zM918 4841l1-3 2 0zM1008 4818l-1-5 4 0 0 4zM2958 3588l-3 9-8 7-14-4-2-4 5-7 9-6 4 3 6-2zM2902 3582l-7 0-2-2 0-7-6-11 0-5 3-2 5 4 6 1 11 5 4 6 1 11-3 5z"/></g></svg><span>金門縣</span></div></div>
   <div class="cardpos">
-    <section class="card" id="card" tabindex="0" aria-label="公投結果" aria-live="polite"><div class="in"></div></section>
+    <!-- 輪播一直在換卡，不設 aria-live（照選舉地圖）；完整數字在下面給螢幕閱讀器的表 -->
+    <section class="card" id="card" tabindex="0" aria-label="公投結果"><div class="in"></div></section>
     <div class="card measure" aria-hidden="true"><div class="in"></div></div>
   </div>
   <footer>
-    <p class="src"><span>資料來源：中央選舉委員會<wbr>選舉及公投資料庫 <i>2025-08-23 投票</i>；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
-    <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1">回全台</button></div>
-  </footer>
+    <p class="src"><span>資料來源：中央選舉委員會<wbr>選舉及公投資料庫 <i>2025-08-23 投票</i>；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>  </footer>
   <table class="sr"><caption>2025 公投第 21 案（核三延役）結果，各縣市同意與不同意票</caption><tbody><tr><th scope="row">連江縣</th><td>同意 2,129 票，不同意 136 票，同意多 1,993 票，占投票數 86.77%，投票率 19.23%</td></tr><tr><th scope="row">基隆市</th><td>同意 70,703 票，不同意 17,895 票，同意多 52,808 票，占投票數 59.16%，投票率 28.01%</td></tr><tr><th scope="row">臺北市</th><td>同意 475,405 票，不同意 150,152 票，同意多 325,253 票，占投票數 51.64%，投票率 30.17%</td></tr><tr><th scope="row">新北市</th><td>同意 777,046 票，不同意 262,784 票，同意多 514,262 票，占投票數 49.07%，投票率 29.93%</td></tr><tr><th scope="row">桃園市</th><td>同意 429,306 票，不同意 98,886 票，同意多 330,420 票，占投票數 62.08%，投票率 26.99%</td></tr><tr><th scope="row">新竹市</th><td>同意 89,585 票，不同意 21,123 票，同意多 68,462 票，占投票數 61.42%，投票率 30.05%</td></tr><tr><th scope="row">新竹縣</th><td>同意 149,516 票，不同意 36,135 票，同意多 113,381 票，占投票數 60.22%，投票率 38.54%</td></tr><tr><th scope="row">宜蘭縣</th><td>同意 62,075 票，不同意 26,003 票，同意多 36,072 票，占投票數 40.62%，投票率 22.83%</td></tr><tr><th scope="row">苗栗縣</th><td>同意 113,477 票，不同意 17,612 票，同意多 95,865 票，占投票數 72.33%，投票率 28.95%</td></tr><tr><th scope="row">金門縣</th><td>同意 14,524 票，不同意 893 票，同意多 13,631 票，占投票數 87.42%，投票率 12.38%</td></tr><tr><th scope="row">臺中市</th><td>同意 645,486 票，不同意 212,952 票，同意多 432,534 票，占投票數 49.74%，投票率 35.98%</td></tr><tr><th scope="row">彰化縣</th><td>同意 222,117 票，不同意 56,089 票，同意多 166,028 票，占投票數 59.05%，投票率 26.96%</td></tr><tr><th scope="row">南投縣</th><td>同意 136,907 票，不同意 53,895 票，同意多 83,012 票，占投票數 42.68%，投票率 47.40%</td></tr><tr><th scope="row">花蓮縣</th><td>同意 63,040 票，不同意 9,956 票，同意多 53,084 票，占投票數 71.90%，投票率 27.19%</td></tr><tr><th scope="row">雲林縣</th><td>同意 98,165 票，不同意 29,429 票，同意多 68,736 票，占投票數 53.41%，投票率 22.66%</td></tr><tr><th scope="row">嘉義市</th><td>同意 43,674 票，不同意 17,279 票，同意多 26,395 票，占投票數 43.04%，投票率 27.69%</td></tr><tr><th scope="row">嘉義縣</th><td>同意 71,315 票，不同意 27,545 票，同意多 43,770 票，占投票數 43.95%，投票率 23.43%</td></tr><tr><th scope="row">澎湖縣</th><td>同意 13,180 票，不同意 4,012 票，同意多 9,168 票，占投票數 52.89%，投票率 18.36%</td></tr><tr><th scope="row">臺南市</th><td>同意 281,553 票，不同意 141,687 票，同意多 139,866 票，占投票數 32.81%，投票率 26.62%</td></tr><tr><th scope="row">高雄市</th><td>同意 423,651 票，不同意 229,579 票，同意多 194,072 票，占投票數 29.54%，投票率 27.86%</td></tr><tr><th scope="row">臺東縣</th><td>同意 37,858 票，不同意 7,191 票，同意多 30,667 票，占投票數 67.40%，投票率 25.12%</td></tr><tr><th scope="row">屏東縣</th><td>同意 120,720 票，不同意 90,460 票，同意多 30,260 票，占投票數 14.18%，投票率 31.00%</td></tr></tbody></table>
 </div>
 <script>
 "use strict";
-const D = {"counties":[{"code":"09007","tier":"y3","bbox":[3818,484,5023,1453]},{"code":"09020","tier":"y3","bbox":[423,4580,956,4907]},{"code":"10002","tier":"y2","bbox":[6635,3580,7932,5074]},{"code":"10004","tier":"y3","bbox":[5850,3673,6824,4815]},{"code":"10005","tier":"y3","bbox":[5244,4126,6525,5120]},{"code":"10007","tier":"y2","bbox":[4441,5298,5368,6221]},{"code":"10008","tier":"y2","bbox":[5232,5214,6699,6986]},{"code":"10009","tier":"y2","bbox":[3994,6045,5472,6985]},{"code":"10010","tier":"y2","bbox":[4236,6548,5915,7466]},{"code":"10013","tier":"y1","bbox":[4706,8183,5808,10323]},{"code":"10014","tier":"y3","bbox":[5478,6968,7233,10222]},{"code":"10015","tier":"y3","bbox":[5973,4940,7548,7721]},{"code":"10016","tier":"y2","bbox":[2629,6167,3454,7528]},{"code":"10017","tier":"y2","bbox":[7254,3122,7616,3438]},{"code":"10018","tier":"y3","bbox":[5749,3875,6066,4188]},{"code":"10020","tier":"y2","bbox":[4779,6805,5018,6977]},{"code":"63000","tier":"y2","bbox":[6915,3090,7332,3642]},{"code":"64000","tier":"y1","bbox":[4349,6907,6098,9086]},{"code":"65000","tier":"y2","bbox":[6565,2891,8013,4275]},{"code":"66000","tier":"y2","bbox":[4913,4784,6904,5755]},{"code":"67000","tier":"y2","bbox":[4054,7034,5312,8175]},{"code":"68000","tier":"y3","bbox":[5964,3282,6960,4465]}],"cards":{"TW":"<h2>全國<em class=\"no\">未通過</em><span>同意票未達門檻</span></h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:74.17%\"></i><i class=\"na\" style=\"width:25.83%\"></i><b style=\"left:85.43%\"></b></div><p class=\"thl\"><span style=\"right:14.57%\">門檻 5,000,523 票</span></p><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">4,341,432</span><span class=\"pc\">74.17%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">1,511,693</span><span class=\"pc\">25.83%</span></li></ol><p class=\"kv\"><span>投票率 <b>29.53%</b></span><span class=\"m\">門檻是投票權人總額的四分之一</span></p><p class=\"note\"><span>地圖顏色＝（同意票－不同意票）</span><span>÷ 投票數（含無效票）</span></p>","09007":"<h2>連江縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:94.00%\"></i><i class=\"na\" style=\"width:6.00%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">2,129</span><span class=\"pc\">94.00%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">136</span><span class=\"pc\">6.00%</span></li></ol><dl><dt>差距</dt><dd>同意多 1,993 票<i>（占投票數 86.77%）</i></dd><dt>投票率</dt><dd>19.23%</dd></dl>","09020":"<h2>金門縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:94.21%\"></i><i class=\"na\" style=\"width:5.79%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">14,524</span><span class=\"pc\">94.21%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">893</span><span class=\"pc\">5.79%</span></li></ol><dl><dt>差距</dt><dd>同意多 13,631 票<i>（占投票數 87.42%）</i></dd><dt>投票率</dt><dd>12.38%</dd></dl>","10002":"<h2>宜蘭縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:70.48%\"></i><i class=\"na\" style=\"width:29.52%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">62,075</span><span class=\"pc\">70.48%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">26,003</span><span class=\"pc\">29.52%</span></li></ol><dl><dt>差距</dt><dd>同意多 36,072 票<i>（占投票數 40.62%）</i></dd><dt>投票率</dt><dd>22.83%</dd></dl>","10004":"<h2>新竹縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:80.54%\"></i><i class=\"na\" style=\"width:19.46%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">149,516</span><span class=\"pc\">80.54%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">36,135</span><span class=\"pc\">19.46%</span></li></ol><dl><dt>差距</dt><dd>同意多 113,381 票<i>（占投票數 60.22%）</i></dd><dt>投票率</dt><dd>38.54%</dd></dl>","10005":"<h2>苗栗縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:86.56%\"></i><i class=\"na\" style=\"width:13.44%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">113,477</span><span class=\"pc\">86.56%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">17,612</span><span class=\"pc\">13.44%</span></li></ol><dl><dt>差距</dt><dd>同意多 95,865 票<i>（占投票數 72.33%）</i></dd><dt>投票率</dt><dd>28.95%</dd></dl>","10007":"<h2>彰化縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:79.84%\"></i><i class=\"na\" style=\"width:20.16%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">222,117</span><span class=\"pc\">79.84%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">56,089</span><span class=\"pc\">20.16%</span></li></ol><dl><dt>差距</dt><dd>同意多 166,028 票<i>（占投票數 59.05%）</i></dd><dt>投票率</dt><dd>26.96%</dd></dl>","10008":"<h2>南投縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:71.75%\"></i><i class=\"na\" style=\"width:28.25%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">136,907</span><span class=\"pc\">71.75%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">53,895</span><span class=\"pc\">28.25%</span></li></ol><dl><dt>差距</dt><dd>同意多 83,012 票<i>（占投票數 42.68%）</i></dd><dt>投票率</dt><dd>47.40%</dd></dl>","10009":"<h2>雲林縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:76.94%\"></i><i class=\"na\" style=\"width:23.06%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">98,165</span><span class=\"pc\">76.94%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">29,429</span><span class=\"pc\">23.06%</span></li></ol><dl><dt>差距</dt><dd>同意多 68,736 票<i>（占投票數 53.41%）</i></dd><dt>投票率</dt><dd>22.66%</dd></dl>","10010":"<h2>嘉義縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:72.14%\"></i><i class=\"na\" style=\"width:27.86%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">71,315</span><span class=\"pc\">72.14%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">27,545</span><span class=\"pc\">27.86%</span></li></ol><dl><dt>差距</dt><dd>同意多 43,770 票<i>（占投票數 43.95%）</i></dd><dt>投票率</dt><dd>23.43%</dd></dl>","10013":"<h2>屏東縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:57.16%\"></i><i class=\"na\" style=\"width:42.84%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">120,720</span><span class=\"pc\">57.16%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">90,460</span><span class=\"pc\">42.84%</span></li></ol><dl><dt>差距</dt><dd>同意多 30,260 票<i>（占投票數 14.18%）</i></dd><dt>投票率</dt><dd>31.00%</dd></dl>","10014":"<h2>臺東縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:84.04%\"></i><i class=\"na\" style=\"width:15.96%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">37,858</span><span class=\"pc\">84.04%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">7,191</span><span class=\"pc\">15.96%</span></li></ol><dl><dt>差距</dt><dd>同意多 30,667 票<i>（占投票數 67.40%）</i></dd><dt>投票率</dt><dd>25.12%</dd></dl>","10015":"<h2>花蓮縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:86.36%\"></i><i class=\"na\" style=\"width:13.64%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">63,040</span><span class=\"pc\">86.36%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">9,956</span><span class=\"pc\">13.64%</span></li></ol><dl><dt>差距</dt><dd>同意多 53,084 票<i>（占投票數 71.90%）</i></dd><dt>投票率</dt><dd>27.19%</dd></dl>","10016":"<h2>澎湖縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:76.66%\"></i><i class=\"na\" style=\"width:23.34%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">13,180</span><span class=\"pc\">76.66%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">4,012</span><span class=\"pc\">23.34%</span></li></ol><dl><dt>差距</dt><dd>同意多 9,168 票<i>（占投票數 52.89%）</i></dd><dt>投票率</dt><dd>18.36%</dd></dl>","10017":"<h2>基隆市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:79.80%\"></i><i class=\"na\" style=\"width:20.20%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">70,703</span><span class=\"pc\">79.80%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">17,895</span><span class=\"pc\">20.20%</span></li></ol><dl><dt>差距</dt><dd>同意多 52,808 票<i>（占投票數 59.16%）</i></dd><dt>投票率</dt><dd>28.01%</dd></dl>","10018":"<h2>新竹市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:80.92%\"></i><i class=\"na\" style=\"width:19.08%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">89,585</span><span class=\"pc\">80.92%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">21,123</span><span class=\"pc\">19.08%</span></li></ol><dl><dt>差距</dt><dd>同意多 68,462 票<i>（占投票數 61.42%）</i></dd><dt>投票率</dt><dd>30.05%</dd></dl>","10020":"<h2>嘉義市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:71.65%\"></i><i class=\"na\" style=\"width:28.35%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">43,674</span><span class=\"pc\">71.65%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">17,279</span><span class=\"pc\">28.35%</span></li></ol><dl><dt>差距</dt><dd>同意多 26,395 票<i>（占投票數 43.04%）</i></dd><dt>投票率</dt><dd>27.69%</dd></dl>","63000":"<h2>臺北市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:76.00%\"></i><i class=\"na\" style=\"width:24.00%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">475,405</span><span class=\"pc\">76.00%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">150,152</span><span class=\"pc\">24.00%</span></li></ol><dl><dt>差距</dt><dd>同意多 325,253 票<i>（占投票數 51.64%）</i></dd><dt>投票率</dt><dd>30.17%</dd></dl>","64000":"<h2>高雄市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:64.85%\"></i><i class=\"na\" style=\"width:35.15%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">423,651</span><span class=\"pc\">64.85%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">229,579</span><span class=\"pc\">35.15%</span></li></ol><dl><dt>差距</dt><dd>同意多 194,072 票<i>（占投票數 29.54%）</i></dd><dt>投票率</dt><dd>27.86%</dd></dl>","65000":"<h2>新北市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:74.73%\"></i><i class=\"na\" style=\"width:25.27%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">777,046</span><span class=\"pc\">74.73%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">262,784</span><span class=\"pc\">25.27%</span></li></ol><dl><dt>差距</dt><dd>同意多 514,262 票<i>（占投票數 49.07%）</i></dd><dt>投票率</dt><dd>29.93%</dd></dl>","66000":"<h2>臺中市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:75.19%\"></i><i class=\"na\" style=\"width:24.81%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">645,486</span><span class=\"pc\">75.19%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">212,952</span><span class=\"pc\">24.81%</span></li></ol><dl><dt>差距</dt><dd>同意多 432,534 票<i>（占投票數 49.74%）</i></dd><dt>投票率</dt><dd>35.98%</dd></dl>","67000":"<h2>臺南市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:66.52%\"></i><i class=\"na\" style=\"width:33.48%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">281,553</span><span class=\"pc\">66.52%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">141,687</span><span class=\"pc\">33.48%</span></li></ol><dl><dt>差距</dt><dd>同意多 139,866 票<i>（占投票數 32.81%）</i></dd><dt>投票率</dt><dd>26.62%</dd></dl>","68000":"<h2>桃園市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:81.28%\"></i><i class=\"na\" style=\"width:18.72%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">429,306</span><span class=\"pc\">81.28%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">98,886</span><span class=\"pc\">18.72%</span></li></ol><dl><dt>差距</dt><dd>同意多 330,420 票<i>（占投票數 62.08%）</i></dd><dt>投票率</dt><dd>26.99%</dd></dl>"},"pano":[2819,2891,8013,10323],"isles":["09007","09020"]};
+const D = {"counties":[{"code":"09007","tier":"y3","bbox":[3818,484,5023,1453]},{"code":"09020","tier":"y3","bbox":[423,4580,956,4907]},{"code":"10002","tier":"y2","bbox":[6635,3580,7932,5074]},{"code":"10004","tier":"y3","bbox":[5850,3673,6824,4815]},{"code":"10005","tier":"y3","bbox":[5244,4126,6525,5120]},{"code":"10007","tier":"y2","bbox":[4441,5298,5368,6221]},{"code":"10008","tier":"y2","bbox":[5232,5214,6699,6986]},{"code":"10009","tier":"y2","bbox":[3994,6045,5472,6985]},{"code":"10010","tier":"y2","bbox":[4236,6548,5915,7466]},{"code":"10013","tier":"y1","bbox":[4706,8183,5808,10323]},{"code":"10014","tier":"y3","bbox":[5478,6968,7233,10222]},{"code":"10015","tier":"y3","bbox":[5973,4940,7548,7721]},{"code":"10016","tier":"y2","bbox":[2629,6167,3454,7528]},{"code":"10017","tier":"y2","bbox":[7254,3122,7616,3438]},{"code":"10018","tier":"y3","bbox":[5749,3875,6066,4188]},{"code":"10020","tier":"y2","bbox":[4779,6805,5018,6977]},{"code":"63000","tier":"y2","bbox":[6915,3090,7332,3642]},{"code":"64000","tier":"y1","bbox":[4349,6907,6098,9086]},{"code":"65000","tier":"y2","bbox":[6565,2891,8013,4275]},{"code":"66000","tier":"y2","bbox":[4913,4784,6904,5755]},{"code":"67000","tier":"y2","bbox":[4054,7034,5312,8175]},{"code":"68000","tier":"y3","bbox":[5964,3282,6960,4465]}],"cards":{"TW":"<h2>全國<em class=\"no\">未通過</em><span>同意票未達門檻</span></h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:74.17%\"></i><i class=\"na\" style=\"width:25.83%\"></i><b style=\"left:85.43%\"></b></div><p class=\"thl\"><span style=\"right:14.57%\">門檻 5,000,523 票</span></p><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">4,341,432</span><span class=\"pc\">74.17%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">1,511,693</span><span class=\"pc\">25.83%</span></li></ol><p class=\"kv\"><span>投票率 <b>29.53%</b></span><span class=\"m\">門檻是投票權人總額的四分之一</span></p><p class=\"note\"><span>地圖顏色＝（同意票－不同意票）</span><span>÷ 投票數（含無效票）</span></p>","09007":"<h2>連江縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:94.00%\"></i><i class=\"na\" style=\"width:6.00%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">2,129</span><span class=\"pc\">94.00%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">136</span><span class=\"pc\">6.00%</span></li></ol><dl><dt>差距</dt><dd>同意多 1,993 票<i>（占投票數 86.77%）</i></dd><dt>投票率</dt><dd>19.23%</dd></dl>","09020":"<h2>金門縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:94.21%\"></i><i class=\"na\" style=\"width:5.79%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">14,524</span><span class=\"pc\">94.21%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">893</span><span class=\"pc\">5.79%</span></li></ol><dl><dt>差距</dt><dd>同意多 13,631 票<i>（占投票數 87.42%）</i></dd><dt>投票率</dt><dd>12.38%</dd></dl>","10002":"<h2>宜蘭縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:70.48%\"></i><i class=\"na\" style=\"width:29.52%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">62,075</span><span class=\"pc\">70.48%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">26,003</span><span class=\"pc\">29.52%</span></li></ol><dl><dt>差距</dt><dd>同意多 36,072 票<i>（占投票數 40.62%）</i></dd><dt>投票率</dt><dd>22.83%</dd></dl>","10004":"<h2>新竹縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:80.54%\"></i><i class=\"na\" style=\"width:19.46%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">149,516</span><span class=\"pc\">80.54%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">36,135</span><span class=\"pc\">19.46%</span></li></ol><dl><dt>差距</dt><dd>同意多 113,381 票<i>（占投票數 60.22%）</i></dd><dt>投票率</dt><dd>38.54%</dd></dl>","10005":"<h2>苗栗縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:86.56%\"></i><i class=\"na\" style=\"width:13.44%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">113,477</span><span class=\"pc\">86.56%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">17,612</span><span class=\"pc\">13.44%</span></li></ol><dl><dt>差距</dt><dd>同意多 95,865 票<i>（占投票數 72.33%）</i></dd><dt>投票率</dt><dd>28.95%</dd></dl>","10007":"<h2>彰化縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:79.84%\"></i><i class=\"na\" style=\"width:20.16%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">222,117</span><span class=\"pc\">79.84%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">56,089</span><span class=\"pc\">20.16%</span></li></ol><dl><dt>差距</dt><dd>同意多 166,028 票<i>（占投票數 59.05%）</i></dd><dt>投票率</dt><dd>26.96%</dd></dl>","10008":"<h2>南投縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:71.75%\"></i><i class=\"na\" style=\"width:28.25%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">136,907</span><span class=\"pc\">71.75%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">53,895</span><span class=\"pc\">28.25%</span></li></ol><dl><dt>差距</dt><dd>同意多 83,012 票<i>（占投票數 42.68%）</i></dd><dt>投票率</dt><dd>47.40%</dd></dl>","10009":"<h2>雲林縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:76.94%\"></i><i class=\"na\" style=\"width:23.06%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">98,165</span><span class=\"pc\">76.94%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">29,429</span><span class=\"pc\">23.06%</span></li></ol><dl><dt>差距</dt><dd>同意多 68,736 票<i>（占投票數 53.41%）</i></dd><dt>投票率</dt><dd>22.66%</dd></dl>","10010":"<h2>嘉義縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:72.14%\"></i><i class=\"na\" style=\"width:27.86%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">71,315</span><span class=\"pc\">72.14%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">27,545</span><span class=\"pc\">27.86%</span></li></ol><dl><dt>差距</dt><dd>同意多 43,770 票<i>（占投票數 43.95%）</i></dd><dt>投票率</dt><dd>23.43%</dd></dl>","10013":"<h2>屏東縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:57.16%\"></i><i class=\"na\" style=\"width:42.84%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">120,720</span><span class=\"pc\">57.16%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">90,460</span><span class=\"pc\">42.84%</span></li></ol><dl><dt>差距</dt><dd>同意多 30,260 票<i>（占投票數 14.18%）</i></dd><dt>投票率</dt><dd>31.00%</dd></dl>","10014":"<h2>臺東縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:84.04%\"></i><i class=\"na\" style=\"width:15.96%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">37,858</span><span class=\"pc\">84.04%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">7,191</span><span class=\"pc\">15.96%</span></li></ol><dl><dt>差距</dt><dd>同意多 30,667 票<i>（占投票數 67.40%）</i></dd><dt>投票率</dt><dd>25.12%</dd></dl>","10015":"<h2>花蓮縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:86.36%\"></i><i class=\"na\" style=\"width:13.64%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">63,040</span><span class=\"pc\">86.36%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">9,956</span><span class=\"pc\">13.64%</span></li></ol><dl><dt>差距</dt><dd>同意多 53,084 票<i>（占投票數 71.90%）</i></dd><dt>投票率</dt><dd>27.19%</dd></dl>","10016":"<h2>澎湖縣</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:76.66%\"></i><i class=\"na\" style=\"width:23.34%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">13,180</span><span class=\"pc\">76.66%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">4,012</span><span class=\"pc\">23.34%</span></li></ol><dl><dt>差距</dt><dd>同意多 9,168 票<i>（占投票數 52.89%）</i></dd><dt>投票率</dt><dd>18.36%</dd></dl>","10017":"<h2>基隆市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:79.80%\"></i><i class=\"na\" style=\"width:20.20%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">70,703</span><span class=\"pc\">79.80%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">17,895</span><span class=\"pc\">20.20%</span></li></ol><dl><dt>差距</dt><dd>同意多 52,808 票<i>（占投票數 59.16%）</i></dd><dt>投票率</dt><dd>28.01%</dd></dl>","10018":"<h2>新竹市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:80.92%\"></i><i class=\"na\" style=\"width:19.08%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">89,585</span><span class=\"pc\">80.92%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">21,123</span><span class=\"pc\">19.08%</span></li></ol><dl><dt>差距</dt><dd>同意多 68,462 票<i>（占投票數 61.42%）</i></dd><dt>投票率</dt><dd>30.05%</dd></dl>","10020":"<h2>嘉義市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:71.65%\"></i><i class=\"na\" style=\"width:28.35%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">43,674</span><span class=\"pc\">71.65%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">17,279</span><span class=\"pc\">28.35%</span></li></ol><dl><dt>差距</dt><dd>同意多 26,395 票<i>（占投票數 43.04%）</i></dd><dt>投票率</dt><dd>27.69%</dd></dl>","63000":"<h2>臺北市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:76.00%\"></i><i class=\"na\" style=\"width:24.00%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">475,405</span><span class=\"pc\">76.00%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">150,152</span><span class=\"pc\">24.00%</span></li></ol><dl><dt>差距</dt><dd>同意多 325,253 票<i>（占投票數 51.64%）</i></dd><dt>投票率</dt><dd>30.17%</dd></dl>","64000":"<h2>高雄市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:64.85%\"></i><i class=\"na\" style=\"width:35.15%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">423,651</span><span class=\"pc\">64.85%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">229,579</span><span class=\"pc\">35.15%</span></li></ol><dl><dt>差距</dt><dd>同意多 194,072 票<i>（占投票數 29.54%）</i></dd><dt>投票率</dt><dd>27.86%</dd></dl>","65000":"<h2>新北市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:74.73%\"></i><i class=\"na\" style=\"width:25.27%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">777,046</span><span class=\"pc\">74.73%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">262,784</span><span class=\"pc\">25.27%</span></li></ol><dl><dt>差距</dt><dd>同意多 514,262 票<i>（占投票數 49.07%）</i></dd><dt>投票率</dt><dd>29.93%</dd></dl>","66000":"<h2>臺中市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:75.19%\"></i><i class=\"na\" style=\"width:24.81%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">645,486</span><span class=\"pc\">75.19%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">212,952</span><span class=\"pc\">24.81%</span></li></ol><dl><dt>差距</dt><dd>同意多 432,534 票<i>（占投票數 49.74%）</i></dd><dt>投票率</dt><dd>35.98%</dd></dl>","67000":"<h2>臺南市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:66.52%\"></i><i class=\"na\" style=\"width:33.48%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">281,553</span><span class=\"pc\">66.52%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">141,687</span><span class=\"pc\">33.48%</span></li></ol><dl><dt>差距</dt><dd>同意多 139,866 票<i>（占投票數 32.81%）</i></dd><dt>投票率</dt><dd>26.62%</dd></dl>","68000":"<h2>桃園市</h2><div class=\"bar\" aria-hidden=\"true\"><i class=\"ya\" style=\"width:81.28%\"></i><i class=\"na\" style=\"width:18.72%\"></i></div><ol><li><i class=\"sw ya\" aria-hidden=\"true\"></i><span class=\"nm\">同意</span><span class=\"v\">429,306</span><span class=\"pc\">81.28%</span></li><li><i class=\"sw na\" aria-hidden=\"true\"></i><span class=\"nm\">不同意</span><span class=\"v\">98,886</span><span class=\"pc\">18.72%</span></li></ol><dl><dt>差距</dt><dd>同意多 330,420 票<i>（占投票數 62.08%）</i></dd><dt>投票率</dt><dd>26.99%</dd></dl>"},"pano":[2819,2891,8013,10323],"six":["63000","65000","68000","66000","67000","64000"],"isles":["09007","09020"]};
 const $ = s => document.querySelector(s);
 const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
-const ol = $("#ol"), fo = $("#fo"), isles = $(".isles"), homeBtn = $("#home");
+const ol = $("#ol"), fo = $("#fo"), isles = $(".isles");
 const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), liftG = $("#lift"), mapwin = $(".mapwin");
 const $id = id => document.getElementById(id);
 const dOf = (code, outer) => !code ? "" : outer && $id("o" + code) ? $id("o" + code).getAttribute("d")
   : $id("p" + code).getAttribute("d") + ($id("i" + code)?.getAttribute("d") || "");
 const dOl = code => $id("p" + code).classList.contains("isl") ? "" : $id("p" + code).getAttribute("d");   // 白色外框只框本島，澎湖不框
 const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
-const ISLE = new Set(D.isles), HTML = D.cards;   // HTML.TW 是全國總覽
+const SIX = D.six, ISLE = new Set(D.isles), HTML = D.cards;   // HTML.TW 是全國總覽
 const RM = matchMedia("(prefers-reduced-motion: reduce)");
 const DEV = new URLSearchParams(location.search).has("dev");
 // 小地圖浮起的影子：原位複製一份島的路徑（複製 d、不用 <use>）
@@ -208,7 +201,7 @@ function unproj(X, Y, a = TILT) {
 }
 
 // ── 版面 ──
-let W, H, cams = {}, smallHits = [];
+let W, H, cams = {}, tour = null, smallHits = [];
 function fit(bb, R, pad, t, kmax = Infinity, kmin = 0) {
   const tw = (R.r - R.l) * (1 - 2 * pad), th = (R.b - R.t) * (1 - 2 * pad), rx = (R.l + R.r) / 2, ry = (R.t + R.b) / 2;
   let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.max(kmin, Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]), kmax));
@@ -253,8 +246,7 @@ function layout() {
   isles.querySelectorAll("svg").forEach(s => { const v = s.viewBox.baseVal, r = s.getBoundingClientRect();
     const u = r.width && r.height ? Math.max(v.width / r.width, v.height / r.height) : 1;
     s.style.setProperty("--lf-t", `translateY(${(-3 * u).toFixed(1)}px)`); });
-  // 換尺寸：鏡頭直接跳到目前目的地的新位置
-  userSeg = seg(cams[userSeg ? userSeg.keyTo : "pano"], userSeg ? userSeg.keyTo : "pano", 0, curCard, performance.now() - 1e4);
+  buildTour();
 }
 
 // ── 鏡頭：中心線性、縮放取對數內插；太遠就中途先拉遠再推近 ──
@@ -262,29 +254,59 @@ function lerpCam(a, b, t, dip) {
   const lk = Math.log2(a.k) + (Math.log2(b.k) - Math.log2(a.k)) * t - dip * Math.sin(Math.PI * t);
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk, t: a.t + (b.t - a.t) * t };
 }
-function seg(from, to, dur, cardTo, t0, keyTo) {   // 資訊卡在鏡頭走到六成時換（沒飛就當下換）
+function seg(from, to, dur, cardFrom, cardTo, t0, keyTo) {   // 資訊卡在鏡頭走到六成時換（沒飛就當下換）；cardTo＝null 是全國總覽
   const a = cams[from] || from, b = cams[to] || to, same = Math.hypot(a.x - b.x, a.y - b.y) * a.k < 0.01 && Math.abs(a.k / b.k - 1) < 1e-9;
   let dip = 0;
-  if (same) dur = 0;
+  if (same) dur = from === to && typeof from === "string" ? dur : 0;   // 輪播停在同一格的那段照樣有長度
   else { const d = Math.hypot(a.x - b.x, a.y - b.y) * Math.sqrt(a.k * b.k);
     if (d > 1.85 * W) { dip = Math.log2(d / (1.3 * W)); dur += dip * 600; } }
-  return { a, b, dur, dip, t0, ev: [[dur ? t0 + easeInv(.6) * dur : t0, cardTo]], keyTo: keyTo ?? to };
+  // 中途拉遠也不收卡：這張圖一直有卡，收起只會閃一下總覽（選舉地圖那邊會先收起）
+  const ev = from !== to || !same ? [[dur ? t0 + easeInv(.6) * dur : t0, cardTo]] : [];
+  return { a, b, dur, dip, t0, ev, cardFrom, keyTo: keyTo ?? to };
 }
 function camAt(s, t) {
   const u = s.dur ? clamp((t - s.t0) / s.dur) : 1;
   if (RM.matches) return u >= easeInv(.6) ? s.b : s.a;
   return lerpCam(s.a, s.b, ease(u), s.dip);
 }
+// 六都輪播照選舉地圖（11-18 加）：全景停 1.75 秒 → 臺北到高雄各停 3.5 秒 → 回全景，一直重複；全景時是全國總覽卡
+function buildTour() {
+  const keep = tour ? tourT / tour.cycle : 0, S = []; let t = 0;
+  const add = (f, to, dur, cf, ct) => { const s = seg(f, to, dur, cf, ct, t); S.push(s); t += s.dur; };
+  add("pano", "pano", 1750, null, null);
+  add("pano", SIX[0], 1500, null, SIX[0]);
+  SIX.forEach((c, i) => { add(c, c, 3500, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
+  add(SIX[5], "pano", 1500, SIX[5], null);
+  const ev = S.flatMap(s => s.ev);
+  tour = { S, cycle: t, ev, holdStart: Object.fromEntries(S.filter(s => s.a === s.b && s.cardFrom).map(s => [s.cardFrom, s.t0])) };
+  tourT = keep * t;
+  // 換尺寸：讀者點選中的鏡頭直接跳到目的地的新位置
+  if (mode === "user" && userSeg) userSeg = seg(cams[userSeg.keyTo] || cams.pano, userSeg.keyTo, 0, curCard, curCard, performance.now() - 1e4);
+}
 
-// ── 狀態：沒有輪播，鏡頭只跟著讀者走 ──
-let userSeg = null, userEv = [[-1e9, null]];
+// ── 狀態：輪播（tour）與讀者點選（user），照選舉地圖 ──
+let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, userEv = [], resumeTo = -1, lastSix = -1;
+let backAt = 0;   // 點六都以外的縣市（含金門、連江）：這個時刻自動回全國總覽；0＝沒有排
+let hover = false, focusIn = false, held = false, inView = DEV, lastInteract = 0;
 let curCam = null, curCard = null, shown, lastVB = "", lastTr = null;
 let curLift = { code: null, v: 0 }, drop = null, liftKey = "", foCode = null, curBase = null;
 let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };
+// 沒有暫停鈕（11-18 定）：滑鼠停在地圖上、手指按著、鍵盤聚焦、地圖捲出畫面時暫停
+const paused = () => hover || focusIn || held || !inView || document.hidden || moved() || zb != null;
 
 function cardAt(evs, t) {
   let i = -1; for (let j = 0; j < evs.length; j++) if (evs[j][0] <= t) i = j;
   return i < 0 ? [evs.at(-1)?.[1] ?? null, null, 1e9] : [evs[i][1], i > 0 ? evs[i - 1][1] : evs.at(-1)[1], t - evs[i][0]];
+}
+function tourState(t) {
+  const s = tour.S.find(s => t >= s.t0 && t < s.t0 + s.dur) || tour.S.at(-1);
+  let [cur, prev, el] = cardAt(tour.ev, t);
+  if (el === 1e9) { const ev = tour.ev.at(-1); el = t + tour.cycle - ev[0]; prev = tour.ev.at(-2)[1]; }
+  lastSix = SIX.indexOf(cur) >= 0 ? SIX.indexOf(cur) : (t < tour.S[2].t0 ? -1 : 5);
+  // 浮起只在停住的那段：抵達後抬起，離開前先放下
+  const hold = s.a === s.b && s.cardFrom && !ISLE.has(s.cardFrom);
+  const lift = hold ? { code: s.cardFrom, v: ease(clamp(Math.min((t - s.t0) / UP, (s.t0 + s.dur - t) / DOWN))) } : { code: null, v: 0 };
+  return { cam: camAt(s, t), cur, prev, el, atPano: s.a === cams.pano && s.b === cams.pano, lift };
 }
 function userState(now) {
   const [cur, prev, el] = cardAt(userEv, now), end = userSeg.t0 + userSeg.dur, to = userSeg.keyTo;
@@ -295,11 +317,11 @@ function userState(now) {
 }
 
 function draw(now) {
-  const st = userState(now);
+  const st = mode === "tour" ? tourState(tourT) : userState(now);
   if (zb && now >= zb.t0) {
     const u = RM.matches ? 1 : clamp((now - zb.t0) / ZBACK), e = easeOut(u);
     Z = u >= 1 ? { s: 1, x: 0, y: 0 } : { s: zb.s + (1 - zb.s) * e, x: zb.x * (1 - e), y: zb.y * (1 - e) };
-    if (u >= 1) zb = null;
+    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 2.5 秒
   }
   curBase = st.cam;
   const c = curCam = zcam(st.cam);
@@ -316,8 +338,6 @@ function draw(now) {
   }
   renderCard(st.cur, st.prev, st.el);
   renderLift(RM.matches ? { code: st.cur && !ISLE.has(st.cur) ? st.cur : null, v: 1 } : st.lift, c.k);
-  const home = st.atPano && st.cur == null;
-  homeBtn.setAttribute("aria-hidden", home); homeBtn.tabIndex = home ? -1 : 0;
 }
 let liftCode = null;
 function renderLift(L, k) {
@@ -353,26 +373,39 @@ function renderCard(cur, prev, el) {   // cur＝null 是全國總覽；換卡只
   }
 }
 
-// ── 互動 ──
-// 點縣市（含金門、連江）：鏡頭到了停 3.5 秒自動回全國總覽，比照選舉地圖點非六都（11-18）。
-// 捏、拖就取消；滑鼠停在地圖上或鍵盤聚焦時先不回，離開後到時間就回
-let backAt = 0, hover = false, kbFocus = false;
+// ── 互動：照選舉地圖。點六都跳到輪播那一站接著輪；點其他縣市（含金門、連江）停 3.5 秒自動回全國總覽（11-18）。
+// 再點、捏、拖、Esc 都會蓋掉自動回去；滑鼠停在地圖上、鍵盤聚焦時先不回。回到總覽 2.5 秒沒動作就接著輪。
+// 沒有回全台鈕（11-18 定）：回總覽靠點地圖空白處、Esc，或等自動回去
 function go(code, instant) {   // code＝縣市代碼，null＝回全國總覽
-  const now = performance.now();
+  const now = performance.now(); lastInteract = now; resumeTo = -1;
   Z = { s: 1, x: 0, y: 0 }; zb = null;
-  userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  mode = "user";
   const to = code == null || ISLE.has(code) ? "pano" : code;
-  userSeg = seg(curCam, to, 1500, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
+  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
   userEv.push(...userSeg.ev);
-  backAt = code != null ? userSeg.t0 + userSeg.dur + 3500 : 0;
+  if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
+  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
 }
-frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
-frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
 function putDown(now, to, instant) {
   drop = null;
   if (instant || RM.matches || curLift.v <= 0 || curLift.code === to) return 0;
   drop = { code: curLift.code, v: curLift.v, t0: now, end: now + DOWN * curLift.v };
   return drop.end - now;
+}
+function maybeResume(now) {
+  if (resumeTo >= 0) {
+    if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
+    return;
+  }
+  const end = userSeg.t0 + userSeg.dur;
+  if (paused() || now < end) return;
+  if (backAt) { if (now >= backAt) go(null, RM.matches); return; }   // 減少動態：直接切回，不飛
+  const pano = userSeg.keyTo === "pano" && curCard == null;
+  if (now - (pano ? Math.max(lastInteract, end) : lastInteract) < 2500) return;
+  const n = (lastSix + 1) % 6;
+  userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
 }
 function codeOf(e) { const t = e.target.closest("[data-code]"); return t && t.dataset.code; }
 const nearestDot = e => { let best = null, bd = Infinity;   // 點擊圓重疊時選離手指最近的圓心
@@ -386,14 +419,17 @@ frame.addEventListener("keydown", e => {
   if (e.key === "Escape") { go(null); return; }
   if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.code) { e.preventDefault(); go(e.target.dataset.code); }
 });
-// 焦點外緣只給鍵盤用（手指點縣市也會聚焦，畫了會在 iPhone 上變成兩圈破邊）
+// 焦點外緣只給鍵盤用（手指點縣市也會聚焦，畫了會在 iPhone 上變成兩圈破邊）；也只有鍵盤聚焦才算暫停
 frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
-  const kb = e.target.matches && e.target.matches(":focus-visible"); kbFocus = !!kb;
+  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
   fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });
-frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { kbFocus = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
-homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
+frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
+frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
+frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
+frame.addEventListener("pointerdown", () => { held = true; lastInteract = performance.now(); });
+addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
 
 // ── 觸控縮放：照選舉地圖。雙指 0.5 到 2 倍、縮放中單指拖、1 倍時橫向起手的單指拖；放手 0.5 秒後 0.3 秒彈回 ──
 const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
@@ -406,12 +442,13 @@ function setZ(s, x, y) {
   const cl = (v, a, b, m) => Math.min(Math.max(a, b) + m, Math.max(Math.min(a, b) - m, v));
   Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
 }
-function holdCam(now) {   // 開始捏或拖：飛行中就停在這一格，彈回也回到這一格；不再自動回全國總覽
-  zb = null; backAt = 0;
-  if (now >= userSeg.t0 + userSeg.dur) return;
+function holdCam(now) {   // 開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格；不再自動回全國總覽
+  lastInteract = now; zb = null; backAt = 0;
+  if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
+  const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
   const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
-  userEv = [[-1e9, curCard]]; drop = null;
-  userSeg = seg(curBase, curBase, 0, curCard, curLift.code === key ? now - 1e4 : now, key);
+  userEv = [[-1e9, curCard]]; mode = "user"; resumeTo = -1; drop = null;
+  userSeg = seg(atP ? P : b, atP ? P : b, 0, curCard, curCard, curLift.code === key ? now - 1e4 : now, key);
 }
 const moved = () => Z.s !== 1 || Z.x !== 0 || Z.y !== 0;
 const plane = (x, y) => { const r = frame.getBoundingClientRect(); return unproj(x - r.left, y - r.top, curBase.t * TILT); };
@@ -420,7 +457,7 @@ const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1
 const grab = t => ({ p: plane(t.clientX, t.clientY), x: Z.x, y: Z.y });
 let pinch = null, drag = null, aim = null;
 const AIM = 8;
-const springBack = () => { zb = { ...Z, t0: performance.now() + ZWAIT }; };
+const springBack = () => { lastInteract = performance.now(); zb = { ...Z, t0: performance.now() + ZWAIT }; };
 for (const el of [mapwin, isles]) {
   el.addEventListener("touchstart", e => {
     aim = null;
@@ -454,18 +491,29 @@ for (const el of [mapwin, isles]) {
   };
   el.addEventListener("touchend", untouch); el.addEventListener("touchcancel", untouch);
 }
+new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) started = true; }, { threshold: 0.25 }).observe(frame);
 new ResizeObserver(() => layout()).observe(frame);
 RM.addEventListener("change", () => { layout(); liftKey = ""; });
 document.fonts && document.fonts.ready.then(layout);
 
+let last = performance.now();
 function loop() {
-  const now = performance.now();
-  if (backAt && !hover && !kbFocus && !pinch && !drag && now >= backAt) { backAt = 0; go(null, RM.matches); }   // 減少動態：直接切回，不飛
+  const now = performance.now(), dt = Math.min(100, now - last); last = now;
+  if (!frozen) {
+    if (mode === "tour") { if (started && !paused()) tourT = (tourT + dt) % tour.cycle; }
+    else maybeResume(now);
+  }
   draw(now); requestAnimationFrame(loop);
 }
 layout(); draw(performance.now()); requestAnimationFrame(loop);
 
-if (DEV) window.__dev = { select(code) { go(code, true); draw(performance.now()); }, cams: () => cams };
+if (DEV) {   // 開發用：?dev 才有，截圖用
+  window.__tour = {
+    get cycle() { return tour.cycle; }, get segs() { return tour.S.map(s => ({ t0: s.t0, dur: s.dur, dip: s.dip, card: s.ev.length ? s.ev.at(-1)[1] : s.cardFrom })); },
+    seek(ms) { frozen = true; mode = "tour"; tourT = ((ms % tour.cycle) + tour.cycle) % tour.cycle; draw(performance.now()); },
+  };
+  window.__dev = { select(code) { frozen = true; go(code, true); draw(performance.now()); }, cams: () => cams };
+}
 </script>
 </body>
 </html>

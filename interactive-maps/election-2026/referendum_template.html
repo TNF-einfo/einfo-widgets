@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- build_referendum.py 的模板：{{…}} 由產生器填入，不要直接改產出的 referendum-2026.html。
-     版面、鏡頭、浮起、觸控照 map_template.html（選舉地圖）抄，拿掉輪播；改那邊時記得看這邊要不要跟 -->
+     版面、鏡頭、六都輪播、浮起、觸控照 map_template.html（選舉地圖）抄，不放暫停與回全台鈕；改那邊時記得看這邊要不要跟 -->
 <html lang="zh-Hant-TW">
 <head>
 <meta charset="utf-8">
@@ -102,16 +102,11 @@
   footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
     padding:7px 10px 8px 12px; font-size:10px; color:var(--mute); background:none }
   .src{ margin:0; line-height:1.45; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
-  .btns{ display:flex; gap:4px; flex:none }
-  button{ font:inherit; font-size:12px; color:var(--ink); background:var(--btn); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
-    touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
-  button:active{ transform:scale(.97); background:var(--btn-3) }
-  #home[aria-hidden="true"]{ visibility:hidden }
   .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
   :focus-visible{ outline:2px solid var(--sel); outline-offset:2px }
   .cty:focus-visible, .isle:focus-visible{ outline:none }
   @media (hover:hover) and (pointer:fine){
-    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) } button:hover{ background:var(--btn-2) }
+    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) }
   }
 
   /* 橫式（框比 1:1 寬）：資訊卡在右側 */
@@ -129,7 +124,6 @@
     .card dl, .card .kv{ margin-top:6px; padding-top:6px; font-size:12px } .card .kv .m{ font-size:10.5px }
     .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
   }
-  @media (prefers-reduced-motion:reduce){ button{ transition:none } }
 </style>
 </head>
 <body>
@@ -155,13 +149,12 @@
   </div>
   <div class="isles">{{ISLES}}</div>
   <div class="cardpos">
-    <section class="card" id="card" tabindex="0" aria-label="公投結果" aria-live="polite"><div class="in"></div></section>
+    <!-- 輪播一直在換卡，不設 aria-live（照選舉地圖）；完整數字在下面給螢幕閱讀器的表 -->
+    <section class="card" id="card" tabindex="0" aria-label="公投結果"><div class="in"></div></section>
     <div class="card measure" aria-hidden="true"><div class="in"></div></div>
   </div>
   <footer>
-    <p class="src"><span>資料來源：{{SRC}}；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
-    <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1">回全台</button></div>
-  </footer>
+    <p class="src"><span>資料來源：{{SRC}}；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>  </footer>
   <table class="sr"><caption>{{TITLE_FULL}}，各縣市同意與不同意票</caption><tbody>{{TABLE}}</tbody></table>
 </div>
 <script>
@@ -169,14 +162,14 @@
 const D = {{DATA}};
 const $ = s => document.querySelector(s);
 const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
-const ol = $("#ol"), fo = $("#fo"), isles = $(".isles"), homeBtn = $("#home");
+const ol = $("#ol"), fo = $("#fo"), isles = $(".isles");
 const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), liftG = $("#lift"), mapwin = $(".mapwin");
 const $id = id => document.getElementById(id);
 const dOf = (code, outer) => !code ? "" : outer && $id("o" + code) ? $id("o" + code).getAttribute("d")
   : $id("p" + code).getAttribute("d") + ($id("i" + code)?.getAttribute("d") || "");
 const dOl = code => $id("p" + code).classList.contains("isl") ? "" : $id("p" + code).getAttribute("d");   // 白色外框只框本島，澎湖不框
 const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
-const ISLE = new Set(D.isles), HTML = D.cards;   // HTML.TW 是全國總覽
+const SIX = D.six, ISLE = new Set(D.isles), HTML = D.cards;   // HTML.TW 是全國總覽
 const RM = matchMedia("(prefers-reduced-motion: reduce)");
 const DEV = new URLSearchParams(location.search).has("dev");
 // 小地圖浮起的影子：原位複製一份島的路徑（複製 d、不用 <use>）
@@ -208,7 +201,7 @@ function unproj(X, Y, a = TILT) {
 }
 
 // ── 版面 ──
-let W, H, cams = {}, smallHits = [];
+let W, H, cams = {}, tour = null, smallHits = [];
 function fit(bb, R, pad, t, kmax = Infinity, kmin = 0) {
   const tw = (R.r - R.l) * (1 - 2 * pad), th = (R.b - R.t) * (1 - 2 * pad), rx = (R.l + R.r) / 2, ry = (R.t + R.b) / 2;
   let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.max(kmin, Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]), kmax));
@@ -253,8 +246,7 @@ function layout() {
   isles.querySelectorAll("svg").forEach(s => { const v = s.viewBox.baseVal, r = s.getBoundingClientRect();
     const u = r.width && r.height ? Math.max(v.width / r.width, v.height / r.height) : 1;
     s.style.setProperty("--lf-t", `translateY(${(-3 * u).toFixed(1)}px)`); });
-  // 換尺寸：鏡頭直接跳到目前目的地的新位置
-  userSeg = seg(cams[userSeg ? userSeg.keyTo : "pano"], userSeg ? userSeg.keyTo : "pano", 0, curCard, performance.now() - 1e4);
+  buildTour();
 }
 
 // ── 鏡頭：中心線性、縮放取對數內插；太遠就中途先拉遠再推近 ──
@@ -262,29 +254,59 @@ function lerpCam(a, b, t, dip) {
   const lk = Math.log2(a.k) + (Math.log2(b.k) - Math.log2(a.k)) * t - dip * Math.sin(Math.PI * t);
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk, t: a.t + (b.t - a.t) * t };
 }
-function seg(from, to, dur, cardTo, t0, keyTo) {   // 資訊卡在鏡頭走到六成時換（沒飛就當下換）
+function seg(from, to, dur, cardFrom, cardTo, t0, keyTo) {   // 資訊卡在鏡頭走到六成時換（沒飛就當下換）；cardTo＝null 是全國總覽
   const a = cams[from] || from, b = cams[to] || to, same = Math.hypot(a.x - b.x, a.y - b.y) * a.k < 0.01 && Math.abs(a.k / b.k - 1) < 1e-9;
   let dip = 0;
-  if (same) dur = 0;
+  if (same) dur = from === to && typeof from === "string" ? dur : 0;   // 輪播停在同一格的那段照樣有長度
   else { const d = Math.hypot(a.x - b.x, a.y - b.y) * Math.sqrt(a.k * b.k);
     if (d > 1.85 * W) { dip = Math.log2(d / (1.3 * W)); dur += dip * 600; } }
-  return { a, b, dur, dip, t0, ev: [[dur ? t0 + easeInv(.6) * dur : t0, cardTo]], keyTo: keyTo ?? to };
+  // 中途拉遠也不收卡：這張圖一直有卡，收起只會閃一下總覽（選舉地圖那邊會先收起）
+  const ev = from !== to || !same ? [[dur ? t0 + easeInv(.6) * dur : t0, cardTo]] : [];
+  return { a, b, dur, dip, t0, ev, cardFrom, keyTo: keyTo ?? to };
 }
 function camAt(s, t) {
   const u = s.dur ? clamp((t - s.t0) / s.dur) : 1;
   if (RM.matches) return u >= easeInv(.6) ? s.b : s.a;
   return lerpCam(s.a, s.b, ease(u), s.dip);
 }
+// 六都輪播照選舉地圖（11-18 加）：全景停 1.75 秒 → 臺北到高雄各停 3.5 秒 → 回全景，一直重複；全景時是全國總覽卡
+function buildTour() {
+  const keep = tour ? tourT / tour.cycle : 0, S = []; let t = 0;
+  const add = (f, to, dur, cf, ct) => { const s = seg(f, to, dur, cf, ct, t); S.push(s); t += s.dur; };
+  add("pano", "pano", 1750, null, null);
+  add("pano", SIX[0], 1500, null, SIX[0]);
+  SIX.forEach((c, i) => { add(c, c, 3500, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
+  add(SIX[5], "pano", 1500, SIX[5], null);
+  const ev = S.flatMap(s => s.ev);
+  tour = { S, cycle: t, ev, holdStart: Object.fromEntries(S.filter(s => s.a === s.b && s.cardFrom).map(s => [s.cardFrom, s.t0])) };
+  tourT = keep * t;
+  // 換尺寸：讀者點選中的鏡頭直接跳到目的地的新位置
+  if (mode === "user" && userSeg) userSeg = seg(cams[userSeg.keyTo] || cams.pano, userSeg.keyTo, 0, curCard, curCard, performance.now() - 1e4);
+}
 
-// ── 狀態：沒有輪播，鏡頭只跟著讀者走 ──
-let userSeg = null, userEv = [[-1e9, null]];
+// ── 狀態：輪播（tour）與讀者點選（user），照選舉地圖 ──
+let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, userEv = [], resumeTo = -1, lastSix = -1;
+let backAt = 0;   // 點六都以外的縣市（含金門、連江）：這個時刻自動回全國總覽；0＝沒有排
+let hover = false, focusIn = false, held = false, inView = DEV, lastInteract = 0;
 let curCam = null, curCard = null, shown, lastVB = "", lastTr = null;
 let curLift = { code: null, v: 0 }, drop = null, liftKey = "", foCode = null, curBase = null;
 let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };
+// 沒有暫停鈕（11-18 定）：滑鼠停在地圖上、手指按著、鍵盤聚焦、地圖捲出畫面時暫停
+const paused = () => hover || focusIn || held || !inView || document.hidden || moved() || zb != null;
 
 function cardAt(evs, t) {
   let i = -1; for (let j = 0; j < evs.length; j++) if (evs[j][0] <= t) i = j;
   return i < 0 ? [evs.at(-1)?.[1] ?? null, null, 1e9] : [evs[i][1], i > 0 ? evs[i - 1][1] : evs.at(-1)[1], t - evs[i][0]];
+}
+function tourState(t) {
+  const s = tour.S.find(s => t >= s.t0 && t < s.t0 + s.dur) || tour.S.at(-1);
+  let [cur, prev, el] = cardAt(tour.ev, t);
+  if (el === 1e9) { const ev = tour.ev.at(-1); el = t + tour.cycle - ev[0]; prev = tour.ev.at(-2)[1]; }
+  lastSix = SIX.indexOf(cur) >= 0 ? SIX.indexOf(cur) : (t < tour.S[2].t0 ? -1 : 5);
+  // 浮起只在停住的那段：抵達後抬起，離開前先放下
+  const hold = s.a === s.b && s.cardFrom && !ISLE.has(s.cardFrom);
+  const lift = hold ? { code: s.cardFrom, v: ease(clamp(Math.min((t - s.t0) / UP, (s.t0 + s.dur - t) / DOWN))) } : { code: null, v: 0 };
+  return { cam: camAt(s, t), cur, prev, el, atPano: s.a === cams.pano && s.b === cams.pano, lift };
 }
 function userState(now) {
   const [cur, prev, el] = cardAt(userEv, now), end = userSeg.t0 + userSeg.dur, to = userSeg.keyTo;
@@ -295,11 +317,11 @@ function userState(now) {
 }
 
 function draw(now) {
-  const st = userState(now);
+  const st = mode === "tour" ? tourState(tourT) : userState(now);
   if (zb && now >= zb.t0) {
     const u = RM.matches ? 1 : clamp((now - zb.t0) / ZBACK), e = easeOut(u);
     Z = u >= 1 ? { s: 1, x: 0, y: 0 } : { s: zb.s + (1 - zb.s) * e, x: zb.x * (1 - e), y: zb.y * (1 - e) };
-    if (u >= 1) zb = null;
+    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 2.5 秒
   }
   curBase = st.cam;
   const c = curCam = zcam(st.cam);
@@ -316,8 +338,6 @@ function draw(now) {
   }
   renderCard(st.cur, st.prev, st.el);
   renderLift(RM.matches ? { code: st.cur && !ISLE.has(st.cur) ? st.cur : null, v: 1 } : st.lift, c.k);
-  const home = st.atPano && st.cur == null;
-  homeBtn.setAttribute("aria-hidden", home); homeBtn.tabIndex = home ? -1 : 0;
 }
 let liftCode = null;
 function renderLift(L, k) {
@@ -353,26 +373,39 @@ function renderCard(cur, prev, el) {   // cur＝null 是全國總覽；換卡只
   }
 }
 
-// ── 互動 ──
-// 點縣市（含金門、連江）：鏡頭到了停 3.5 秒自動回全國總覽，比照選舉地圖點非六都（11-18）。
-// 捏、拖就取消；滑鼠停在地圖上或鍵盤聚焦時先不回，離開後到時間就回
-let backAt = 0, hover = false, kbFocus = false;
+// ── 互動：照選舉地圖。點六都跳到輪播那一站接著輪；點其他縣市（含金門、連江）停 3.5 秒自動回全國總覽（11-18）。
+// 再點、捏、拖、Esc 都會蓋掉自動回去；滑鼠停在地圖上、鍵盤聚焦時先不回。回到總覽 2.5 秒沒動作就接著輪。
+// 沒有回全台鈕（11-18 定）：回總覽靠點地圖空白處、Esc，或等自動回去
 function go(code, instant) {   // code＝縣市代碼，null＝回全國總覽
-  const now = performance.now();
+  const now = performance.now(); lastInteract = now; resumeTo = -1;
   Z = { s: 1, x: 0, y: 0 }; zb = null;
-  userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  mode = "user";
   const to = code == null || ISLE.has(code) ? "pano" : code;
-  userSeg = seg(curCam, to, 1500, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
+  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
   userEv.push(...userSeg.ev);
-  backAt = code != null ? userSeg.t0 + userSeg.dur + 3500 : 0;
+  if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
+  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
 }
-frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
-frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
 function putDown(now, to, instant) {
   drop = null;
   if (instant || RM.matches || curLift.v <= 0 || curLift.code === to) return 0;
   drop = { code: curLift.code, v: curLift.v, t0: now, end: now + DOWN * curLift.v };
   return drop.end - now;
+}
+function maybeResume(now) {
+  if (resumeTo >= 0) {
+    if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
+    return;
+  }
+  const end = userSeg.t0 + userSeg.dur;
+  if (paused() || now < end) return;
+  if (backAt) { if (now >= backAt) go(null, RM.matches); return; }   // 減少動態：直接切回，不飛
+  const pano = userSeg.keyTo === "pano" && curCard == null;
+  if (now - (pano ? Math.max(lastInteract, end) : lastInteract) < 2500) return;
+  const n = (lastSix + 1) % 6;
+  userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
 }
 function codeOf(e) { const t = e.target.closest("[data-code]"); return t && t.dataset.code; }
 const nearestDot = e => { let best = null, bd = Infinity;   // 點擊圓重疊時選離手指最近的圓心
@@ -386,14 +419,17 @@ frame.addEventListener("keydown", e => {
   if (e.key === "Escape") { go(null); return; }
   if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.code) { e.preventDefault(); go(e.target.dataset.code); }
 });
-// 焦點外緣只給鍵盤用（手指點縣市也會聚焦，畫了會在 iPhone 上變成兩圈破邊）
+// 焦點外緣只給鍵盤用（手指點縣市也會聚焦，畫了會在 iPhone 上變成兩圈破邊）；也只有鍵盤聚焦才算暫停
 frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
-  const kb = e.target.matches && e.target.matches(":focus-visible"); kbFocus = !!kb;
+  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
   fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });
-frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { kbFocus = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
-homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
+frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
+frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
+frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
+frame.addEventListener("pointerdown", () => { held = true; lastInteract = performance.now(); });
+addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
 
 // ── 觸控縮放：照選舉地圖。雙指 0.5 到 2 倍、縮放中單指拖、1 倍時橫向起手的單指拖；放手 0.5 秒後 0.3 秒彈回 ──
 const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
@@ -406,12 +442,13 @@ function setZ(s, x, y) {
   const cl = (v, a, b, m) => Math.min(Math.max(a, b) + m, Math.max(Math.min(a, b) - m, v));
   Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
 }
-function holdCam(now) {   // 開始捏或拖：飛行中就停在這一格，彈回也回到這一格；不再自動回全國總覽
-  zb = null; backAt = 0;
-  if (now >= userSeg.t0 + userSeg.dur) return;
+function holdCam(now) {   // 開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格；不再自動回全國總覽
+  lastInteract = now; zb = null; backAt = 0;
+  if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
+  const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
   const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
-  userEv = [[-1e9, curCard]]; drop = null;
-  userSeg = seg(curBase, curBase, 0, curCard, curLift.code === key ? now - 1e4 : now, key);
+  userEv = [[-1e9, curCard]]; mode = "user"; resumeTo = -1; drop = null;
+  userSeg = seg(atP ? P : b, atP ? P : b, 0, curCard, curCard, curLift.code === key ? now - 1e4 : now, key);
 }
 const moved = () => Z.s !== 1 || Z.x !== 0 || Z.y !== 0;
 const plane = (x, y) => { const r = frame.getBoundingClientRect(); return unproj(x - r.left, y - r.top, curBase.t * TILT); };
@@ -420,7 +457,7 @@ const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1
 const grab = t => ({ p: plane(t.clientX, t.clientY), x: Z.x, y: Z.y });
 let pinch = null, drag = null, aim = null;
 const AIM = 8;
-const springBack = () => { zb = { ...Z, t0: performance.now() + ZWAIT }; };
+const springBack = () => { lastInteract = performance.now(); zb = { ...Z, t0: performance.now() + ZWAIT }; };
 for (const el of [mapwin, isles]) {
   el.addEventListener("touchstart", e => {
     aim = null;
@@ -454,18 +491,29 @@ for (const el of [mapwin, isles]) {
   };
   el.addEventListener("touchend", untouch); el.addEventListener("touchcancel", untouch);
 }
+new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) started = true; }, { threshold: 0.25 }).observe(frame);
 new ResizeObserver(() => layout()).observe(frame);
 RM.addEventListener("change", () => { layout(); liftKey = ""; });
 document.fonts && document.fonts.ready.then(layout);
 
+let last = performance.now();
 function loop() {
-  const now = performance.now();
-  if (backAt && !hover && !kbFocus && !pinch && !drag && now >= backAt) { backAt = 0; go(null, RM.matches); }   // 減少動態：直接切回，不飛
+  const now = performance.now(), dt = Math.min(100, now - last); last = now;
+  if (!frozen) {
+    if (mode === "tour") { if (started && !paused()) tourT = (tourT + dt) % tour.cycle; }
+    else maybeResume(now);
+  }
   draw(now); requestAnimationFrame(loop);
 }
 layout(); draw(performance.now()); requestAnimationFrame(loop);
 
-if (DEV) window.__dev = { select(code) { go(code, true); draw(performance.now()); }, cams: () => cams };
+if (DEV) {   // 開發用：?dev 才有，截圖用
+  window.__tour = {
+    get cycle() { return tour.cycle; }, get segs() { return tour.S.map(s => ({ t0: s.t0, dur: s.dur, dip: s.dip, card: s.ev.length ? s.ev.at(-1)[1] : s.cardFrom })); },
+    seek(ms) { frozen = true; mode = "tour"; tourT = ((ms % tour.cycle) + tour.cycle) % tour.cycle; draw(performance.now()); },
+  };
+  window.__dev = { select(code) { frozen = true; go(code, true); draw(performance.now()); }, cams: () => cams };
+}
 </script>
 </body>
 </html>
