@@ -274,7 +274,7 @@ def main():
     isles = "".join(
         f'<div class="isle" data-code="{k}" tabindex="0" role="button" aria-label="{aria(res[k])}">'
         f'<svg viewBox="{inset_vb(res[k]["bbox"])}" preserveAspectRatio="xMidYMid meet">'
-        f'<path class="g-{res[k]["group"]}" d="{geom_d(geoms[k])}"/></svg><span>{res[k]["name"]}</span></div>'
+        f'<g class="lf"><path class="g-{res[k]["group"]}" d="{geom_d(geoms[k])}"/></g></svg><span>{res[k]["name"]}</span></div>'
         for k in ("09007", "09020"))
 
     groups = [c["group"] for c in res.values()]
