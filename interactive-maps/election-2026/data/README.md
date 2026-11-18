@@ -19,7 +19,10 @@
 ```
 python -I scripts/fetch_cec.py            # 原始檔已在 raw/ 就不重抓，加 --force 重抓
 python -I scripts/build_counties.py 0.001 # 印出各種容差的大小，寫出指定容差那一份
+python -I build_referendum.py             # 公投地圖：data/referendum21_2025.json → referendum-2026.html；開票夜加 --data 指到第 22 案的資料檔
 ```
+
+`referendum21_2025.json` 的 `case` 是案號、地圖標題用的簡稱、主文、投票日、投票權人總額（null＝22 縣市加總），`fetch_cec.py` 從 `raw/cec_db/ref_list_N.json` 寫入，簡稱是手寫的。
 
 各種容差量到的大小（22 縣市、裁掉東沙南沙釣魚臺後）：
 

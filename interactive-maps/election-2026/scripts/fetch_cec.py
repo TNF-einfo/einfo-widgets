@@ -121,7 +121,11 @@ def main():
             "downloaded": time.strftime("%Y-%m-%d"), "license": "政府資料開放授權條款－第1版"}
     (OUT / "mayor_2022.json").write_text(json.dumps({"meta": meta, "counties": m}, ensure_ascii=False, indent=1), encoding="utf-8")
     r = referendum(force)
-    (OUT / "referendum21_2025.json").write_text(json.dumps({"meta": meta, "counties": r}, ensure_ascii=False, indent=1), encoding="utf-8")
+    # 案號、主文、投票日取自公投清單（raw/cec_db/ref_list_N.json）；short 是地圖標題用的簡稱，electorate 留 null＝22 縣市加總
+    theme = THEMES["ref21_2025"][1].split("/")[1]
+    t = next(t for a in json.loads((RAW / "ref_list_N.json").read_text(encoding="utf-8")) for t in a["theme_items"] if t["theme_id"] == theme)
+    case = {"no": t["case_no"], "short": "核三延役", "topic": t["topic"], "vote_date": t["vote_date"], "electorate": None}
+    (OUT / "referendum21_2025.json").write_text(json.dumps({"meta": meta, "case": case, "counties": r}, ensure_ascii=False, indent=1), encoding="utf-8")
     tally = {}
     for e in m:
         tally[e["winner_group"]] = tally.get(e["winner_group"], 0) + 1

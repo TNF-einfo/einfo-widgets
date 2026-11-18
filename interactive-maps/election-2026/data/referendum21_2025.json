@@ -4,6 +4,13 @@
   "downloaded": "2026-11-17",
   "license": "政府資料開放授權條款－第1版"
  },
+ "case": {
+  "no": 21,
+  "short": "核三延役",
+  "topic": "您是否同意第三核能發電廠經主管機關同意確認無安全疑慮後，繼續運轉？",
+  "vote_date": "2025-08-23",
+  "electorate": null
+ },
  "counties": [
   {
    "code": "09007",
