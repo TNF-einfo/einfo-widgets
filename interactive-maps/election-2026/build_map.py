@@ -155,6 +155,8 @@ def load_editorial(path, res, errors):
             continue
         if len(text) > 60:
             print(f"警告：{c['name']} {cand} 的{row['kind']}有 {len(text)} 字，超過 60 字", file=sys.stderr)
+        if not c["all"]:   # 還沒有候選人名單（開票夜手動輸入、還沒抄的縣市）：沒得對，也不報
+            continue
         if cand not in c["all"]:   # 試算表列全部候選人，只有姓名打錯才報；沒當選的照樣不顯示
             print(f"警告：{c['name']} 的「{cand}」對不到候選人名單（{'、'.join(c['all'])}），這則不顯示", file=sys.stderr)
             continue
