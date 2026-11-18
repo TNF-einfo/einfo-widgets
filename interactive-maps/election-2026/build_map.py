@@ -149,8 +149,8 @@ def load_editorial(path, res, errors):
     for row in csv.DictReader(open(path, encoding="utf-8-sig")):
         code, cand, text = row["code"].strip(), fix_name(row["candidate"].strip()), row["text"].strip()
         c = res.get(code)
-        if not c or not c["six"]:
-            errors.append(f"政見金句：{code} 不是六都")
+        if not c:
+            errors.append(f"政見金句：{code} 對不到縣市")
             continue
         if len(text) > 60:
             print(f"警告：{c['name']} {cand} 的{row['kind']}有 {len(text)} 字，超過 60 字", file=sys.stderr)
@@ -160,7 +160,7 @@ def load_editorial(path, res, errors):
             continue
         win = next((p for p in c["cands"] if p["elected"]), None)
         if win and html.unescape(win["name"]) == cand and text:
-            c["quote"] = {"kind": html.escape(row["kind"].strip()), "text": html.escape(text), "source": html.escape(row["source"].strip())}
+            c["quote"] = {"text": html.escape(text), "source": html.escape(row["source"].strip())}
 
 
 def font_text(page):
@@ -190,7 +190,7 @@ def aria(c):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(HERE / "data" / "mayor_2022.json"))
-    ap.add_argument("--editorial", help="六都政見金句 CSV（格式照 data/editorial_template.csv）；不給就照資料年份讀 "
+    ap.add_argument("--editorial", help="環境金句 CSV（格式照 data/editorial_template.csv）；不給就照資料年份讀 "
                     + "、".join(f"{y}→{p.relative_to(HERE).as_posix()}" for y, p in EDITORIAL.items()) + "，正式檔名只能用這份")
     ap.add_argument("--counties", default=str(HERE / "data" / "counties.geojson"))
     ap.add_argument("--out", default=str(DEFAULT_OUT))

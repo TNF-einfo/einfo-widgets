@@ -196,7 +196,7 @@ function cardHTML(c) {
     `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? "<em>當選</em>" : ""}<span class="sr">（${p.party}）</span></span>` +
     `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span></li>`).join("") + "</ol>";
   if (c.note) h += `<p class="note">${c.note}</p>`;
-  if (c.quote) h += `<blockquote><span class="k">環境${c.quote.kind}</span><p>${c.quote.text}</p><cite>${c.quote.source}</cite></blockquote>`;
+  if (c.quote) h += `<blockquote><span class="k">環境金句</span><p>${c.quote.text}</p><cite>${c.quote.source}</cite></blockquote>`;
   return h;
 }
 const HTML = Object.fromEntries(D.counties.map(c => [c.code, cardHTML(c)]));
