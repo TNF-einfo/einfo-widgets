@@ -281,8 +281,10 @@ def main():
     title = f"{year} 縣市長選舉結果"
     live = any(c["status"] in ("counting", "called", "pending") for c in res.values())
     times = sorted(c["updated"] for c in res.values() if c["updated"])
-    src_date = f"<i>{date}</i> 開票中，資料時間 {times[-1]}" if live and times else f"<i>{date}</i> 開票結果"
-    src_date += "".join(f"（{c['name']} <i>{c['vote_date']}</i> 重行選舉）" for c in res.values() if c["vote_date"] not in ("", date))
+    # 每個詞包一個不換行的 <i>：只在詞與詞之間換行，不會斷成「重行選／舉）」（平板 528 直式看到的，11-18）；
+    # 整段包起來的話手機會多一行
+    src_date = f"<i>{date}</i> <i>開票中</i>，<i>資料時間 {times[-1]}</i>" if live and times else f"<i>{date}</i> <i>開票結果</i>"
+    src_date += "".join(f"<i>（{c['name']}</i> <i>{c['vote_date']}</i> <i>重行選舉）</i>" for c in res.values() if c["vote_date"] not in ("", date))
     legend = [("kmt", "國民黨"), ("dpp", "民進黨"), ("tpp", "民眾黨"), ("oth", "其他")]
     if "pend" in groups:   # 斜線圖例照實際出現的狀態寫，延後的嘉義市不會被寫成「開票中」
         st = {c["status"] for c in res.values() if c["group"] == "pend"}

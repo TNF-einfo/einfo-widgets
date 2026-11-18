@@ -126,12 +126,13 @@
   }
   @media (min-aspect-ratio:1/1) and (max-width:620px){
     .ttl{ padding:7px 12px } h1{ font-size:19px } .ttl img{ height:16px } .legend{ font-size:12px; gap:3px 9px; padding:5px 12px 6px }
-    .cardpos{ width:230px; right:12px }
-    .card{ padding:10px 12px 11px } .card h2{ font-size:15px } .card li{ font-size:12.5px; column-gap:6px; grid-template-columns:18px minmax(0,1fr) auto 4.4em }
-    .bd{ width:18px; height:18px; font-size:11.5px; border-radius:4px } .card blockquote p{ font-size:12.5px }
+    /* 卡片 260px、每位候選人一列：11-18 起每個縣市都有環境金句，原本 230px 把姓名與票數拆兩列，金句被切在卡片外 */
+    .cardpos{ width:260px; right:12px }
+    .card{ padding:9px 12px } .card h2{ font-size:15px } .card ol{ margin-top:7px }
+    .card li{ font-size:12.5px; column-gap:6px; grid-template-columns:18px minmax(0,1fr) auto 4.4em }
+    .bd{ width:18px; height:18px; font-size:11.5px; border-radius:4px }
+    .card blockquote{ margin-top:6px; padding-top:6px } .card blockquote p{ font-size:12px; line-height:1.5 } .card cite{ font-size:11px }
     .card .nm em{ margin-left:4px }
-    /* 卡片只有 230px：姓名一列、票數與得票率另起一列，七位數票數旁的姓名才不會斷成三行 */
-    .card .nm{ grid-column:2 / -1 } .card .v{ grid-column:3 } .card .pc{ grid-column:4 }
     .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
   }
   @media (prefers-reduced-motion:reduce){ button{ transition:none } }
@@ -252,7 +253,8 @@ function layout() {
   const FADE = 40, mwT = Math.max(0, hdrB - FADE);
   mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px"; BD = { t: mwT, b: H - ftrH };
   const pos = $(".cardpos");
-  pos.style.top = land ? hdrB + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
+  // 橫式卡片從圖例下面就開始（蓋在漸層上）：漸層那 40px 只是地圖淡出，平板 528×352 少了它金句會放不下（11-18）
+  pos.style.top = land ? hdrB - FADE + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
   isles.style.top = hdrB + 8 + "px";
   const pr = pos.getBoundingClientRect();
   // 軸心放在留給縣市的空白中央，透視距離約框長邊的 2.2 倍（角度小、近大遠小也小）
@@ -458,7 +460,14 @@ function maybeResume(now) {
   userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
 }
 function codeOf(e) { const t = e.target.closest("[data-code]"); return t && t.dataset.code; }
-svg.addEventListener("click", e => { const c = codeOf(e); go(c || null); });
+// 小縣市的隱形點擊圓會互相蓋住（臺北、基隆的圓心在手機全景只差約 18px，點基隆中間會選到臺北）：
+// 點到圓的時候改選離手指最近的圓心（11-18）
+const nearestDot = e => { let best = null, bd = Infinity;
+  for (const { el } of smallHits) { if (!(+el.getAttribute("r") > 0)) continue;
+    const b = el.getBoundingClientRect(), d = Math.hypot(e.clientX - b.left - b.width / 2, e.clientY - b.top - b.height / 2);
+    if (d < bd) { bd = d; best = el.dataset.code; } }
+  return best; };
+svg.addEventListener("click", e => { const c = e.target.classList.contains("dot") ? nearestDot(e) : codeOf(e); go(c || null); });
 isles.addEventListener("click", e => { const c = codeOf(e); if (c) go(c); });
 frame.addEventListener("keydown", e => {
   if (e.key === "Escape") { go(null); return; }
@@ -470,7 +479,7 @@ frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.
   const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
   fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
-  isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", i === e.target)); });
+  isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });   // 手指點小地圖不畫白邊（11-18）
 frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
 frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
 frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
