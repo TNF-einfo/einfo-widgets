@@ -120,7 +120,7 @@
 4. `python -I build_map.py --data data/results_2026.json`：投票日是 2026，標題跟著變、金句改讀 `data/editorial.csv`。看印出來的各縣市分組，有「對不到候選人名單」的警告要先處理（金句表的姓名跟中選會不一樣）。
 5. 本機開 `election-2026.html` 看一眼，commit、push，開 Pages 網址加 `?v=<commit>` 確認；讀者最多 10 分鐘看到。
 6. 重複 3 到 5，一輪最快約 2 分鐘，22 縣市都是 `final` 就停。
-7. 公投開完：`python -I scripts/fetch_live.py ref-web <前綴> --short <簡稱> --electorate <中選會公告的投票權人總額>`，再 `python -I build_referendum.py --data data/referendum22_2026.json`，看印出來的全國同意、不同意、門檻、通過與否，commit、push。
+7. 公投開完：`python -I scripts/fetch_live.py ref-web <前綴> --electorate <中選會公告的投票權人總額>`（副標的簡稱預設「廢除非核家園」，11-18 定），再 `python -I build_referendum.py --data data/referendum22_2026.json`，看印出來的全國同意、不同意、門檻、通過與否，commit、push。
    公投頁的表格沒有樣本，解析是照表頭的字猜的（同意、不同意、有效、無效、投票數、投票權人），先抓一頁對過再跑；對不上就改 `parse_ref()`。
 8. 抓不到或格式變了、當晚改不完：複製 `data/results_2026_template.csv` 成 `data/results_2026.csv`，照開票頁手動抄，`python -I scripts/fetch_live.py mayor-csv` 轉 JSON 後接第 4 步；公投用 `data/referendum22_2026_template.csv` 與 `ref-csv`。
    CSV 的 `others` 欄（第 3 名以後，`姓名|政黨|票數|得票率` 用 `;` 隔開）手動抄可以留空，留空時金句表裡第三名的姓名會被報「對不到」，不影響地圖。

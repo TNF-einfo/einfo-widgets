@@ -38,8 +38,8 @@ STATUSES = ("pending", "counting", "called", "final", "postponed")
 MAYOR_COLS = ["code", "county", "status", "updated", "stations_reported", "stations_total",
               "c1_name", "c1_party", "c1_votes", "c1_pct", "c2_name", "c2_party", "c2_votes", "c2_pct", "winner", "note", "others"]
 REF_COLS = ["code", "county", "agree", "disagree", "valid", "invalid", "votes_cast", "electorate", "updated"]
-# 第 22 案（中選會 115-08-28 公告）；簡稱還沒定，投票權人總額等中選會公告（null＝22 縣市加總）
-CASE22 = {"no": 22, "short": "", "topic": "你是否支持政府使用「核電」振興經濟，以廢除「非核家園」的能源政策？",
+# 第 22 案（中選會 115-08-28 公告）；簡稱 11-18 定為「廢除非核家園」，投票權人總額等中選會公告（null＝22 縣市加總）
+CASE22 = {"no": 22, "short": "廢除非核家園", "topic": "你是否支持政府使用「核電」振興經濟，以廢除「非核家園」的能源政策？",
           "vote_date": DATE, "electorate": None}
 
 
@@ -442,7 +442,7 @@ def main():
     ap.add_argument("cmd", choices=["mayor-web", "ref-web", "mayor-csv", "ref-csv", "selftest"])
     ap.add_argument("arg", nargs="?", help="web：網址前綴；csv：CSV 路徑")
     ap.add_argument("--date", default=DATE, help="投票日，也拿來補開票頁上沒寫的年份")
-    ap.add_argument("--short", default="", help="公投簡稱（地圖副標的粗體字），沒給就只放主文")
+    ap.add_argument("--short", help=f"公投簡稱（地圖副標的粗體字），預設「{CASE22['short']}」")
     ap.add_argument("--electorate", type=int, help="中選會公告的投票權人總額（算門檻用）；沒給就用 22 縣市加總")
     a = ap.parse_args()
     if a.cmd == "selftest":
@@ -456,7 +456,8 @@ def main():
     if mayor:
         mayor_json(csv_path, csv_path.with_suffix(".json"), a.date)
     else:
-        ref_json(csv_path, csv_path.with_suffix(".json"), {**CASE22, "short": a.short, "vote_date": a.date, "electorate": a.electorate})
+        ref_json(csv_path, csv_path.with_suffix(".json"), {**CASE22, "short": CASE22["short"] if a.short is None else a.short,
+                                                           "vote_date": a.date, "electorate": a.electorate})
 
 
 if __name__ == "__main__":
