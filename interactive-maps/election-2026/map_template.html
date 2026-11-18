@@ -45,11 +45,11 @@
   .g-tpp{ fill:var(--tpp); background:var(--tpp) } .g-oth{ fill:var(--oth); background:var(--oth) }
   .g-pend{ fill:url(#hatch); background:repeating-linear-gradient(-45deg,var(--pend-line) 0 1.2px,var(--pend) 1.2px 4px) }
   .hp{ fill:var(--pend) } .hl{ fill:var(--pend-line) } #hatchH .hp{ fill:var(--pend-hi) } #hatchH .hl{ fill:var(--pend-line-hi) }
-  /* 點到的離島小地圖：打亮加外緣（小地圖不浮起） */
+  /* 點到的離島小地圖：只打亮，不畫白邊（11-18：離島都不要白框；鍵盤焦點照樣畫） */
   .isle.on .g-kmt{ fill:var(--kmt-hi) } .isle.on .g-dpp{ fill:var(--dpp-hi) } .isle.on .g-tpp{ fill:var(--tpp-hi) } .isle.on .g-oth{ fill:var(--oth-hi) }
-  .isle path{ stroke:none } .isle.on path, .isle.focus path{ stroke:var(--sel); stroke-width:2; stroke-linejoin:round }
+  .isle path{ stroke:none } .isle.focus path{ stroke:var(--sel); stroke-width:2; stroke-linejoin:round }
   .cty{ cursor:pointer; outline:none; touch-action:manipulation }
-  .cty path{ stroke:var(--line); stroke-width:1; stroke-linejoin:round }
+  .cty path{ stroke:var(--line); stroke-width:1; stroke-linejoin:round } .cty path.isl{ stroke:none }
   .hit{ fill:none; pointer-events:all; cursor:pointer; touch-action:manipulation }
   /* 浮起的板子是複製過來的 <path>（不用 <use>：WebKit 會把原路徑的 .cty path 樣式帶進 <use> 的複本，畫出深色雙邊）；
      影子不用模糊濾鏡，只用兩層平的色塊：原位的側面、再往下錯開的半透明接觸影 */
@@ -177,8 +177,11 @@ const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.fir
 const hatch = $("#hatch"), hatchH = $("#hatchH"), hatchI = $("#hatchI"), ol = $("#ol"), fo = $("#fo"), isles = $(".isles"), homeBtn = $("#home"), pauseBtn = $("#pause");
 const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), mapwin = $(".mapwin");
 // 縣市路徑的 d（outer＝外緣只框自己，新北不框到臺北）；浮起、外緣、焦點都複製 d，不用 <use>
-const dOf = (code, outer) => code ? ((outer && document.getElementById("o" + code)) || document.getElementById("p" + code)).getAttribute("d") : "";
-const dOl = code => (document.getElementById("w" + code) || document.getElementById("p" + code)).getAttribute("d");   // 白色外框不框離島（產生器給的 w 路徑）
+// p 是本島（澎湖是整個縣、標 isl），i 是外海小島（11-18 拆開：離島不畫白邊）
+const $id = id => document.getElementById(id);
+const dOf = (code, outer) => !code ? "" : outer && $id("o" + code) ? $id("o" + code).getAttribute("d")
+  : $id("p" + code).getAttribute("d") + ($id("i" + code)?.getAttribute("d") || "");
+const dOl = code => $id("p" + code).classList.contains("isl") ? "" : $id("p" + code).getAttribute("d");   // 白色外框只框本島，澎湖不框
 const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
 const SIX = D.six, ISLE = new Set(D.isles);
 const RM = matchMedia("(prefers-reduced-motion: reduce)");

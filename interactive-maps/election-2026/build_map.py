@@ -239,14 +239,21 @@ def main():
         attrs = f'data-code="{code}" tabindex="0" role="button" aria-label="{aria(c)}"'
         if code in ISLES:   # 金門、連江只畫在左上角的小地圖（下面的 isles）
             continue
-        paths.append(f'<g class="cty g-{c["group"]}" {attrs}><path id="p{code}" {nss} d="{d}"/></g>')
+        # 離島不畫白邊，浮起時也不框（11-18）：澎湖整個是 isl；其他縣市的 p 只放本島（連內環），
+        # 綠島、蘭嶼、小琉球、龜山島、基隆外海小島放另一條 i、標 isl。浮起的板子用 p＋i，白色外框只用 p
+        ps = polys(g)   # 只取一次：g.geoms 每次都產生新物件，分兩次取的話下面的 is 比對永遠不成立
+        main = max(ps, key=lambda p: p.area)
+        isl = [p for p in ps if p is not main]
+        assert len(isl) == len(ps) - 1
+        if code == "10016":
+            body = f'<path id="p{code}" class="isl" {nss} d="{d}"/>'
+        elif isl:
+            body = f'<path id="p{code}" {nss} d="{geom_d(main)}"/><path id="i{code}" class="isl" {nss} d="{geom_d(shapely.MultiPolygon(isl))}"/>'
+        else:
+            body = f'<path id="p{code}" {nss} d="{d}"/>'
+        paths.append(f'<g class="cty g-{c["group"]}" {attrs}>{body}</g>')
         if any(p.interiors for p in polys(g)):   # 外緣只框自己（新北不框到臺北、嘉義縣不框到嘉義市）
             defs.append(f'<path id="o{code}" {nss} d="{geom_d(g, holes=False)}"/>')
-        # 浮起的白色外框不框離島（11-18）：澎湖整個不框，其他縣市只框本島那塊（綠島、蘭嶼、小琉球、龜山島、基隆外海小島都不框）
-        if code == "10016":
-            defs.append(f'<path id="w{code}" d=""/>')
-        elif len(polys(g)) > 1:
-            defs.append(f'<path id="w{code}" {nss} d="{geom_d(max(polys(g), key=lambda p: p.area))}"/>')
         c["bbox"] = bbox(g)
         if code in FRAME_SOUTH_OF:   # 拉近取景不算外海小島（島照樣畫）
             c["bbox"] = bbox(shapely.MultiPolygon([p for p in polys(g) if p.representative_point().y < FRAME_SOUTH_OF[code]]))
