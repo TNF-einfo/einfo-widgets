@@ -50,10 +50,8 @@
   .isle.on .g-kmt{ fill:var(--kmt-hi) } .isle.on .g-dpp{ fill:var(--dpp-hi) } .isle.on .g-tpp{ fill:var(--tpp-hi) } .isle.on .g-oth{ fill:var(--oth-hi) }
   .isle .lf{ transition:transform .25s var(--ease-out) }
   .isle.on .lf{ transform:var(--lf-t) }
-  /* 影子是原位一塊半透明的島，板面抬高後在下緣露出一條：不用 CSS 濾鏡，WebKit 不畫 SVG 元素上的 drop-shadow（11-18 實測）；
-     也不加寬描邊，小地圖上的小島會被描邊撐成一顆顆灰點 */
-  .isle .sd{ display:none } .isle.on .sd{ display:inline; fill:rgba(26,35,50,.28) }
-  @media (prefers-reduced-motion:reduce){ .isle .lf{ transition:none } .isle.on .lf{ transform:none } .isle.on .sd{ display:none } }
+  /* 離島不畫陰影（11-18 @gassao1998：澎湖、金門、連江都不要），小地圖只抬高打亮 */
+  @media (prefers-reduced-motion:reduce){ .isle .lf{ transition:none } .isle.on .lf{ transform:none } }
   .isle path{ stroke:none } .isle.focus path{ stroke:var(--sel); stroke-width:2; stroke-linejoin:round }
   .cty{ cursor:pointer; outline:none; touch-action:manipulation }
   .cty path{ stroke:var(--line); stroke-width:1; stroke-linejoin:round } .cty path.isl{ stroke:none }
@@ -212,8 +210,6 @@ function cardHTML(c) {
   return h;
 }
 const HTML = Object.fromEntries(D.counties.map(c => [c.code, cardHTML(c)]));
-// 小地圖浮起的影子：在原位複製一份島的路徑，點到時才顯示（複製 d、不用 <use>：WebKit 會把原路徑的樣式帶進 <use> 的複本）
-isles.querySelectorAll(".isle svg").forEach(s => { const sd = s.querySelector(".lf path").cloneNode(); sd.setAttribute("class", "sd"); s.insertBefore(sd, s.firstChild); });
 
 // ── 曲線 ──
 function bezier(x1, y1, x2, y2) {
@@ -409,7 +405,8 @@ function renderLift(L, k) {
   const key = `${L.code} ${L.v.toFixed(3)}`;
   if (key === liftKey) return;
   liftKey = key;
-  const on = L.code != null, motion = on && !RM.matches;
+  // 澎湖（整個縣標 isl）只打亮、不抬不畫影子：小島一多，影子變成一圈圈灰暈（11-18，跟金門、連江一樣不要陰影）
+  const on = L.code != null, motion = on && !RM.matches && !$id("p" + L.code).classList.contains("isl");
   if (L.code !== liftCode) {
     liftCode = L.code;
     const d = dOf(L.code), g = on ? C[L.code].group : "";
