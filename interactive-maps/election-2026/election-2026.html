@@ -328,7 +328,7 @@ function camAt(s, t) {
 function buildTour() {
   const keep = tour ? tourT / tour.cycle : 0, S = []; let t = 0;
   const add = (f, to, dur, cf, ct) => { const s = seg(f, to, dur, cf, ct, t); S.push(s); t += s.dur; };
-  add("pano", "pano", 3000, null, null);
+  add("pano", "pano", 2500, null, null);   // 一打開與每輪回到全景停 2.5 秒（11-18：原本 3 秒）
   add("pano", SIX[0], 1500, null, SIX[0]);
   // 每個六都停 3.5 秒（11-17：原本 6 秒）
   SIX.forEach((c, i) => { add(c, c, 3500, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
