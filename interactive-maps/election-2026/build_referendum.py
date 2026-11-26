@@ -66,9 +66,9 @@ def ramp(m):
 
 
 def lighter(h):
-    """浮起時打亮的板面：OKLab 亮度 +0.06（白色就還是白色）"""
+    """浮起時打亮的板面：OKLab 亮度 +0.06；接近白色的亮不上去，改成暗 0.06，浮起時才看得出來"""
     L, a, b = oklab(h)
-    return hexc(min(1, L + 0.06), a, b)
+    return hexc(L - 0.06 if L > 0.94 else L + 0.06, a, b)
 
 
 def check_ramp():
@@ -118,14 +118,16 @@ def rows(agree, disagree):
         for k, n, v in (("ya", "同意", agree), ("na", "不同意", disagree))) + "</ol>")
 
 
-def gap_text(c, sep="，"):
+def gap_text(c, pre="，", post=""):
     d = c["agree"] - c["disagree"]
-    who = "同意多" if d >= 0 else "不同意多"
-    return f"{who} {f(abs(d))} 票{sep}占投票數 {abs(c['margin']):.2f}%"
+    if not d:
+        return "同意與不同意同票"
+    who = "同意多" if d > 0 else "不同意多"
+    return f"{who} {f(abs(d))} 票{pre}占投票數 {abs(c['margin']):.2f}%{post}"
 
 
 def county_card(c):
-    gap = gap_text(c, "<i>（") + "）</i>"   # 括號那段不拆行，窄的卡片在括號前換行
+    gap = gap_text(c, "<i>（", "）</i>")   # 括號那段不拆行，窄的卡片在括號前換行
     return (f"<h2>{c['name']}</h2>" + bar(c["agree"], c["disagree"], c["agree"] + c["disagree"]) + rows(c["agree"], c["disagree"])
             + f'<dl><dt>差距</dt><dd>{gap}</dd><dt>投票率</dt><dd>{p2(c["turnout"])}</dd></dl>')
 
