@@ -154,8 +154,8 @@
     .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
   }
   @media (prefers-reduced-motion:reduce){ button{ transition:none } }
-  /* 首頁版才用的東西，文章版一律不顯示：按鈕圖示、放大鈕、右欄、卡片的「另有幾位候選人」、圖例的縣市數、資料時間、已開所數的進度條 */
-  .ic, #full, .side, .card .more, .legend .n, .dtime, .bar{ display:none }
+  /* 首頁版才用的東西，文章版一律不顯示：按鈕圖示、放大鈕、右欄、卡片的「另有幾位候選人」、圖例的縣市數、資料時間 */
+  .ic, #full, .side, .card .more, .legend .n, .dtime{ display:none }
 
   /* ── 首頁版（build_map.py --home，<html class="home">）：首頁「關鍵圖表」的 16:9 框（SPEC「首頁版」）──
      沒有標題、logo、最下面那行；左邊整塊是地圖，右欄（白底）由上而下放圖示按鈕、圖例、資訊卡。
@@ -181,13 +181,11 @@
   .home .cardpos{ position:relative; inset:auto; width:auto; flex:1 1 0; min-height:0; display:flex; flex-direction:column; align-items:stretch; z-index:auto }
   .home .card{ flex:0 1 auto; min-height:0; max-height:none; width:auto; padding:10px 0 0; border-top:1px solid var(--rule); border-radius:0; background:none; box-shadow:none }
   .home .card.measure{ display:none }
-  /* 即時更新（SPEC「首頁版即時更新」）：圖例下面一行資料時間，自動更新中斷時變紅；已開所數是一條小進度條（寬度由 JS 跟票數一起走）；
+  /* 即時更新（SPEC「首頁版即時更新」）：圖例下面一行資料時間，自動更新中斷時變紅；已開所數由 JS 跟票數一起滾；
      開票中標示的圓點輕輕閃。減少動態時圓點不動、數字直接換 */
   .home .dtime{ display:block; margin:0; font-size:11px; line-height:1.3; color:var(--mute); font-variant-numeric:tabular-nums }
   .home .dtime[hidden]{ display:none }
   .home.stale .dtime{ color:#c0392b } [data-theme="night"].home.stale .dtime{ color:#ff6b5e }
-  .home .bar{ display:inline-block; width:56px; height:5px; margin-right:6px; vertical-align:1px; border-radius:3px; background:var(--btn-3); overflow:hidden }
-  .home .bar i{ display:block; height:100%; background:var(--mute) }
   .home .sn{ font-variant-numeric:tabular-nums; white-space:nowrap }
   @keyframes pulse{ 50%{ opacity:.3 } }
   .home .live i{ animation:pulse 2s ease-in-out infinite }
@@ -195,7 +193,6 @@
   @media (hover:hover) and (pointer:fine){ .home #full:hover{ background:var(--btn-2) } }
   @media (max-width:620px){
     .home{ --pad:8px }
-    .home .bar{ width:36px; margin-right:5px }   /* 窄框讓出寬度給所數 */
     .home .top{ flex-direction:column; align-items:stretch; gap:6px }
     .home .btns{ align-self:flex-end; gap:5px }
     .home .btns button, .home #full{ width:28px; height:28px } .home .ic{ width:14px; height:14px }
@@ -284,8 +281,8 @@ const fmt = n => n.toLocaleString("en-US");
 const opened = c => c.stations && c.stations.total ? 100 * c.stations.reported / c.stations.total : 0;   // 已開幾成（%）
 function statusLine(c) {
   const t = c.stations ? `已開 ${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所，` : "";
-  // 首頁版：已開所數畫一條小進度條，旁邊照樣寫所數（11-27 手機也要看得到幾所）；「已開」只給報讀器，省寬度
-  const s = !t ? "" : HOME ? `<span class="bar" aria-hidden="true"><i style="width:${opened(c).toFixed(2)}%"></i></span><span class="sr">已開</span><span class="sn">${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所</span>，${c.updated}` : t + c.updated;
+  // 首頁版：所數包在 .sn 裡，新資料到時跟票數一起滾（11-27 拿掉進度條，只留文字）
+  const s = !t ? "" : HOME ? `已開 <span class="sn">${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所</span>，${c.updated}` : t + c.updated;
   // counting、called 的標題旁有「開票中」標示，這行只寫票所與時間；called 的當選由姓名旁的印章表示
   return { counting: s, called: s, postponed: "選舉延後", pending: D.date.slice(5).replace("-", "/") + " 開票後更新" }[c.status] || "";
 }
@@ -757,7 +754,7 @@ function applyLive(n) {   // 原地換掉每縣的資料物件（輪播、點擊
   if (Object.keys(from).length) ANIM = { t0: performance.now(), from };
   shown = undefined; liftCode = null; liftKey = "";   // 資訊卡與浮起的板子照新資料重畫（板面顏色在 liftCode 換時才設）
 }
-// 資訊卡的票數、得票率、進度條從舊值走到新值，1.5 秒後停在真的數字；減少動態時直接換。兩次更新之間不內插、不外推
+// 資訊卡的票數、得票率、已開所數從舊值走到新值，1.5 秒後停在真的數字；減少動態時直接換。兩次更新之間不內插、不外推
 function countUp(now) {
   const u = RM.matches ? 1 : clamp((now - ANIM.t0) / 1500), e = easeOut(u), f = shown != null && ANIM.from[shown];
   if (f) {
@@ -765,8 +762,7 @@ function countUp(now) {
     cardIn.querySelectorAll("li").forEach((li, i) => { const p = c.cands[i], o = p && (f.c[p.name] || [0, 0]), v = li.querySelector(".v"), pc = li.querySelector(".pc");
       if (!p || !v || !pc) return;
       v.textContent = fmt(Math.round(at(o[0], p.votes))); pc.textContent = at(o[1], p.pct).toFixed(2) + "%"; });
-    const bar = cardIn.querySelector(".bar i"), sn = cardIn.querySelector(".sn");
-    if (bar) bar.style.width = at(f.s, opened(c)).toFixed(2) + "%";
+    const sn = cardIn.querySelector(".sn");
     if (sn && c.stations) sn.textContent = `${fmt(Math.round(at(f.r, c.stations.reported)))}／${fmt(c.stations.total)} 所`;
   }
   if (u >= 1) ANIM = null;
