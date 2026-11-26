@@ -8,6 +8,7 @@
   python -I scripts/fetch_live.py selftest               # 用 2022 的開票頁與資料庫數字自我測試，產出只寫到 preview/
 網址前綴＝開票頁讀縣市結果的網址去掉最後的區域碼。2022 年縣市長是 https://www.cec.gov.tw/zh-TW/TC，
 頁面是 {前綴}/{縣市代碼}000000000000.html；2024、2025 年的開票頁也是這個規則，前綴開票當天從開票頁的網路請求看。
+有人宣布當選、中選會還沒打 ◎：在 data/declared.csv（code,candidate）加一列再抓，地圖蓋章加「開票中」。
 抓網頁時沒抓到的縣市沿用 CSV 裡上一輪的那列，不會倒退成空白。請求匿名（User-Agent 只寫用途），每頁間隔 3 秒，
 原始頁存 data/raw/cec_live_2026/。公投頁的表格 2025 年的存檔沒有抓到，解析是照表頭的字猜的，當天要先看一頁對過。
 """
@@ -137,10 +138,24 @@ def parse_mayor(page, date):
     return cands, *page_meta(text, date)
 
 
-def mayor_row(code, name, cands, stations, updated):
-    """一個縣市 → results CSV 的一列。狀態照 SPEC「算開完」：◎ 且已送等於應送＝開完，◎ 但還沒送完＝當選已確定"""
+def declared():
+    """開票夜編輯說「已宣布當選」、中選會還沒打 ◎ 的人：data/declared.csv（code,candidate）→ {縣市代碼: 姓名}，沒有檔就是空的"""
+    path = DATA / "declared.csv"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        return {r["code"].strip(): r["candidate"].strip() for r in csv.DictReader(f) if (r.get("code") or "").strip() and (r.get("candidate") or "").strip()}
+
+
+def mayor_row(code, name, cands, stations, updated, declared_name=None):
+    """一個縣市 → results CSV 的一列。狀態照 SPEC「算開完」：◎ 且已送等於應送＝開完，◎ 但還沒送完＝當選已確定。
+    頁面沒有 ◎ 但 declared.csv 列了這縣市的人，就當那人已宣布當選（還在開票時是 called，蓋章加開票中）"""
     rep, tot = stations
     won = [k for k, c in enumerate(cands[:2]) if "◎" in c["mark"]]
+    if not won and declared_name:
+        won = [k for k, c in enumerate(cands[:2]) if c["name"] == declared_name]
+        if not won:
+            print(f"注意：{name} 宣布當選的「{declared_name}」不在得票前兩名的姓名裡，沒有標", file=sys.stderr)
     note = "同票，抽籤決定" if any("？" in c["mark"] for c in cands) else ""
     if won:
         status = "final" if tot and rep == tot else "called"
@@ -201,6 +216,7 @@ def write_csv(path, cols, rows):
 def web(kind, prefix, csv_path, raw_dir, date, delay):
     """22 縣市各抓一頁、寫 CSV；沒抓到或解析失敗的縣市沿用 CSV 裡上一輪的那列"""
     names, old, rows, fails = counties(), read_csv(csv_path), [], []
+    dec = declared() if kind == "mayor" else {}
     raw_dir.mkdir(parents=True, exist_ok=True)
     for code, name in sorted(names.items()):
         url = f"{prefix.rstrip('/')}/{code}000000000000.html"
@@ -208,7 +224,7 @@ def web(kind, prefix, csv_path, raw_dir, date, delay):
             page = get(url, delay)
             (raw_dir / f"{kind}_{code}.html").write_text(page, encoding="utf-8")
             if kind == "mayor":
-                rows.append(mayor_row(code, name, *parse_mayor(page, date)))
+                rows.append(mayor_row(code, name, *parse_mayor(page, date), declared_name=dec.get(code)))
             else:
                 v, updated = parse_ref(page, name, date)
                 rows.append({"code": code, "county": name, **v, "updated": updated})
@@ -326,6 +342,14 @@ def selftest():
     assert [(row["c1_name"], row["c1_votes"], row["c1_pct"]), (row["c2_name"], row["c2_votes"], row["c2_pct"])] == \
         [(c["name"], c["votes"], c["pct"]) for c in db["10013"]["candidates"][:2]]
     print("1 真實的 2022 屏東縣開票頁：姓名、票數、得票率、當選、所數、資料時間都跟資料庫一樣")
+
+    # 1b. 宣布當選：頁面還沒有 ◎ 時，declared.csv 列的人照樣當選、狀態是 called；名字對不上就不標
+    half = [dict(c, mark="") for c in cands]
+    r2 = mayor_row("10013", "屏東縣", half, (300, 711), up, declared_name=half[0]["name"])
+    assert (r2["status"], r2["winner"]) == ("called", 1), r2
+    r3 = mayor_row("10013", "屏東縣", half, (300, 711), up, declared_name="不在名單")
+    assert (r3["status"], r3["winner"]) == ("counting", ""), r3
+    print("1b 宣布當選：declared.csv 的人在開票中標成當選（called），名字對不上就照開票中")
 
     # 2. 照真實頁的結構做 22 縣市的假頁，放本機伺服器，走跟開票夜一樣的抓取與轉檔
     states = {"63000": "counting", "64000": "called", "10020": "pending"}   # 臺北開票中、高雄當選已確定、嘉義市還沒開
