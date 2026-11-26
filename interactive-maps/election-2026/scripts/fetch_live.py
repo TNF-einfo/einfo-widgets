@@ -186,9 +186,9 @@ def parse_mayor(page, date):
     return cands, stations, updated
 
 
-def declared():
+def declared(path=None):
     """開票夜編輯說「已宣布當選」、中選會還沒打 ◎ 的人：data/declared.csv（code,candidate）→ {縣市代碼: 姓名}，沒有檔就是空的"""
-    path = DATA / "declared.csv"
+    path = Path(path or DATA / "declared.csv")
     if not path.exists():
         return {}
     try:
@@ -354,10 +354,11 @@ def backwards(o, n, date, declared_name=None):
     return why
 
 
-def web(kind, prefix, csv_path, raw_dir, date, delay):
-    """22 縣市各抓一頁、寫 CSV；沒抓到、解析失敗、檢查不過或比上一輪倒退的縣市沿用上一輪的那列（第一輪是未開票），其他縣市照常更新"""
+def web(kind, prefix, csv_path, raw_dir, date, delay, skip=(), declared_path=None):
+    """22 縣市各抓一頁、寫 CSV；沒抓到、解析失敗、檢查不過或比上一輪倒退的縣市沿用上一輪的那列（第一輪是未開票），其他縣市照常更新。
+    skip 裡的縣市這輪不抓、整列照留（live_loop.py 給已開完的縣市用，每 5 輪才重抓一次）"""
     names, old, rows, fails = counties(), read_csv(csv_path), [], []
-    dec = declared() if kind == "mayor" else {}
+    dec = declared(declared_path) if kind == "mayor" else {}
     pc = party_codes() if kind == "mayor" else {}
     if kind == "mayor":   # 第一輪還沒有 CSV：缺的縣市先放未開票的列（有範本用範本），抓不到也一定有 22 列
         tpl = read_csv(DATA / "results_2026_template.csv")
@@ -370,6 +371,10 @@ def web(kind, prefix, csv_path, raw_dir, date, delay):
         url = f"{prefix.rstrip('/')}/{code}000000000000.html"
         if kind == "mayor" and (old[code].get("status") or "").strip() == "postponed":   # 延後只由人設：這縣不抓、整列照留
             print(f"{name} 是手動設的 postponed，這輪不抓", file=sys.stderr)
+            rows.append(old[code])
+            skipped += 1
+            continue
+        if code in skip and code in old:
             rows.append(old[code])
             skipped += 1
             continue
@@ -400,8 +405,9 @@ def web(kind, prefix, csv_path, raw_dir, date, delay):
 
 
 # ── CSV → JSON ──
-def mayor_county(code, r, names, pc, date):
-    """CSV 的一列 → (地圖 JSON 的一個縣市, 錯誤清單)。mayor_json 與 web() 檢查新抓的列共用，抓網頁時一縣不過只擋那一縣"""
+def mayor_county(code, r, names, pc, date, trailing_ok=False):
+    """CSV 的一列 → (地圖 JSON 的一個縣市, 錯誤清單)。mayor_json 與 web() 檢查新抓的列共用，抓網頁時一縣不過只擋那一縣。
+    trailing_ok：當選人可以不是最高票（只給 live_loop.py 的 overrides.csv force 用：宣布當選的人暫時落後，由人決定照發）"""
     name, errors = names[code], []
     try:
         st, note = (r.get("status") or "").strip() or "pending", (r.get("note") or "").strip()
@@ -435,7 +441,7 @@ def mayor_county(code, r, names, pc, date):
         # 開完卻沒有當選人（同票待抽籤、未達最低當選票數）：winner 留空、note 寫明
         if st == "called" and len(won) != 1 or st == "final" and len(won) != 1 and not (not won and note):
             errors.append(f"{name}：狀態 {st} 要在 winner 填 1 或 2" + ("（開完沒有當選人的，winner 留空並在 note 寫原因）" if st == "final" else ""))
-        if won and won[0]["votes"] < max(c["votes"] for c in cands):
+        if won and won[0]["votes"] < max(c["votes"] for c in cands) and not trailing_ok:
             errors.append(f"{name}：當選的 {won[0]['name']} 不是最高票，winner 填錯了？")
         if sum(c["pct"] for c in cands) > 100.5:
             errors.append(f"{name}：得票率加起來 {sum(c['pct'] for c in cands):.2f}%，超過 100")
@@ -461,13 +467,13 @@ def mayor_county(code, r, names, pc, date):
     return c, errors
 
 
-def mayor_json(csv_path, out, date):
+def mayor_json(csv_path, out, date, trailing_ok=()):
     names, pc, errors, res = counties(), party_codes(), [], {}
     for code, r in read_csv(csv_path, errors).items():
         if code not in names:
             errors.append(f"{code}：不是縣市代碼")
             continue
-        res[code], errs = mayor_county(code, r, names, pc, date)
+        res[code], errs = mayor_county(code, r, names, pc, date, code in trailing_ok)
         errors += errs
     if names.keys() - res.keys():
         errors.append("缺這些縣市：" + "、".join(names[k] for k in sorted(names.keys() - res.keys())))
