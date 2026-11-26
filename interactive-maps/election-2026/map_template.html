@@ -188,12 +188,14 @@
   .home.stale .dtime{ color:#c0392b } [data-theme="night"].home.stale .dtime{ color:#ff6b5e }
   .home .bar{ display:inline-block; width:56px; height:5px; margin-right:6px; vertical-align:1px; border-radius:3px; background:var(--btn-3); overflow:hidden }
   .home .bar i{ display:block; height:100%; background:var(--mute) }
+  .home .sn{ font-variant-numeric:tabular-nums; white-space:nowrap }
   @keyframes pulse{ 50%{ opacity:.3 } }
   .home .live i{ animation:pulse 2s ease-in-out infinite }
   @media (prefers-reduced-motion:reduce){ .home .live i{ animation:none } }
   @media (hover:hover) and (pointer:fine){ .home #full:hover{ background:var(--btn-2) } }
   @media (max-width:620px){
     .home{ --pad:8px }
+    .home .bar{ width:36px; margin-right:5px }   /* 窄框讓出寬度給所數 */
     .home .top{ flex-direction:column; align-items:stretch; gap:6px }
     .home .btns{ align-self:flex-end; gap:5px }
     .home .btns button, .home #full{ width:28px; height:28px } .home .ic{ width:14px; height:14px }
@@ -282,8 +284,8 @@ const fmt = n => n.toLocaleString("en-US");
 const opened = c => c.stations && c.stations.total ? 100 * c.stations.reported / c.stations.total : 0;   // 已開幾成（%）
 function statusLine(c) {
   const t = c.stations ? `已開 ${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所，` : "";
-  // 首頁版：已開所數換成一條小進度條（報讀器照念所數），後面只留時間
-  const s = !t ? "" : HOME ? `<span class="bar" aria-hidden="true"><i style="width:${opened(c).toFixed(2)}%"></i></span><span class="sr">${t}</span>${c.updated}` : t + c.updated;
+  // 首頁版：已開所數畫一條小進度條，旁邊照樣寫所數（11-27 手機也要看得到幾所）；「已開」只給報讀器，省寬度
+  const s = !t ? "" : HOME ? `<span class="bar" aria-hidden="true"><i style="width:${opened(c).toFixed(2)}%"></i></span><span class="sr">已開</span><span class="sn">${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所</span>，${c.updated}` : t + c.updated;
   // counting、called 的標題旁有「開票中」標示，這行只寫票所與時間；called 的當選由姓名旁的印章表示
   return { counting: s, called: s, postponed: "選舉延後", pending: D.date.slice(5).replace("-", "/") + " 開票後更新" }[c.status] || "";
 }
@@ -737,7 +739,7 @@ function applyLive(n) {   // 原地換掉每縣的資料物件（輪播、點擊
   n.counties.forEach(cardHTML);   // 先把每張卡片試算一次：哪一縣的資料壞了就在這裡丟錯，還沒改到任何東西
   for (const c of n.counties) {
     const o = C[c.code], bbox = o.bbox;
-    const f = { c: Object.fromEntries(o.cands.map(p => [p.name, [p.votes, p.pct]])), s: pct(o) ?? 0 };
+    const f = { c: Object.fromEntries(o.cands.map(p => [p.name, [p.votes, p.pct]])), s: pct(o) ?? 0, r: pct(o) == null ? 0 : o.stations.reported };
     if (JSON.stringify(o.cands.map(p => [p.name, p.votes, p.pct])) !== JSON.stringify(c.cands.map(p => [p.name, p.votes, p.pct])) || pct(o) !== pct(c)) from[c.code] = f;
     for (const k of Object.keys(o)) delete o[k];
     Object.assign(o, c, { bbox });
@@ -763,8 +765,9 @@ function countUp(now) {
     cardIn.querySelectorAll("li").forEach((li, i) => { const p = c.cands[i], o = p && (f.c[p.name] || [0, 0]), v = li.querySelector(".v"), pc = li.querySelector(".pc");
       if (!p || !v || !pc) return;
       v.textContent = fmt(Math.round(at(o[0], p.votes))); pc.textContent = at(o[1], p.pct).toFixed(2) + "%"; });
-    const bar = cardIn.querySelector(".bar i");
+    const bar = cardIn.querySelector(".bar i"), sn = cardIn.querySelector(".sn");
     if (bar) bar.style.width = at(f.s, opened(c)).toFixed(2) + "%";
+    if (sn && c.stations) sn.textContent = `${fmt(Math.round(at(f.r, c.stations.reported)))}／${fmt(c.stations.total)} 所`;
   }
   if (u >= 1) ANIM = null;
 }
