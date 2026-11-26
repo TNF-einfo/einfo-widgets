@@ -277,7 +277,7 @@ const STAMP = '<svg class="stamp" viewBox="0 0 24 24" aria-hidden="true" focusab
 function cardHTML(c) {
   const st = statusLine(c), live = c.status === "counting" || c.status === "called";
   let h = `<h2>${c.name}${live ? '<span class="live"><i aria-hidden="true"></i>開票中</span>' : ""}</h2>` + (st ? `<p class="st">${st}</p>` : "");
-  if (c.cands.length && c.status !== "pending") h += "<ol>" + c.cands.map(p =>
+  if (c.cands.length && c.status !== "pending" && c.status !== "postponed") h += "<ol>" + c.cands.map(p =>
     `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? STAMP : ""}<span class="sr">（${p.party}）</span></span>` +
     `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span>` +
     (p.elected && c.tags ? `<span class="tg"><span class="tgl">環境政見：</span>${c.tags.map(g => `<span class="tag t-${g.k}">${g.t}</span>`).join('<span class="sr">、</span>')}</span>` : "") + "</li>").join("") + "</ol>" +
