@@ -151,7 +151,7 @@
 - 出處列的資料時間用完整日期時間比，過了午夜也取最新的那筆。
 - 公投：有效票是 0 報錯（地圖開完才發）；找總計列時先去掉空白、台換成臺，找不到「總計」「合計」或縣市名那列就報錯，不拿第一列；差距是 0 寫「同意與不同意同票」；接近白色的縣市浮起時改成暗一點，才看得出來。
 - `selftest` 多了 1c（格式與當選記號）、3b（只進不退、更正、延後、宣布者落後）、3c（第一輪少一縣）；`python -I preview/edge/run_edge.py` 每個案例都有檢查，沒過的列在最後，結束碼非 0。
-- 沒做：`overrides.csv`（`force`、`reset`）與「資料時間不晚於現在 5 分鐘」留給 `live_loop.py`。在那之前，落後的宣布者要等他領先或中選會打 ◎ 才會標。
+- 沒做：`overrides.csv`（`force`、`reset`）與「資料時間不晚於現在 5 分鐘」留給 `live_loop.py`。在那之前，落後的宣布者要等他領先或中選會打 ◎ 才會標。（11-27 做了，見「首頁版即時更新」。）
 
 ### 結果資料的欄位
 
@@ -394,6 +394,114 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 - 驗收（11-26，Chrome 無頭，`preview/shoot_reg.mjs`、`preview/test_home_ui.mjs`）：上面五種框加 600×338、520×293，2022、2026 開票中與 2026 全開三份資料，全景、飛行中與 22 縣市逐一點開，
   沒有東西出框、沒有水平捲動、卡片不壓小地圖、沒有 JS 錯誤，只有 2022 臺北（12 位）在 768×432 與 600×338 要捲。暫停、回全台、點縣市、放大（全螢幕進出與另開文章版）實際點過。
   文章版在 720×480、528×352、352.8×627、390×693 改版前後逐像素相同（2022、2026 開票中、2026 全開、帶浮水印的正式檔四份，每份 9 個畫面，共 144 張；截圖關掉 GPU 與局部重繪，同一頁截兩次才會一模一樣）。
+
+### 首頁版即時更新（11-27）
+
+只有首頁版 `election-2026-home.html` 會自己更新：每 60 秒抓同資料夾的 `live.json`，收到新的就原地換，不重新載入、不打斷輪播。文章版照舊，要不要也由迴圈重產另由 `--article` 決定（預設不做）。
+這台電腦跑 `scripts/live_loop.py`，每 2 分鐘抓中選會、一縣一縣合併檢查、產生首頁版與 `live.json`，資料有變才 commit、push，GitHub Actions 部署。讀者只碰 Pages，不連中選會也不連這台電腦。
+方案、延遲預算與實測依據在 `preview/realtime/即時更新方案_2026-11-26.md`（v3，不進 repo）；下面是 11-26 定案的版本，跟方案不同的地方：輪詢只在首頁版；push 被拒會自動 `pull --rebase` 再推一次；排程器每 2 分鐘叫一次 `--once`。
+
+`live.json`（`build_map.py --home --live-json <路徑>` 在產生首頁版的同一步寫出，內容就是烤進頁面的那包，顏色分組、標籤、註記都在 Python 算好，頁面只換上去）：
+
+| 欄位 | 內容 |
+|---|---|
+| `schema` | `1` |
+| `epoch` | 這一晚的名字，預設是投票日 `2026-11-28`，彩排用 `rehearsal`；頁面只收同一個 `epoch` |
+| `seq` | 發佈當下的 Unix 秒數（比上一版小就用上一版加 1），頁面只收更大的；換一台電腦接手也只會變大 |
+| `published_at` | 同 `seq`，頁面拿來判斷迴圈是不是停了 |
+| `poll_s` | 讀者多久抓一次，`null` 是 60 秒，`0` 是停止開關 |
+| `counties` | 22 縣的資料，跟頁面裡的 `D.counties` 同一格式（狀態、顏色分組、候選人、已送／應送、資料時間、註記、標籤） |
+| `aria` | 22 縣的報讀文字（代碼 → 字串） |
+| `legend`、`legend_home` | 文章版、首頁版的圖例 HTML（首頁版後面帶縣市數） |
+| `src` | 出處列的字（首頁版的出處列藏著，照樣換） |
+| `table` | 給螢幕閱讀器的結果表 |
+| `dtime` | 首頁版的「資料時間 HH:MM」（22 縣最新的那筆），全部未開票時是空字串 |
+
+首頁版也烤進同一組 `epoch`、`seq`、`published_at`、`poll_s`（`--epoch`、`--seq`、`--poll-s`，沒給就是投票日、現在、60 秒）。`--live-json` 只能配 `--home`。
+首頁版的字型另收 `data/candidates_2026.csv`（2026 全部候選人）與 `data/tags.csv` 的字：10:00 發的全是未開票，名字晚上才從 `live.json` 進來。`--test-banner` 在頁面頂端加紅色「測試資料，非真實結果」與 noindex，彩排用。
+
+頁面（`map_template.html`，只在 `HOME` 時跑）：
+- 輪詢：固定網址 `live.json`、`cache: "no-cache"`（沒變時 Pages 回 304），60 秒加減 10%；分頁藏起來不抓，切回來馬上抓一次；抓不到就拉長間隔，最多 5 倍，畫面留著烤在頁面裡的資料。
+- 收不收：`schema` 是 1、`epoch` 相同、`seq` 變大、22 個代碼不重複且都對得上、字串欄位都在。舊的、別的 `epoch` 的、壞的 JSON、404 都不收也不出錯。`poll_s` 只認收下的檔，別的 `epoch` 帶 `0` 停不掉頁面。
+- 套用：原地換每縣的資料物件（輪播、點擊、小地圖用的是同一批），換 22 縣與小地圖的顏色 class 與報讀文字、圖例、出處、結果表、資料時間；清掉 `layout()` 寫在小地圖上的行內斜線，資訊卡與浮起的板子照新資料重畫。套用失敗也記下這個 `seq`，不會每分鐘重試同一份。
+- 數字：正在顯示的資訊卡，票數、得票率、進度條從舊值走到新值，1.5 秒（`cubic-bezier(0.23, 1, 0.32, 1)`），最後停在真的數字，跟直接用新資料產生的卡片逐字相同；減少動態時直接換。兩次更新之間不內插、不外推。
+- 「已開 X／Y 所」換成一條小進度條（56px），後面只留時間；報讀器照念所數。「開票中」標示的圓點 2 秒一次輕輕閃，減少動態時不動。
+- 資料時間：寬框在圖例下面一行小字；寬 620 以下放在按鈕左邊的空位，不佔卡片與小地圖的高，出卡時也看得到（360×203 到 1080×608 量過，跟圖例、按鈕、小地圖都不重疊）。
+- 過期：開票開始後（有縣市不是未開票）、還沒全部開完，`published_at` 超過 20 分鐘，資料時間那行變紅、後面加「（更新中斷）」，新的一版進來就恢復。迴圈停了 Pages 照樣回 200 或 304，所以看 `published_at`；迴圈 15 分鐘沒變也推一次心跳，開票前的空檔不會誤報。
+- 測試用：網址加 `?nolive` 不輪詢；`window.__POLL_MS`、`window.__STALE_MS` 改輪詢間隔與過期門檻；`window.__live` 看收了幾份、拒收原因。
+
+迴圈（`scripts/live_loop.py`，在 election-2026 資料夾跑）：
+
+```
+python -I scripts/live_loop.py --prefix <網址前綴> --once --dry-run   # 乾跑一輪：抓、合併、產生，不碰 git（狀態與產出在 preview/realtime/state/<epoch>-dryrun/）
+python -I scripts/live_loop.py --prefix <網址前綴> --once             # 跑一輪，有變就推（排程器每 2 分鐘叫一次）
+python -I scripts/live_loop.py --prefix <網址前綴>                    # 自己每 120 秒跑一輪（終端機開著跑）
+python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假中選會＋乾跑 20 輪＋暫存 repo 的 push，見下面「測試」
+```
+
+| 選項 | 預設 | 用途 |
+|---|---|---|
+| `--epoch` | `2026-11-28` | 彩排用 `rehearsal` |
+| `--date` | `2026-11-28` | 投票日（標題、出處、補開票頁上沒寫的年份） |
+| `--out-dir` | election-2026 資料夾（乾跑是 `<state>/out/`） | 首頁版與 `live.json` 寫到哪；不在 git repo 裡只能配 `--dry-run` |
+| `--home-name` | `election-2026-home.html` | 彩排用 `index.html` |
+| `--article` | 關 | 文章版也一起重產、一起推 |
+| `--poll-s` | 不給（頁面用 60） | 讀者多久抓一次；`300` 減量，`0` 停止開關 |
+| `--heartbeat-min` | 15 | 資料沒變也隔多久推一次 |
+| `--state-dir` | `preview/realtime/state/<epoch>/`（乾跑另用 `<epoch>-dryrun/`，乾跑記下的雜湊不會擋掉之後真的那一輪） | 狀態、紀錄、原始頁 |
+| `--declared`、`--overrides` | `data/declared.csv`、`data/overrides.csv` | 人工介入的兩個檔 |
+| `--test-banner` | 關 | 頁面加「測試資料」紅條與 noindex |
+| `--every`、`--delay` | 120、3 | 一輪間隔、每頁間隔（對中選會不改） |
+
+一輪：
+1. 系統檔案鎖 `<state>/loop.lock`（`msvcrt.locking`，程序結束或重開機就自己放掉，不看 PID）；鎖著就不跑。
+2. `overrides.csv` 先套：`postponed` 的縣不抓；`reset` 的縣先換成空白，這輪抓到什麼就收什麼。已開完的縣市每 5 輪才重抓一次。
+3. `fetch_live.web()` 抓 22 頁、一縣一縣合併（規則見「開票當晚」的開票夜防呆），原始頁存 `<state>/raw/HHMMSS/`。
+4. 資料時間比這台電腦晚 5 分鐘以上的縣不收，沿用上一輪。
+5. 要發佈的那份（`<state>/publish.csv`；`<state>/results.csv` 留中選會的原樣）：開完前的 ◎（`called`）要當選人列在 `declared.csv` 才發，不然照開票中發、寫警告；`final` 自動發；`force` 照人寫的發。
+6. 轉 JSON（整份檢查），跟上次發佈的資料比雜湊（不算 `seq` 與時間），有變或該推心跳才 `build_map.py` 產生首頁版與 `live.json`（`--article` 加文章版），資料另存 `<state>/history/publish_<seq>.json`。
+7. git：只 `add`、`commit` 那幾個檔（`git commit -- 路徑`，別人 stage 的不會帶進去），訊息 `chore(election-2026): update live results to HH:MM`（心跳加 `(heartbeat)`）；不在 `main` 不推；上一輪 rebase 做到一半被砍就先 `rebase --abort`；每個 git 指令 30 秒逾時；push 被拒就 `pull --rebase -X theirs --autostash` 再推一次（遠端也改了這幾個檔時，這台新產生的那版勝出），還是失敗就留著下一輪再推。人工推正式檔之前要先停排程。
+8. 紀錄：`<state>/rounds.jsonl` 一輪一行（秒數、抓到幾縣、警告、有沒有發佈、git 結果）；`<state>/alerts.log` 只寫跟上一輪不同的警告；`<state>/status.html` 每 30 秒自己重新整理，手機經 Tailscale 開 `http://100.69.83.122:8792/election-2026/preview/realtime/state/2026-11-28/status.html`。
+
+人工介入的兩個檔（UTF-8 或 Excel 的 ANSI 都讀得了，代碼被吃掉的 0 會補回來），改了下一輪就生效：
+- `data/declared.csv`（`code,candidate`）：已宣布當選的人。中選會還沒打 ◎ 時照規格標成當選（他要是最高票）；中選會開完前就打 ◎ 的，當選人要在這裡才發。
+- `data/overrides.csv`（`code,action,candidate,note`）：
+  - `postponed`：這縣標成選舉延後，`note` 寫在資訊卡上，抓到什麼都不蓋；拿掉這列就回未開票、重新抓。
+  - `reset`：合併判斷錯了、那縣卡住時用，下一輪抓到什麼就收什麼，同一列只用一次（要再用一次就把 `note` 改成別的字，例如現在時間）；這輪抓不到就留到下一輪。
+  - `force`：`candidate` 寫的人照當選發（還在開是 `called`、開完是 `final`），落後也發，由人決定；名字不在得票前兩名就不套用、寫警告。
+
+工作排程器：`scripts/live_loop_task.ps1` 登記每 2 分鐘叫一次 `live_loop.py --once`（`pythonw`、跑 12 小時、上一輪沒跑完就不另開、一輪超過 10 分鐘砍掉、只在登入時跑）。這支只在人跑的時候登記，程式不會自己登記。
+- 登記：`powershell -ExecutionPolicy Bypass -File scripts\live_loop_task.ps1 -Prefix <網址前綴>`（彩排另加 `-Epoch rehearsal -Extra '--out-dir rehearsal --home-name index.html --date 2026-11-27 --test-banner'`）。
+- 暫停與恢復：`Disable-ScheduledTask -TaskName einfo-election-live-loop`、`Enable-ScheduledTask …`；刪掉：同一支加 `-Uninstall`。
+
+開票夜操作：
+1. 前一晚：照方案第九節（Windows Update 暫停一週、插電不睡眠、手機熱點備用）。
+2. 10:00 發正式版：`python -I scripts/live_loop.py --prefix https://vote.cec.gov.tw/zh-TW/TC --once --article`。開票頁還是 403，22 縣都抓不到就照範本發未開票，首頁版與文章版換掉浮水印測試版，之後打開的首頁版都帶這一晚的 `epoch`。開 Pages 上的兩頁各看一次。
+3. 14:00 起找開票頁的片段前綴（「開票夜步驟」第 2 點）；開放後先乾跑一輪 `--once --dry-run`，看 `preview/realtime/state/2026-11-28-dryrun/` 的 `status.html` 與 `out/` 裡的首頁版，對 3 個縣市的姓名、政黨、所數、時間。格式不同就改 `parse_mayor()`，改不及走手動 CSV。
+4. 對過就登記排程（上一段），看第一次 push 的 git 結果與 Pages 上的 `live.json` 多久換掉。
+5. 看：`status.html`（各狀態縣數、最近發佈、git、等 declared.csv 的縣、最近警告），`alerts.log` 由 Claude 在 Discord 轉述。「開完前就打 ◎」「宣布的人不是最高票」的警告要人決定，寫 `declared.csv` 或 `overrides.csv`。
+6. 減量：排程改成帶 `-Extra '--poll-s 300'` 重新登記；之後打開的與收到新版的頁面都改成 5 分鐘抓一次。
+7. 停止開關：先 `Disable-ScheduledTask`，再跑一次 `python -I scripts/live_loop.py --prefix <網址前綴> --once --poll-s 0`。開著的頁面收到後就不再抓，之後打開的頁面也不抓；排程沒停的話下一輪會發回 `poll_s: null`，新打開的頁面又會抓。全部開完、對過數字後也用這個收尾。
+8. 退回：資料錯了就改 `declared.csv` 或 `overrides.csv`，下一輪發新的一版。要整份退回某一輪：停排程，拿 `<state>/history/publish_<seq>.json` 跑 `python -I build_map.py --home --data <那份> --live-json live.json --epoch 2026-11-28`（`seq` 取現在，比線上大），只 commit 這兩個檔、push。不要用 `git revert`：退回去的 `live.json` 序號比較小，開著的頁面不收。
+9. 頁面程式本身出錯：停止開關，或推一版首頁版不帶輪詢（`--poll-s 0`），讀者重新整理就是靜態版。迴圈壞了就停排程，照「開票夜步驟」的人工流程，`build_map.py` 加 `--live-json` 一起出。
+
+週五彩排（在 `rehearsal/`，`epoch` 是 `rehearsal`，正式頁不收；push 由人跑）：
+1. 終端機一：`python -I scripts/fake_cec.py --start 16:00 --speed 4`，印出網址前綴 `http://127.0.0.1:8799/zh-TW/TC`。選舉時鐘 4 倍速，16:00 到 23:40 走約 1 小時 55 分；`http://127.0.0.1:8799/_status` 看各縣狀態，`/_set?t=HH:MM` 跳時間。
+2. 乾跑一輪：`python -I scripts/live_loop.py --prefix http://127.0.0.1:8799/zh-TW/TC --once --dry-run --epoch rehearsal --date 2026-11-27 --home-name index.html --test-banner`，看 `preview/realtime/state/rehearsal-dryrun/status.html` 與同一資料夾 `out/index.html`。
+3. 正式跑：`python -I scripts/live_loop.py --prefix http://127.0.0.1:8799/zh-TW/TC --epoch rehearsal --date 2026-11-27 --out-dir rehearsal --home-name index.html --test-banner`（終端機二開著跑，第一輪就換掉 `rehearsal/index.html` 原型那頁並推上去），或用 `live_loop_task.ps1` 的彩排參數登記排程，試一次重開機後排程會不會接回來。狀態在 `preview/realtime/state/rehearsal/status.html`。
+4. 讀者端：手機用行動網路開 `https://tnf-einfo.github.io/einfo-widgets/interactive-maps/election-2026/rehearsal/index.html`，電腦開同一頁，記每次 push 到畫面變的時間（方案 T1、T2）。
+5. 壞資料照假中選會的時段出現（選舉時鐘；4 倍速時，實際經過的時間是選舉時鐘經過的四分之一，18:00 是開始後 30 分鐘）：宜蘭 18:00–18:40 回 404、臺中 19:30–19:50 舊頁、基隆 20:00–20:20 資料時間在未來、新北 20:30–20:50 全 0，都要在 `alerts.log` 看到、地圖不倒退。屏東開到七成就打 ◎：要出「等 declared.csv」的警告、照開票中發，寫進 `data/declared.csv` 後下一輪發當選。連江開完同票：斜線、「同票，抽籤決定」。
+6. 人工介入：`data/overrides.csv` 加 `10020,postponed,,選舉延後（彩排）` 看嘉義市變延後；臺中舊頁那段加一列 `66000,reset,,` 看它照收一次。彩排完把 `data/declared.csv`、`data/overrides.csv` 刪掉，免得帶進開票夜。
+7. 迴圈掛掉（方案 T4）：停掉終端機二 20 分鐘，頁面的資料時間變紅加「（更新中斷）」，迴圈回來後消失。
+8. 停止開關（方案 T6）：帶 `--poll-s 300` 跑一輪確認變慢，再照第 7 點發 `--poll-s 0` 確認不再抓。
+9. 收尾：終端機一 Ctrl+C 停假中選會、刪排程；`rehearsal/` 留不留照方案待決 6。
+
+測試（11-27，都在本機、不碰正式檔）：
+- `python -I scripts/fake_cec.py selftest`：22 縣市的所數與票數只增不減、開完才有記號，六種壞資料照時段出現，真的解析程式讀得懂每一頁。
+- `python -I scripts/live_loop.py selftest`：同一個程序裡起假中選會，乾跑 20 輪：`seq` 一直變大、各縣狀態與已送不倒退；宜蘭 404、臺中舊頁、基隆未來時間、新北全 0 都擋下並寫警告；`reset` 只用一次；延後照 `overrides.csv`；屏東開完前的 ◎ 先照開票中發，寫進 `declared.csv` 才發當選；`force` 落後也發、名字不對就不套用；連江同票是沒有當選人的開完；資料沒變不發、心跳會發；鎖住時不跑；`--article`、`--test-banner` 出得了。另建暫存的 bare repo，先從另一個 clone 推一個也改了 `live.json` 的 commit，迴圈的 push 被拒後 `pull --rebase -X theirs` 再推成功、這台的版本勝出，commit 只有那兩個檔，沒 stage 的檔不會帶進去。
+- `node preview/realtime/test_home_live.mjs <selftest --keep 的資料夾>`（一個 headless Chrome，本機伺服器不回 304）：首頁版開第 1 輪，逐輪換 `live.json`，每輪 1.2 到 1.9 秒內收下，22 縣顏色、小地圖、每張卡片、圖例、資料時間都跟直接用那輪資料產生的頁面相同；數字 1.46 秒走完、最後逐字相同，進度條與資料時間跟著換；過期變紅、新的一來恢復；舊序號、別的 `epoch`（帶停止開關）、壞 JSON、404 都不收；停止開關後不再發請求；減少動態時數字直接換、圓點不閃；390×219 出卡不出框；沒有 JS 錯誤。截圖在 `preview/realtime/shots/`。
+- 文章版改版前後在 720×480、528×352、352.8×627、390×693 逐像素相同（2022、2026 開票中、2026 全開三份，每份 12 個縣市，共 144 張，`preview/shoot_cards.mjs`）；首頁版 `preview/shoot_reg.mjs` 五種框、三份資料、全景加 11 個縣市沒有出框、沒有 JS 錯誤，只有 2022 臺北照舊要捲；`preview/test_home_ui.mjs` 照舊通過。
+- 沒做：push 後量 Pages 多久看得到的小程序（方案迴圈端第 7 步），彩排時用手機與 `curl` 記；22 縣都開完後自動停、自動發 `poll_s: 0`，改成人照第 7 點做。
 
 ### 鏡頭輪播
 
