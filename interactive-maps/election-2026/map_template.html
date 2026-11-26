@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- build_map.py 的模板：{{…}} 由產生器填入，不要直接改產出的 election-2026.html -->
-<html lang="zh-Hant-TW" data-theme="{{THEME}}">
+<html lang="zh-Hant-TW" data-theme="{{THEME}}" class="{{VARIANT}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -154,6 +154,60 @@
     .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
   }
   @media (prefers-reduced-motion:reduce){ button{ transition:none } }
+  /* 首頁版才用的東西，文章版一律不顯示：按鈕圖示、放大鈕、右欄、卡片的「另有幾位候選人」、圖例的縣市數 */
+  .ic, #full, .side, .card .more, .legend .n{ display:none }
+
+  /* ── 首頁版（build_map.py --home，<html class="home">）：首頁「關鍵圖表」的 16:9 框（SPEC「首頁版」）──
+     沒有標題、logo、最下面那行；左邊整塊是地圖，右欄（白底）由上而下放圖示按鈕、圖例、資訊卡。
+     圖例、按鈕、卡片由 JS 搬進右欄（同一份 DOM，文章版不動） */
+  .home{ --side:clamp(176px, 54vw, 320px); --pad:12px }
+  .home header, .home footer{ display:none }
+  .home .mapwin{ right:var(--side) }
+  .home .side{ display:flex; flex-direction:column; gap:10px; position:absolute; top:0; right:0; bottom:0; width:var(--side); box-sizing:border-box;
+    padding:var(--pad); background:var(--frame); z-index:4 }
+  /* 按鈕在右上、圖例在左；放不下（手機）就按鈕一列、圖例接在下面。按鈕的位置在全景與出卡之間不動 */
+  .home .top{ display:flex; flex-direction:row-reverse; justify-content:space-between; align-items:flex-start; gap:8px }
+  .home .legend{ display:flex; flex-direction:column; flex-wrap:nowrap; gap:3px; padding:2px 0 0; font-size:13px; min-width:9.5em }
+  .home .legend .n{ display:inline; margin-left:auto; padding-left:10px; font-weight:700; font-variant-numeric:tabular-nums }
+  .home .btns{ gap:6px }
+  .home .ic{ display:block; width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+  .home .bt{ display:none }
+  .home .btns button, .home #full{ display:grid; place-items:center; width:32px; height:32px; min-height:0; padding:0; border-radius:50%; color:var(--ink); background:var(--btn) }
+  .home #full{ text-decoration:none; touch-action:manipulation; transition:transform 120ms var(--ease-out), background-color 120ms ease }
+  .home #full:active{ transform:scale(.97); background:var(--btn-3) }
+  #pause .play, #pause.on .bars, #full.on .open, #full .shut{ display:none } #pause.on .play, #full.on .shut{ display:inline }
+  .home .side :focus-visible{ outline-color:var(--ink) }   /* 白底上白色焦點框看不到 */
+  /* 卡片就是右欄的內容：不浮、不加陰影與內距，太長在卡片裡捲 */
+  .home .cardpos{ position:relative; inset:auto; width:auto; flex:1 1 0; min-height:0; display:flex; flex-direction:column; align-items:stretch; z-index:auto }
+  .home .card{ flex:0 1 auto; min-height:0; max-height:none; width:auto; padding:10px 0 0; border-top:1px solid var(--rule); border-radius:0; background:none; box-shadow:none }
+  .home .card.measure{ display:none }
+  @media (hover:hover) and (pointer:fine){ .home #full:hover{ background:var(--btn-2) } }
+  @media (max-width:620px){
+    .home{ --pad:8px }
+    .home .top{ flex-direction:column; align-items:stretch; gap:6px }
+    .home .btns{ align-self:flex-end; gap:5px }
+    .home .btns button, .home #full{ width:28px; height:28px } .home .ic{ width:14px; height:14px }
+    .home .legend{ font-size:12px; gap:1px }
+    .home .side{ gap:6px }
+    /* 窄框的圖例疊在按鈕下面、佔掉卡片的高：出卡時收起，讓卡片用右欄的高（顏色看卡片的徽章），全景時才出現 */
+    .home .side:has(#card:not([hidden])) .legend{ display:none }
+    /* 金門、連江小地圖搬到右欄底部並排：窄框的地圖只有 170 到 280px 寬，放在地圖左上會壓到澎湖。小地圖只在全景出現，出卡時已經淡出
+       （點金門、連江時鏡頭不動、小地圖留著，卡片量過碰不到）；top 由 layout() 寫在行內，這裡要蓋掉 */
+    .home .isles{ top:auto !important; bottom:var(--pad); left:calc(100% - var(--side) + var(--pad)); flex-direction:row; align-items:flex-end; gap:8px; z-index:5 }
+    .home .isle, .home .isle svg{ width:54px } .home .isle svg{ height:44px } .home .isle[data-code="09020"] svg{ height:30px }
+    .home .isle span{ font-size:10px; margin-top:2px }
+  }
+  /* 手機的 16:9 框（高 300 以下）：卡片只列前兩名、下面寫還有幾位 */
+  @media (max-height:300px){
+    .home .card{ padding-top:6px }
+    .home .card h2{ font-size:14px } .home .card .st{ font-size:11px; margin-top:1px } .home .card ol{ margin-top:5px }
+    .home .card li{ font-size:11.5px; line-height:1.4; column-gap:5px; grid-template-columns:16px minmax(0,1fr) auto auto }
+    .home .card li + li{ margin-top:4px } .home .card li:nth-child(n+3){ display:none }
+    .home .bd{ width:16px; height:16px; font-size:10.5px; border-radius:4px }
+    .home .live{ font-size:10.5px; padding:0 6px 0 5px; margin-left:5px; vertical-align:1px }
+    .home .tag, .home .tgl{ font-size:10.5px } .home .tag{ padding:1px 7px }
+    .home .card .more{ display:block; margin:5px 0 0; font-size:11px; color:var(--mute) } .home .card .note{ font-size:11px; margin-top:4px }
+  }
 </style>
 </head>
 <body>
@@ -184,8 +238,10 @@
   </div>
   <footer>
     <p class="src"><span>資料來源：中央選舉委員會 {{SRC_DATE}}；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
-    <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1">回全台</button><button id="pause" type="button">暫停輪播</button></div>
+    <!-- 圖示只在首頁版顯示（首頁版的字藏起來，名稱靠 aria-label）；放大鈕連到文章版，JS 在能全螢幕的橫螢幕上改成全螢幕 -->
+    <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1" aria-label="回全台" title="回全台"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 7.5L8 2.5l5.5 5M4 6.5V13.5h3v-3.5h2v3.5h3V6.5"/></svg><span class="bt">回全台</span></button><button id="pause" type="button" aria-label="暫停輪播" title="暫停輪播"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="bars"><path d="M5.5 3.5v9M10.5 3.5v9"/></g><g class="play"><path d="M5 3l8 5-8 5z"/></g></svg><span class="bt">暫停輪播</span></button><a id="full" href="{{FULL}}" target="_blank" rel="noopener" aria-label="放大看完整版" title="放大看完整版"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="open"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></g><g class="shut"><path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/></g></svg></a></div>
   </footer>
+  <div class="side"><div class="top"></div></div>
   <table class="sr"><caption>{{TITLE}}，各縣市前兩名</caption><tbody>{{TABLE}}</tbody></table>
 </div>
 <script>
@@ -205,6 +261,9 @@ const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
 const SIX = D.six, ISLE = new Set(D.isles);
 const RM = matchMedia("(prefers-reduced-motion: reduce)");
 const DEV = new URLSearchParams(location.search).has("dev");
+// 首頁版：按鈕、圖例、資訊卡搬進右欄；版面一律是橫式（地圖在左）
+const HOME = document.documentElement.classList.contains("home");
+if (HOME) { const side = $(".side"); side.firstElementChild.append($(".btns"), $(".legend")); side.append($(".cardpos")); }
 
 // ── 資訊卡內容 ──
 const fmt = n => n.toLocaleString("en-US");
@@ -221,7 +280,8 @@ function cardHTML(c) {
   if (c.cands.length && c.status !== "pending") h += "<ol>" + c.cands.map(p =>
     `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? STAMP : ""}<span class="sr">（${p.party}）</span></span>` +
     `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span>` +
-    (p.elected && c.tags ? `<span class="tg"><span class="tgl">環境政見：</span>${c.tags.map(g => `<span class="tag t-${g.k}">${g.t}</span>`).join('<span class="sr">、</span>')}</span>` : "") + "</li>").join("") + "</ol>";
+    (p.elected && c.tags ? `<span class="tg"><span class="tgl">環境政見：</span>${c.tags.map(g => `<span class="tag t-${g.k}">${g.t}</span>`).join('<span class="sr">、</span>')}</span>` : "") + "</li>").join("") + "</ol>" +
+    (c.cands.length > 2 ? `<p class="more">另有 ${c.cands.length - 2} 位候選人</p>` : "");   // 首頁版手機框只列前兩名時才顯示
   if (c.note) h += `<p class="note">${c.note}</p>`;
   return h;
 }
@@ -269,33 +329,34 @@ function fit(bb, R, pad, t, kmax = Infinity, kmin = 0) {   // 把縣市外框（
 }
 function layout() {
   W = frame.clientWidth; H = frame.clientHeight;
-  const land = matchMedia("(min-aspect-ratio: 1/1)").matches;
-  // 地圖板子＝標題下緣到出處上緣；卡片與小地圖離板子邊 8px
-  const hdrB = $("header").getBoundingClientRect().bottom, ftrH = H - $("footer").getBoundingClientRect().top;
+  const land = HOME || matchMedia("(min-aspect-ratio: 1/1)").matches;
+  // 地圖板子＝標題下緣到出處上緣；卡片與小地圖離板子邊 8px（首頁版沒有標題與出處，板子是右欄左邊整塊）
+  const hdrB = $("header").getBoundingClientRect().bottom, ftrH = HOME ? 0 : H - $("footer").getBoundingClientRect().top;
   // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom），地圖才會從標題底下淡出；取景照樣從 hdrB 算
   const FADE = 40, mwT = Math.max(0, hdrB - FADE);
   mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px"; BD = { t: mwT, b: H - ftrH };
   const pos = $(".cardpos");
   // 橫式卡片從圖例下面就開始（蓋在漸層上）：漸層那 40px 只是地圖淡出，平板 528×352 少了它金句會放不下（11-18）
-  pos.style.top = land ? hdrB - FADE + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
+  if (!HOME) { pos.style.top = land ? hdrB - FADE + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px"; }
   isles.style.top = hdrB + 8 + "px";
   const pr = pos.getBoundingClientRect();
+  const mapR = HOME ? mapwin.getBoundingClientRect().right : pr.left - 8;   // 橫式留給縣市的空白右緣：文章版是卡片左邊 8px，首頁版是右欄左緣
   // 軸心放在留給縣市的空白中央，透視距離約框長邊的 2.2 倍（角度小、近大遠小也小）
   TILT = RM.matches ? 0 : TILT_DEG * Math.PI / 180;
-  O = { x: land ? (pr.left - 8) / 2 : W / 2, y: (hdrB + H - ftrH) / 2, p: 2.2 * Math.max(W, H), ml: 0, mr: 0, mt: 0 };
+  O = { x: land ? mapR / 2 : W / 2, y: (hdrB + H - ftrH) / 2, p: 2.2 * Math.max(W, H), ml: 0, mr: 0, mt: 0 };
   if (TILT) { const a = unproj(0, 0), b = unproj(W, 0);
     O.ml = Math.ceil(Math.max(0, -a[0])) + 2; O.mr = Math.ceil(Math.max(0, b[0] - W)) + 2; O.mt = Math.ceil(Math.max(0, -a[1])) + 2; }
   // SVG 放在板子裡，座標照樣以框為準（往上多扣板子的 top）
   Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt - mwT + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
     transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
   lastTr = null;
-  cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };
+  cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: HOME ? mapR : W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };   // 首頁版的右欄一直在，全景也只用左邊
   const panoH = D.pano[3] - D.pano[1];   // 台灣（含澎湖）外框的高
   for (const c of D.counties) {
     if (ISLE.has(c.code)) { cams[c.code] = cams.pano; continue; }
     measure.innerHTML = HTML[c.code];
     const m = measure.parentNode.getBoundingClientRect();
-    const R = land ? { l: 0, t: hdrB, r: pr.left - 8, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 };
+    const R = land ? { l: 0, t: hdrB, r: mapR, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 };
     // 縣市佔空白的四成（11-17：原本佔八成太大，縮一半）。拉近的上限：卡片以外的空白區至少放得下半個台灣的高度
     // （11-17：臺中這類還是太大），最多全景的 2 倍；下限是全景，長條縣不會比全景還遠
     const KMAX = Math.max(cams.pano.k, Math.min(cams.pano.k * 2, (R.b - R.t) / (0.5 * panoH)));
@@ -516,9 +577,19 @@ frame.addEventListener("pointerdown", e => { held = true; lastInteract = perform
 addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
 homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
 pauseBtn.addEventListener("click", () => {
-  userPaused = !userPaused; pauseBtn.textContent = userPaused ? "繼續輪播" : "暫停輪播";
+  userPaused = !userPaused; const t = userPaused ? "繼續輪播" : "暫停輪播";
+  pauseBtn.lastChild.textContent = pauseBtn.title = t; pauseBtn.setAttribute("aria-label", t); pauseBtn.classList.toggle("on", userPaused);   // 首頁版換圖示
   if (!userPaused && mode === "user") lastInteract = -1e9;   // 按繼續就接著輪，不再等 5 秒
 });
+// 首頁版的放大鈕：能全螢幕又是橫的螢幕（桌機、平板）就把首頁版開成全螢幕；iPhone（沒有全螢幕 API）與直拿的手機照連結另開文章版，直式排法在那邊
+const fullBtn = $("#full");
+fullBtn.addEventListener("click", e => {
+  if (!document.fullscreenEnabled || screen.width < screen.height) return;
+  e.preventDefault();
+  if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => open(fullBtn.href, "_blank", "noopener"));
+});
+document.addEventListener("fullscreenchange", () => { const on = !!document.fullscreenElement, t = on ? "結束全螢幕" : "放大看完整版";
+  fullBtn.classList.toggle("on", on); fullBtn.title = t; fullBtn.setAttribute("aria-label", t); });
 
 // ── 觸控縮放：照吐瓦魯地圖（template/gen_map.py）的捏開放大改寫。只做觸控，桌機不縮放、滾輪不攔 ──
 // 雙指捏：目前鏡頭的 0.5 到 2 倍、原地縮放，兩指一起移動可平移；縮放中單指拖就移動畫面；1 倍時橫向起手的單指拖也移動；

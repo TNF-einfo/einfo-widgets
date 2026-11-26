@@ -5,6 +5,7 @@
   python -I build_map.py --data data/results_2026.json     # 開票夜：投票日是 2026，標籤改讀 data/tags.csv
   python -I build_map.py --data data/worst_case.json --keep-going --out preview/worst.html   # 最壞資料，只在本機看
   python -I build_map.py --theme night --out preview/map_night.html   # 深藍灰底的對照主題（預設 paper 淺底）
+  python -I build_map.py --home [--data …]                 # 首頁「關鍵圖表」的 16:9 版 → election-2026-home.html（SPEC「首頁版」）
 標題年份、出處日期、標籤檔都照結果資料的投票日；標籤只顯示在當選人那一列下面，姓名要跟結果資料一字不差。
 縣市界在建置時投影成 SVG（Web Mercator）內嵌，不載 Leaflet；鏡頭在頁面裡逐幀改 viewBox。
 --keep-going 只給最壞資料看畫面用：不認得的政黨代碼照樣報錯，但不停下，該縣市畫成斜線並在資訊卡註明；不能寫到正式檔名。
@@ -42,6 +43,7 @@ def badge(party):
     return BADGE.get(party) or SHORT.get(party, party)[0]
 STATUSES = {"pending", "counting", "called", "final", "postponed"}
 DEFAULT_OUT = HERE / "election-2026.html"
+HOME_OUT = HERE / "election-2026-home.html"   # 首頁「關鍵圖表」的 16:9 版（--home，SPEC「首頁版」）
 TAGS = {"2026": HERE / "data" / "tags.csv"}   # 當選人的環境政見標籤，只有 2026 有；2022 版沒有檔就不顯示
 TAG_KEYS = "ygpb"                              # 標籤四色：黃、綠、粉、藍（CSS 的 --tag-y/g/p/b）
 TAG_FIXED = {"防災型都更": "p"}                 # 固定粉色；其餘照 tags.csv 第一次出現的順序輪流配色
@@ -212,15 +214,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(HERE / "data" / "mayor_2022.json"))
     ap.add_argument("--counties", default=str(HERE / "data" / "counties.geojson"))
-    ap.add_argument("--out", default=str(DEFAULT_OUT))
+    ap.add_argument("--out")
     ap.add_argument("--keep-going", action="store_true")
     ap.add_argument("--theme", choices=["paper", "night"], default="paper",
                     help="配色主題（SPEC「配色」）：paper 淺底（推薦、正式檔用這套），night 深藍灰底（對照）")
+    ap.add_argument("--home", action="store_true",
+                    help="首頁版：沒有標題、logo 與最下面那行，圖例、按鈕、卡片在右欄（預設寫 election-2026-home.html）")
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
-    out = Path(a.out).resolve()
-    if a.keep_going and out == DEFAULT_OUT:
+    out = Path(a.out or (HOME_OUT if a.home else DEFAULT_OUT)).resolve()
+    if a.keep_going and out in (DEFAULT_OUT, HOME_OUT):
         sys.exit("--keep-going 不能寫到正式檔名，請用 --out 指到 preview/")
 
     gj = json.loads(Path(a.counties).read_text(encoding="utf-8"))
@@ -303,14 +307,17 @@ def main():
     if "pend" in groups:   # 斜線圖例照實際出現的狀態寫，延後的嘉義市不會被寫成「開票中」
         st = {c["status"] for c in res.values() if c["group"] == "pend"}
         legend.append(("pend", "、".join(dict.fromkeys(n for s, n in (("pending", "未開票"), ("counting", "開票中"), ("error", "開票中"), ("postponed", "延後")) if s in st))))
+    n = Counter(groups)   # 首頁版的圖例在名稱後寫縣市數（22 縣市，含金門、連江）
     table = "".join(f"<tr><th scope=\"row\">{c['name']}</th><td>{summary(c)}</td></tr>" for c in (res[k] for k in order))
     data = {"counties": list(res.values()), "pano": pano, "six": SIX, "isles": sorted(ISLES), "date": date}
     page = (HERE / "map_template.html").read_text(encoding="utf-8")
     logo = {"paper": "eic-logo-green.svg", "night": "eic-logo.png"}[a.theme]   # 淺底用官網表頭的綠色 logo，深底用白色那張
     for k, v in {
-        "THEME": a.theme, "TITLE": title,
+        "THEME": a.theme, "TITLE": title, "VARIANT": "home" if a.home else "",
         "LOGO": Path(os.path.relpath(HERE.parent / "assets" / logo, out.parent)).as_posix(),
-        "LEGEND": "".join(f'<li><i class="sw g-{g}"></i>{n}</li>' for g, n in legend),
+        # 首頁版的放大鈕連到文章版（同一份資料夾的正式檔）
+        "FULL": Path(os.path.relpath(DEFAULT_OUT, out.parent)).as_posix(),
+        "LEGEND": "".join(f'<li><i class="sw g-{g}"></i>{name}' + (f'<b class="n">{n[g]}</b>' if a.home else "") + "</li>" for g, name in legend),
         "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits),
         "SRC_DATE": src_date, "TABLE": table,
         "DATA": json.dumps(data, ensure_ascii=False, separators=(",", ":")),
