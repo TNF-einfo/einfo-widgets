@@ -543,6 +543,9 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 - 首頁關鍵圖表填首頁版：`https://tnf-einfo.github.io/einfo-widgets/interactive-maps/election-2026/election-2026-home.html`（填在「Youtube 影片」欄，圖片欄留空；描述欄填出處，見「首頁版」）。
 - 嵌入碼照吐瓦魯橫版那段：兩個區塊、700px 以下換直式，外框橫式 `aspect-ratio:720/480`、直式 `aspect-ratio:9/16; max-height:760px`，最外層不留上下 margin；兩塊都指同一個檔（見「版面」）。製作人員寫在嵌入碼裡、地圖上方。
 - GitHub Pages 回應 `Cache-Control: max-age=600`（11-17 實測吐瓦魯那張），讀者最多約 10 分鐘後看到新版。開票夜更新後要在無痕視窗等 10 分鐘確認。
+- 11-26 實測：Pages 的 CDN 不看網址的查詢字串（`?v=` 只繞得過自己的瀏覽器），但每次部署會把 CDN 清掉（兩輪都是部署完下一次請求就拿到新版）；沒變的檔回 304。
+  同日起部署改走 GitHub Actions（`.github/workflows/pages.yml`，照樣跑 Jekyll，網站內容跟分支建置相同，改前改後 153 個網址比對過），沒有分支建置每小時 10 次的軟上限；推上去到讀得到實測 34 至 46 秒。
+  要改回分支建置：repo 設定的 Pages 來源改回 main 分支根目錄，再刪掉那個 workflow。開票夜即時更新的方案與彩排頁在 `preview/realtime/`（不進 repo）與 `rehearsal/`（帶浮水印的測試頁）。
 - 首頁 `index.html` 的「使用的文章」發稿後補上（不在這一輪）。
 
 ## 驗收標準
