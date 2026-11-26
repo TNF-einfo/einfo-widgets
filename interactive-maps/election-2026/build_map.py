@@ -1,12 +1,11 @@
-"""2026 縣市長選舉當選地圖：讀縣市界、結果 JSON、政見金句 CSV，產生單一自足的 HTML（規格見 SPEC.md）。
+"""2026 縣市長選舉當選地圖：讀縣市界、結果 JSON、當選人標籤 CSV，產生單一自足的 HTML（規格見 SPEC.md）。
 
 用法：
-  python -I build_map.py                                   # data/mayor_2022.json＋data/editorial_2022.csv → election-2026.html
-  python -I build_map.py --data data/results_2026.json     # 開票夜：金句自動改讀 data/editorial.csv
-  python -I build_map.py --editorial preview/editorial_test.csv --out preview/map.html     # 假引言只能出到 preview/
+  python -I build_map.py                                   # data/mayor_2022.json → election-2026.html（2022 沒有標籤檔，不顯示標籤）
+  python -I build_map.py --data data/results_2026.json     # 開票夜：投票日是 2026，標籤改讀 data/tags.csv
   python -I build_map.py --data data/worst_case.json --keep-going --out preview/worst.html   # 最壞資料，只在本機看
   python -I build_map.py --theme night --out preview/map_night.html   # 深藍灰底的對照主題（預設 paper 淺底）
-標題年份、出處日期、金句檔都照結果資料的投票日；金句只顯示當選者那一則，姓名要跟結果資料一字不差。
+標題年份、出處日期、標籤檔都照結果資料的投票日；標籤只顯示在當選人那一列下面，姓名要跟結果資料一字不差。
 縣市界在建置時投影成 SVG（Web Mercator）內嵌，不載 Leaflet；鏡頭在頁面裡逐幀改 viewBox。
 --keep-going 只給最壞資料看畫面用：不認得的政黨代碼照樣報錯，但不停下，該縣市畫成斜線並在資訊卡註明；不能寫到正式檔名。
 """
@@ -43,7 +42,9 @@ def badge(party):
     return BADGE.get(party) or SHORT.get(party, party)[0]
 STATUSES = {"pending", "counting", "called", "final", "postponed"}
 DEFAULT_OUT = HERE / "election-2026.html"
-EDITORIAL = {"2022": HERE / "data" / "editorial_2022.csv", "2026": HERE / "data" / "editorial.csv"}   # 公開版只讀當年當選者的金句
+TAGS = {"2026": HERE / "data" / "tags.csv"}   # 當選人的環境政見標籤，只有 2026 有；2022 版沒有檔就不顯示
+TAG_KEYS = "ygpb"                              # 標籤四色：黃、綠、粉、藍（CSS 的 --tag-y/g/p/b）
+TAG_FIXED = {"防災型都更": "p"}                 # 固定粉色；其餘照 tags.csv 第一次出現的順序輪流配色
 
 
 def merc(lat):
@@ -108,7 +109,7 @@ def load_results(path, party_table, codes, errors):
             errors.append(f"{c['name']}：不認得的狀態 {status}")
         cands = sorted(c["candidates"], key=lambda p: -p["votes"])
         bad = False
-        # 只查畫在地圖與資訊卡上的前兩名：代碼表缺 2022 年三個小黨（第 5、10 名），全查會擋掉真實資料
+        # 只查前兩名（決定顏色與當選）：第 3 名以後的小黨可能不在代碼表，塗灰、照中選會名稱顯示，不報錯
         for p in cands[:2]:
             pc = p.get("party_code")
             if pc is None or str(pc) not in party_table:
@@ -124,7 +125,6 @@ def load_results(path, party_table, codes, errors):
             c["note"] = "同額競選"
         if status in ("counting", "called") and not (c.get("stations") and c.get("updated")):
             errors.append(f"{c['name']}：開票中要有 stations 與 updated")
-        top = cands[:2]
         group = "pend"
         if status in ("called", "final") and not bad:
             group = GROUP.get(winners[0]["party_code"], "oth")
@@ -133,36 +133,55 @@ def load_results(path, party_table, codes, errors):
             "stations": c.get("stations"), "updated": (c.get("updated") or "")[11:16],
             "note": html.escape(c.get("note") or ("政黨代碼不認得，產生器已報錯" if bad else "")),
             "vote_date": c.get("vote_date", ""),
-            "all": [fix_name(p["name"]) for p in cands],   # 只給 load_editorial 核對姓名，寫進頁面前拿掉
             "cands": [{
                 "name": html.escape(fix_name(p["name"])),
                 "party": html.escape(SHORT.get(p["party"], p["party"])), "badge": html.escape(badge(p["party"])),
                 "group": GROUP.get(p.get("party_code"), "oth"),
                 "votes": p["votes"], "pct": p["pct"], "elected": bool(p.get("elected")) and status in ("called", "final"),
-            } for p in top],
+            } for p in cands],
         }
     return out
 
 
-def load_editorial(path, res, errors):
-    if not path:
-        return
-    for row in csv.DictReader(open(path, encoding="utf-8-sig")):
-        code, cand, text = row["code"].strip(), fix_name(row["candidate"].strip()), row["text"].strip()
+def tag_colors(lists):
+    """標籤文字 → 色鍵：同一項政策每個縣市同一色；依第一次出現的順序輪流配色，盡量不跟同一列相鄰的標籤同色"""
+    col, i = dict(TAG_FIXED), 0
+    for ts in lists:
+        for j, t in enumerate(ts):
+            if t in col:
+                continue
+            near = {col.get(ts[k]) for k in (j - 1, j + 1) if 0 <= k < len(ts)}
+            for s in range(len(TAG_KEYS)):
+                k = TAG_KEYS[(i + s) % len(TAG_KEYS)]
+                if k not in near:
+                    break
+            col[t] = k
+            i = (i + s + 1) % len(TAG_KEYS)
+    return col
+
+
+def load_tags(path, res, errors):
+    rows = list(csv.DictReader(open(path, encoding="utf-8-sig")))
+    lists = [[t.strip() for t in r["tags"].split("、") if t.strip()] for r in rows]
+    col = tag_colors(lists)
+    clash = sum(col[a] == col[b] for ts in lists for a, b in zip(ts, ts[1:]))
+    if clash:
+        print(f"注意：標籤有 {clash} 組相鄰同色（同一項政策同一色，配不開）", file=sys.stderr)
+    for row, ts in zip(rows, lists):
+        code, cand = row["code"].strip(), fix_name(row["candidate"].strip())
         c = res.get(code)
         if not c:
-            errors.append(f"政見金句：{code} 對不到縣市")
+            errors.append(f"標籤：{code} 對不到縣市")
             continue
-        if len(text) > 60:
-            print(f"警告：{c['name']} {cand} 的{row['kind']}有 {len(text)} 字，超過 60 字", file=sys.stderr)
-        if not c["all"]:   # 還沒有候選人名單（開票夜手動輸入、還沒抄的縣市）：沒得對，也不報
+        names = [html.unescape(p["name"]) for p in c["cands"]]
+        if not names:   # 還沒有候選人名單（開票夜手動輸入、還沒抄的縣市）：沒得對，也不報
             continue
-        if cand not in c["all"]:   # 試算表列全部候選人，只有姓名打錯才報；沒當選的照樣不顯示
-            print(f"警告：{c['name']} 的「{cand}」對不到候選人名單（{'、'.join(c['all'])}），這則不顯示", file=sys.stderr)
+        if cand not in names:   # 表裡列全部候選人，只有姓名打錯才報；沒當選的照樣不顯示
+            print(f"警告：{c['name']} 的「{cand}」對不到候選人名單（{'、'.join(names)}），這列標籤不顯示", file=sys.stderr)
             continue
         win = next((p for p in c["cands"] if p["elected"]), None)
-        if win and html.unescape(win["name"]) == cand and text:
-            c["quote"] = {"text": html.escape(text), "source": html.escape(row["source"].strip())}
+        if win and html.unescape(win["name"]) == cand and ts:
+            c["tags"] = [{"t": html.escape(t), "k": col[t]} for t in ts]
 
 
 def font_text(page):
@@ -192,8 +211,6 @@ def aria(c):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(HERE / "data" / "mayor_2022.json"))
-    ap.add_argument("--editorial", help="環境金句 CSV（格式照 data/editorial_template.csv）；不給就照資料年份讀 "
-                    + "、".join(f"{y}→{p.relative_to(HERE).as_posix()}" for y, p in EDITORIAL.items()) + "，正式檔名只能用這份")
     ap.add_argument("--counties", default=str(HERE / "data" / "counties.geojson"))
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--keep-going", action="store_true")
@@ -211,20 +228,15 @@ def main():
     party_table = {p["party_code"] for p in json.loads((HERE / "data/raw/cec_db/webs_configs_party_colors.json").read_text(encoding="utf-8"))}
     errors = []
     res = load_results(a.data, party_table, set(geoms), errors)
-    # 標題、出處日期、金句檔都跟著結果資料的投票日走（嘉義市 2022 年另有重行選舉日）
+    # 標題、出處日期、標籤檔都跟著結果資料的投票日走（嘉義市 2022 年另有重行選舉日）
     dates = Counter(c["vote_date"] for c in res.values() if c["vote_date"])
     date = dates.most_common(1)[0][0] if dates else ""
     year = date[:4]
-    own = EDITORIAL.get(year)
-    if out == DEFAULT_OUT and a.editorial and Path(a.editorial).resolve() != own:
-        sys.exit(f"正式檔名的金句只能讀 {own}：測試用的假引言不能掛在真人名下公開，請用 --out 指到 preview/")
-    a.editorial = a.editorial or (own and str(own))
-    if not a.editorial or not Path(a.editorial).exists():
-        print(f"警告：沒有 {a.editorial}，不放政見金句", file=sys.stderr)
-        a.editorial = None
-    load_editorial(a.editorial, res, errors)
-    for c in res.values():
-        del c["all"]
+    if year in TAGS:   # 2022 沒有標籤檔，直接不放
+        if TAGS[year].exists():
+            load_tags(TAGS[year], res, errors)
+        else:
+            print(f"警告：沒有 {TAGS[year]}，不放標籤", file=sys.stderr)
     if errors:
         print("\n".join("錯誤：" + e for e in errors), file=sys.stderr)
         if not a.keep_going:

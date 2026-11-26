@@ -34,7 +34,7 @@ DATE = "2026-11-28"
 SOURCE = "中央選舉委員會開票網站"   # 公投地圖的出處列取第一個詞，不寫網址與輸入方式
 STATUSES = ("pending", "counting", "called", "final", "postponed")
 # SPEC「編輯填資料」的手動輸入格式，最後多一欄 others：第 3 名以後「姓名|政黨|票數|得票率」用 ; 隔開。
-# 抓網頁時自動填，手動抄可以留空；有填的話，金句表裡第三名的姓名才對得到，產生器不會一直報「對不到候選人名單」
+# 抓網頁時自動填；資訊卡列全部候選人，手動抄留空的話卡片只有前兩名
 MAYOR_COLS = ["code", "county", "status", "updated", "stations_reported", "stations_total",
               "c1_name", "c1_party", "c1_votes", "c1_pct", "c2_name", "c2_party", "c2_votes", "c2_pct", "winner", "note", "others"]
 REF_COLS = ["code", "county", "agree", "disagree", "valid", "invalid", "votes_cast", "electorate", "updated"]
@@ -406,13 +406,13 @@ def selftest():
     print("5 公投：手動 CSV 轉出的地圖全國數字跟資料庫一樣；照猜的表頭做的假頁也抓得完（真的格式當天再對）")
     srv.shutdown()
 
-    # 6. 2026 年的路：投票日換成 2026，產生器改讀 data/editorial.csv，金句要掛到當選人身上。
+    # 6. 2026 年的路：投票日換成 2026，產生器改讀 data/tags.csv，標籤要掛到當選人身上。
     #    票數是假的、政黨一律無黨籍（只看路通不通），只寫到 preview/，不能公開
-    ed = list(csv.DictReader(open(DATA / "editorial.csv", encoding="utf-8-sig")))
+    tg = list(csv.DictReader(open(DATA / "tags.csv", encoding="utf-8-sig")))
     rows = []
     for code, name in counties().items():
-        names = [e["candidate"].strip() for e in ed if e["code"].strip() == code]
-        names += ["測試甲", "測試乙"][len(names):]   # 連江縣兩位都沒有金句，editorial.csv 沒有列
+        names = [e["candidate"].strip() for e in tg if e["code"].strip() == code]   # 標籤表只有六都
+        names += ["測試甲", "測試乙"][len(names):]
         rows.append({"code": code, "county": name, "status": "final", "winner": 1, "note": "",
                      **{f"{n}_{f}": v for n, nm, votes in zip(("c1", "c2"), names, (2000, 1000))
                         for f, v in (("name", nm), ("party", "無黨籍"), ("votes", votes), ("pct", votes / 30))},
@@ -423,10 +423,10 @@ def selftest():
     r = run("build_map.py", "--data", fake.with_suffix(".json"), "--out", prev / "selftest_2026_fake.html")
     assert r.returncode == 0 and "對不到候選人名單" not in r.stderr, r.stderr
     page = (prev / "selftest_2026_fake.html").read_text(encoding="utf-8")
-    want = sum(1 for code in counties() if next((e for e in ed if e["code"].strip() == code), {}).get("text", "").strip())
-    got_q = page.count('"quote":{')
-    assert "2026 縣市長選舉結果" in page and got_q == want, (got_q, want)
-    print(f"6 2026 年的路：標題換成 2026、改讀 editorial.csv，假結果的 22 位當選人裡有填金句的 {want} 位都掛上了（假資料只在 preview/）")
+    want = len({e["code"].strip() for e in tg if e["tags"].strip()})   # 當選人是每縣市的第一位（winner=1），標籤表每縣市第一列就是他
+    got_t = page.count('"tags":[')
+    assert "2026 縣市長選舉結果" in page and got_t == want, (got_t, want)
+    print(f"6 2026 年的路：標題換成 2026、改讀 tags.csv，假結果的 22 位當選人裡有標籤的 {want} 位都掛上了（假資料只在 preview/）")
     print("自我測試通過，產出都在 preview/selftest_*")
 
 
