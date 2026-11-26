@@ -6,6 +6,8 @@
   python -I build_map.py --data data/worst_case.json --keep-going --out preview/worst.html   # 最壞資料，只在本機看
   python -I build_map.py --theme night --out preview/map_night.html   # 深藍灰底的對照主題（預設 paper 淺底）
   python -I build_map.py --home [--data …]                 # 首頁「關鍵圖表」的 16:9 版 → election-2026-home.html（SPEC「首頁版」）
+  python -I build_map.py --home --live-json live.json [--epoch 2026-11-28] [--seq N] [--poll-s 60]
+                                                           # 首頁版另寫輪詢用的 live.json（SPEC「首頁版即時更新」），頁面烤進同一組 epoch、seq、published_at
 標題年份、出處日期、標籤檔都照結果資料的投票日；標籤只顯示在當選人那一列下面，姓名要跟結果資料一字不差。
 縣市界在建置時投影成 SVG（Web Mercator）內嵌，不載 Leaflet；鏡頭在頁面裡逐幀改 viewBox。
 --keep-going 只給最壞資料看畫面用：不認得的政黨代碼照樣報錯，但不停下，該縣市畫成斜線並在資訊卡註明；不能寫到正式檔名。
@@ -18,6 +20,7 @@ import math
 import os
 import re
 import sys
+import time
 import unicodedata
 from collections import Counter
 from pathlib import Path
@@ -221,7 +224,14 @@ def main():
                     help="配色主題（SPEC「配色」）：paper 淺底（推薦、正式檔用這套），night 深藍灰底（對照）")
     ap.add_argument("--home", action="store_true",
                     help="首頁版：沒有標題、logo 與最下面那行，圖例、按鈕、卡片在右欄（預設寫 election-2026-home.html）")
+    ap.add_argument("--live-json", help="首頁版：另寫輪詢用的 live.json（內容就是頁面烤進去的那包資料）")
+    ap.add_argument("--epoch", help="首頁版：這一晚的名字，頁面只收同一個 epoch 的 live.json（預設是投票日；彩排用 rehearsal）")
+    ap.add_argument("--seq", type=int, help="首頁版：發佈序號（預設現在的 Unix 秒數），也是 published_at")
+    ap.add_argument("--poll-s", type=int, help="首頁版：讀者多久抓一次 live.json（預設 60）；0 是停止開關")
+    ap.add_argument("--test-banner", action="store_true", help="頁面頂端加紅色「測試資料，非真實結果」、不讓搜尋引擎收錄（彩排用）")
     a = ap.parse_args()
+    if a.live_json and not a.home:
+        sys.exit("--live-json 只給首頁版（--home）用：輪詢只在首頁版")
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
     out = Path(a.out or (HOME_OUT if a.home else DEFAULT_OUT)).resolve()
@@ -312,8 +322,18 @@ def main():
         st = {c["status"] for c in res.values() if c["group"] == "pend"}
         legend.append(("pend", "、".join(dict.fromkeys(n for s, n in (("pending", "未開票"), ("counting", "開票中"), ("error", "開票中"), ("final", "尚無當選人"), ("postponed", "延後")) if s in st))))
     n = Counter(groups)   # 首頁版的圖例在名稱後寫縣市數（22 縣市，含金門、連江）
+    legend_of = lambda home: "".join(f'<li><i class="sw g-{g}"></i>{name}' + (f'<b class="n">{n[g]}</b>' if home else "") + "</li>" for g, name in legend)
     table = "".join(f"<tr><th scope=\"row\">{c['name']}</th><td>{summary(c)}</td></tr>" for c in (res[k] for k in order))
+    src = f"資料來源：中央選舉委員會 {src_date}；"
     data = {"counties": list(res.values()), "pano": pano, "six": SIX, "isles": sorted(ISLES), "date": date}
+    extra = ""
+    if a.home:   # 首頁版會輪詢：頁面與 live.json 烤同一組 epoch、seq、published_at（SPEC「首頁版即時更新」）
+        seq = a.seq or int(time.time())
+        data.update(epoch=a.epoch or date, seq=seq, published_at=seq, poll_s=a.poll_s)
+        # 首頁版的資料時間：圖例下面那行小字；全部未開票時是空的
+        data["dtime"] = f"資料時間 {times[-1][11:16]}" if times else ""
+        # 字型另收 2026 全部候選人與標籤：10:00 發的全是未開票，名字晚上才從 live.json 進來
+        extra = "".join(p.read_text(encoding="utf-8-sig") for p in (HERE / "data/candidates_2026.csv", TAGS["2026"]) if p.exists())
     page = (HERE / "map_template.html").read_text(encoding="utf-8")
     logo = {"paper": "eic-logo-green.svg", "night": "eic-logo.png"}[a.theme]   # 淺底用官網表頭的綠色 logo，深底用白色那張
     for k, v in {
@@ -321,15 +341,25 @@ def main():
         "LOGO": Path(os.path.relpath(HERE.parent / "assets" / logo, out.parent)).as_posix(),
         # 首頁版的放大鈕連到文章版（同一份資料夾的正式檔）
         "FULL": Path(os.path.relpath(DEFAULT_OUT, out.parent)).as_posix(),
-        "LEGEND": "".join(f'<li><i class="sw g-{g}"></i>{name}' + (f'<b class="n">{n[g]}</b>' if a.home else "") + "</li>" for g, name in legend),
+        "LEGEND": legend_of(a.home),
         "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits),
-        "SRC_DATE": src_date, "TABLE": table,
+        "SRC": src, "TABLE": table,
         "DATA": json.dumps(data, ensure_ascii=False, separators=(",", ":")),
     }.items():
         page = page.replace("{{" + k + "}}", v)
-    page = page.replace("{{FONT_TEXT}}", quote(font_text(page), safe=""))
+    if a.test_banner:   # 彩排的假資料：截圖外流也看得出是假的
+        page = page.replace("</head>", '<meta name="robots" content="noindex,nofollow"></head>', 1).replace("<body>", (
+            '<body><div style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99;background:#c0392b;color:#fff;'
+            'font:700 13px/1.2 \'Noto Sans TC\',sans-serif;padding:5px 12px;border-radius:0 0 6px 6px;pointer-events:none">測試資料，非真實結果</div>'), 1)
+    page = page.replace("{{FONT_TEXT}}", quote(font_text(page + extra), safe=""))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
+    if a.live_json:   # 輪詢用的那包：就是烤進頁面的資料，加上頁面要換的字串；顏色、標籤、註記都在這裡算好，頁面只換上去
+        live = {"schema": 1, **{k: data[k] for k in ("epoch", "seq", "poll_s", "published_at", "counties", "dtime")},
+                "aria": {k: aria(c) for k, c in res.items()}, "legend": legend_of(False), "legend_home": legend_of(True),
+                "src": src, "table": table}
+        Path(a.live_json).write_text(json.dumps(live, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")
+        print(f"wrote {Path(a.live_json).resolve()}（seq {data['seq']}）")
     for k in order:
         print(f"{k} {res[k]['name']} {res[k]['group']}")
     print(f"wrote {out}（{len(page.encode()) / 1024:.0f} KB）")

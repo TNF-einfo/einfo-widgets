@@ -154,8 +154,8 @@
     .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
   }
   @media (prefers-reduced-motion:reduce){ button{ transition:none } }
-  /* 首頁版才用的東西，文章版一律不顯示：按鈕圖示、放大鈕、右欄、卡片的「另有幾位候選人」、圖例的縣市數 */
-  .ic, #full, .side, .card .more, .legend .n{ display:none }
+  /* 首頁版才用的東西，文章版一律不顯示：按鈕圖示、放大鈕、右欄、卡片的「另有幾位候選人」、圖例的縣市數、資料時間、已開所數的進度條 */
+  .ic, #full, .side, .card .more, .legend .n, .dtime, .bar{ display:none }
 
   /* ── 首頁版（build_map.py --home，<html class="home">）：首頁「關鍵圖表」的 16:9 框（SPEC「首頁版」）──
      沒有標題、logo、最下面那行；左邊整塊是地圖，右欄（白底）由上而下放圖示按鈕、圖例、資訊卡。
@@ -181,6 +181,16 @@
   .home .cardpos{ position:relative; inset:auto; width:auto; flex:1 1 0; min-height:0; display:flex; flex-direction:column; align-items:stretch; z-index:auto }
   .home .card{ flex:0 1 auto; min-height:0; max-height:none; width:auto; padding:10px 0 0; border-top:1px solid var(--rule); border-radius:0; background:none; box-shadow:none }
   .home .card.measure{ display:none }
+  /* 即時更新（SPEC「首頁版即時更新」）：圖例下面一行資料時間，自動更新中斷時變紅；已開所數是一條小進度條（寬度由 JS 跟票數一起走）；
+     開票中標示的圓點輕輕閃。減少動態時圓點不動、數字直接換 */
+  .home .dtime{ display:block; margin:0; font-size:11px; line-height:1.3; color:var(--mute); font-variant-numeric:tabular-nums }
+  .home .dtime[hidden]{ display:none }
+  .home.stale .dtime{ color:#c0392b } [data-theme="night"].home.stale .dtime{ color:#ff6b5e }
+  .home .bar{ display:inline-block; width:56px; height:5px; margin-right:6px; vertical-align:1px; border-radius:3px; background:var(--btn-3); overflow:hidden }
+  .home .bar i{ display:block; height:100%; background:var(--mute) }
+  @keyframes pulse{ 50%{ opacity:.3 } }
+  .home .live i{ animation:pulse 2s ease-in-out infinite }
+  @media (prefers-reduced-motion:reduce){ .home .live i{ animation:none } }
   @media (hover:hover) and (pointer:fine){ .home #full:hover{ background:var(--btn-2) } }
   @media (max-width:620px){
     .home{ --pad:8px }
@@ -191,6 +201,8 @@
     .home .side{ gap:6px }
     /* 窄框的圖例疊在按鈕下面、佔掉卡片的高：出卡時收起，讓卡片用右欄的高（顏色看卡片的徽章），全景時才出現 */
     .home .side:has(#card:not([hidden])) .legend{ display:none }
+    /* 資料時間放在按鈕左邊的空位（不佔高度：底下還有卡片與小地圖），出卡時也看得到；過期的字（更新中斷）換到第二行 */
+    .home .dtime{ position:absolute; top:var(--pad); left:var(--pad); width:calc(100% - 2 * var(--pad) - 100px); font-size:10px; line-height:1.3 }
     /* 金門、連江小地圖搬到右欄底部並排：窄框的地圖只有 170 到 280px 寬，放在地圖左上會壓到澎湖。小地圖只在全景出現，出卡時已經淡出
        （點金門、連江時鏡頭不動、小地圖留著，卡片量過碰不到）；top 由 layout() 寫在行內，這裡要蓋掉 */
     .home .isles{ top:auto !important; bottom:var(--pad); left:calc(100% - var(--side) + var(--pad)); flex-direction:row; align-items:flex-end; gap:8px; z-index:5 }
@@ -237,11 +249,11 @@
     <div class="card measure" aria-hidden="true"><div class="in"></div></div>
   </div>
   <footer>
-    <p class="src"><span>資料來源：中央選舉委員會 {{SRC_DATE}}；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
+    <p class="src"><span>{{SRC}}</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
     <!-- 圖示只在首頁版顯示（首頁版的字藏起來，名稱靠 aria-label）；放大鈕連到文章版，JS 在能全螢幕的橫螢幕上改成全螢幕 -->
     <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1" aria-label="回全台" title="回全台"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 7.5L8 2.5l5.5 5M4 6.5V13.5h3v-3.5h2v3.5h3V6.5"/></svg><span class="bt">回全台</span></button><button id="pause" type="button" aria-label="暫停輪播" title="暫停輪播"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="bars"><path d="M5.5 3.5v9M10.5 3.5v9"/></g><g class="play"><path d="M5 3l8 5-8 5z"/></g></svg><span class="bt">暫停輪播</span></button><a id="full" href="{{FULL}}" target="_blank" rel="noopener" aria-label="放大看完整版" title="放大看完整版"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="open"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></g><g class="shut"><path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/></g></svg></a></div>
   </footer>
-  <div class="side"><div class="top"></div></div>
+  <div class="side"><div class="top"></div><p class="dtime" hidden></p></div>
   <table class="sr"><caption>{{TITLE}}，各縣市前兩名</caption><tbody>{{TABLE}}</tbody></table>
 </div>
 <script>
@@ -267,8 +279,11 @@ if (HOME) { const side = $(".side"); side.firstElementChild.append($(".btns"), $
 
 // ── 資訊卡內容 ──
 const fmt = n => n.toLocaleString("en-US");
+const opened = c => c.stations && c.stations.total ? 100 * c.stations.reported / c.stations.total : 0;   // 已開幾成（%）
 function statusLine(c) {
-  const s = c.stations ? `已開 ${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所，${c.updated}` : "";
+  const t = c.stations ? `已開 ${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所，` : "";
+  // 首頁版：已開所數換成一條小進度條（報讀器照念所數），後面只留時間
+  const s = !t ? "" : HOME ? `<span class="bar" aria-hidden="true"><i style="width:${opened(c).toFixed(2)}%"></i></span><span class="sr">${t}</span>${c.updated}` : t + c.updated;
   // counting、called 的標題旁有「開票中」標示，這行只寫票所與時間；called 的當選由姓名旁的印章表示
   return { counting: s, called: s, postponed: "選舉延後", pending: D.date.slice(5).replace("-", "/") + " 開票後更新" }[c.status] || "";
 }
@@ -422,6 +437,7 @@ let curCam = null, curCard = null, shown = undefined, lastVB = "", lastTr = null
 let curLift = { code: null, v: 0 }, drop = null, liftKey = "";   // 浮起的縣市與抬了幾成；drop＝點別處時先放下
 let foCode = null;   // 鍵盤聚焦中的縣市（焦點外緣畫在它身上）
 let curBase = null;   // 輪播或點選給的鏡頭（curCam 是疊上讀者縮放後、畫面上實際的鏡頭）
+let ANIM = null;   // 首頁版收到新資料：{ t0, from: {代碼: { c: {姓名: [票數, 得票率]}, s: 已開幾成 }} }，資訊卡的數字從舊值走到新值
 // 讀者的觸控縮放：疊在基準鏡頭上的一層，平面座標（傾斜前的框內座標）P' = (Z.x, Z.y) + Z.s × P；zb＝放手後的彈回
 let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };   // BD：地圖板子的上下緣（平移夾在這裡面）
 const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused || moved() || zb != null;
@@ -471,6 +487,7 @@ function draw(now) {
     isles.style.opacity = op; isles.style.pointerEvents = op > .5 ? "" : "none"; isles.style.visibility = op ? "" : "hidden";
   }
   renderCard(st.cur, st.prev, st.el);
+  if (ANIM) countUp(now);
   renderLift(RM.matches ? { code: st.cur && !ISLE.has(st.cur) ? st.cur : null, v: 1 } : st.lift, c.k);
   homeBtn.setAttribute("aria-hidden", st.atPano && st.cur == null); homeBtn.tabIndex = st.atPano && st.cur == null ? -1 : 0;
 }
@@ -674,6 +691,101 @@ function loop() {
   requestAnimationFrame(loop);
 }
 layout(); draw(performance.now()); requestAnimationFrame(loop);
+
+// ── 首頁版即時更新（SPEC「首頁版即時更新」）：每 60 秒抓同資料夾的 live.json，收到新的就原地換，不重新載入、不打斷輪播 ──
+// 固定網址加 cache:"no-cache"：瀏覽器帶 If-None-Match，沒變就是 304。抓不到或檔案壞掉就留著烤在頁面裡的資料。
+// 收不收：schema 1、同一個 epoch、seq 變大、22 個代碼不重複且對得上、字串欄位都在；poll_s 只認收下的檔（0 是停止開關）。
+// 過期看 published_at：迴圈停了 Pages 照樣回 200 或 304，看有沒有抓到檔判斷不出來
+const LIVE = { url: "live.json", every: ((D.poll_s > 0 ? D.poll_s : 60) * 1000), seq: D.seq || 0, epoch: D.epoch || "", pub: (D.published_at || 0) * 1000,
+  fails: 0, stopped: D.poll_s === 0, timer: 0, applied: 0, rejected: [] };
+const dtimeEl = $(".dtime");
+function liveWhy(n) {
+  if (!n || n.schema !== 1) return "schema";
+  if (n.epoch !== LIVE.epoch) return "epoch";
+  if (!(n.seq > LIVE.seq)) return "seq";
+  if (!Array.isArray(n.counties) || n.counties.length !== D.counties.length || new Set(n.counties.map(c => c && c.code)).size !== D.counties.length
+    || n.counties.some(c => !c || !C[c.code] || !Array.isArray(c.cands))) return "codes";
+  if (!n.aria || [n.legend_home, n.src, n.table, n.dtime].some(s => typeof s !== "string")) return "fields";
+  return "";
+}
+async function poll() {
+  clearTimeout(LIVE.timer);
+  if (LIVE.stopped || LIVE.busy) return;   // 切回分頁時上一次還在抓：不另開一條輪詢
+  LIVE.busy = true;
+  if (!document.hidden) {   // 分頁藏起來不抓，切回來馬上抓一次
+    try {
+      const r = await fetch(LIVE.url, { cache: "no-cache" });
+      if (!r.ok) throw new Error(r.status);
+      const n = await r.json();
+      LIVE.fails = 0;
+      const why = liveWhy(n);
+      if (!why) {
+        try { applyLive(n); } catch (e) { LIVE.rejected.push("apply:" + e.message); }
+        LIVE.seq = n.seq;   // 套用失敗也記下這個序號，不會每分鐘重試同一份壞檔
+        if (n.poll_s === 0) LIVE.stopped = true;
+        else if (n.poll_s > 0) LIVE.every = n.poll_s * 1000;
+      } else if (why !== "seq") LIVE.rejected.push(why);
+    } catch (e) { LIVE.fails++; }
+  }
+  LIVE.busy = false;
+  stale();
+  clearTimeout(LIVE.timer);
+  if (!LIVE.stopped) LIVE.timer = setTimeout(poll, LIVE.every * Math.min(5, 1 + LIVE.fails) * (0.9 + Math.random() * 0.2));   // 失敗就拉長，最多 5 倍
+}
+function applyLive(n) {   // 原地換掉每縣的資料物件（輪播、點擊、小地圖拿的是同一批物件），再換顏色、報讀文字、圖例、出處、表格
+  const from = {}, pct = c => (c.status === "counting" || c.status === "called") && c.stations ? opened(c) : null;
+  n.counties.forEach(cardHTML);   // 先把每張卡片試算一次：哪一縣的資料壞了就在這裡丟錯，還沒改到任何東西
+  for (const c of n.counties) {
+    const o = C[c.code], bbox = o.bbox;
+    const f = { c: Object.fromEntries(o.cands.map(p => [p.name, [p.votes, p.pct]])), s: pct(o) ?? 0 };
+    if (JSON.stringify(o.cands.map(p => [p.name, p.votes, p.pct])) !== JSON.stringify(c.cands.map(p => [p.name, p.votes, p.pct])) || pct(o) !== pct(c)) from[c.code] = f;
+    for (const k of Object.keys(o)) delete o[k];
+    Object.assign(o, c, { bbox });
+    HTML[c.code] = cardHTML(o);
+  }
+  document.querySelectorAll("#counties .cty").forEach(g => { const c = C[g.dataset.code];
+    g.setAttribute("class", `cty g-${c.group}`); g.setAttribute("aria-label", n.aria[c.code] || c.name); });
+  document.querySelectorAll(".isle").forEach(el => { const c = C[el.dataset.code], p = el.querySelector(".lf path");
+    el.setAttribute("aria-label", n.aria[c.code] || c.name); p.setAttribute("class", `g-${c.group}`);
+    p.style.fill = c.group === "pend" ? "url(#hatchI)" : "";   // layout() 寫過行內斜線，換色時要清掉，不然開完了還是斜線
+  });
+  const set = (sel, h) => { const el = $(sel); if (el) el.innerHTML = h; };
+  set(".legend", n.legend_home); set(".src span", n.src); set("table.sr tbody", n.table);
+  D.dtime = n.dtime; LIVE.pub = (n.published_at || 0) * 1000; LIVE.applied++;
+  if (Object.keys(from).length) ANIM = { t0: performance.now(), from };
+  shown = undefined; liftCode = null; liftKey = "";   // 資訊卡與浮起的板子照新資料重畫（板面顏色在 liftCode 換時才設）
+}
+// 資訊卡的票數、得票率、進度條從舊值走到新值，1.5 秒後停在真的數字；減少動態時直接換。兩次更新之間不內插、不外推
+function countUp(now) {
+  const u = RM.matches ? 1 : clamp((now - ANIM.t0) / 1500), e = easeOut(u), f = shown != null && ANIM.from[shown];
+  if (f) {
+    const c = C[shown], at = (a, b) => u >= 1 ? b : a + (b - a) * e;
+    cardIn.querySelectorAll("li").forEach((li, i) => { const p = c.cands[i], o = p && (f.c[p.name] || [0, 0]), v = li.querySelector(".v"), pc = li.querySelector(".pc");
+      if (!p || !v || !pc) return;
+      v.textContent = fmt(Math.round(at(o[0], p.votes))); pc.textContent = at(o[1], p.pct).toFixed(2) + "%"; });
+    const bar = cardIn.querySelector(".bar i");
+    if (bar) bar.style.width = at(f.s, opened(c)).toFixed(2) + "%";
+  }
+  if (u >= 1) ANIM = null;
+}
+function stale() {   // 開票開始後、還沒全部開完，迴圈超過 20 分鐘沒發新版：資料時間那行變紅、加「更新中斷」（手機框只放得下這麼短）
+  const all = D.counties.every(c => c.status === "final" || c.status === "postponed"), begun = D.counties.some(c => c.status !== "pending" && c.status !== "postponed");
+  const late = !LIVE.stopped && begun && !all && LIVE.pub > 0 && Date.now() - LIVE.pub > (window.__STALE_MS || 20 * 60000);
+  document.documentElement.classList.toggle("stale", late);
+  const t = late ? (D.dtime || "") + "（更新中斷）" : D.dtime;
+  if (dtimeEl.textContent !== t) dtimeEl.textContent = t;
+  dtimeEl.hidden = !t;
+}
+if (HOME) {
+  stale();
+  if (LIVE.epoch && !LIVE.stopped && !/[?&]nolive\b/.test(location.search)) {
+    if (window.__POLL_MS) LIVE.every = window.__POLL_MS;   // 測試用：縮短輪詢
+    LIVE.timer = setTimeout(poll, 1000 + Math.random() * 2000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && !LIVE.stopped) poll(); });
+    setInterval(stale, 30000);   // 沒有新檔進來，過期也要自己出現
+  }
+  window.__live = LIVE;
+}
 
 if (DEV) {   // 開發用：?dev 才有，逐幀錄影與截圖用
   window.__tour = {
