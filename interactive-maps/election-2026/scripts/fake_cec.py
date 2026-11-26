@@ -1,6 +1,7 @@
 """假的中選會開票網站，給開票夜彩排與 live_loop.py 的測試用（SPEC「首頁版即時更新」）。
 
-照 2022 年的開票片段格式出 22 縣市的縣市長頁，候選人與政黨讀 data/candidates_2026.csv，票數全是假的。
+照 2022 年的開票片段格式出 22 縣市的縣市長頁，人數照 data/candidates_2026.csv，票數全是假的。
+名字預設換成「候選人甲」這類假名字、政黨亂數（投票日前十日起不得發布民調，彩排頁是公開的）；--real-names 才用真名，只在本機看。
 選舉時鐘從 --start 開始、照 --speed 倍速走（4 倍＝16:00 到 24:00 走兩小時），票數與所數跟著時鐘長，開完才打 ◎。
 頁面上的「資料更新時間」寫的是真的牆上時間：迴圈不收比現在晚 5 分鐘以上的資料，時鐘又跑得比較快，所以不印選舉時鐘。
 一縣的數字沒變，資料時間也停在上次變的那一刻（迴圈才分得出「沒有新資料」）。
@@ -47,14 +48,29 @@ def hm(s):
     return int(h) * 60 + int(m)
 
 
-def load(seed=1, specials=True):
+FAKE_LABELS = "甲乙丙丁戊己"
+FAKE_TOP = ("中國國民黨", "民主進步黨", "台灣民眾黨", "無黨籍")
+
+
+def fake_people(code, people):
+    """預設換成假名字與亂數政黨（11-26：投票日前十日起不得發布民調，彩排頁是公開的，真名配假票數不能上）。
+    前兩名的政黨從四大類挑（代碼表一定認得），其餘在縣內打亂；要看真名只在本機用 --real-names"""
+    rng = random.Random(f"fake:{code}")
+    top = rng.sample(FAKE_TOP, 2)
+    rest = [p for _, p in people[2:]]
+    rng.shuffle(rest)
+    return [(f"候選人{FAKE_LABELS[k]}", p) for k, p in enumerate(top[:len(people)] + rest)]
+
+
+def load(seed=1, specials=True, real_names=False):
     """每個縣市：應送所數、開始與開完的時間、每位候選人的最後票數與一點點走勢的晃動（都由 seed 決定，重跑一樣）"""
     global SPECIALS
     SPECIALS = specials
     cands = {}
     for r in csv.DictReader(open(HERE / "data/candidates_2026.csv", encoding="utf-8-sig")):
-        party = "無黨籍及未經政黨推薦" if r["party"] == "無黨籍" else r["party"]
-        cands.setdefault(r["code"], (r["county"], []))[1].append((r["name"], party))
+        cands.setdefault(r["code"], (r["county"], []))[1].append((r["name"], r["party"]))
+    for code, (county, people) in cands.items():
+        people[:] = [(n, "無黨籍及未經政黨推薦" if p == "無黨籍" else p) for n, p in (people if real_names else fake_people(code, people))]
     COUNTIES.clear()
     SEEN.clear()
     for i, (code, (county, people)) in enumerate(cands.items()):
@@ -222,10 +238,11 @@ def main():
     ap.add_argument("--speed", type=float, default=4.0)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--no-specials", action="store_true")
+    ap.add_argument("--real-names", action="store_true", help="用真的候選人名字（只在本機看；彩排頁是公開的，預設用假名字）")
     a = ap.parse_args()
     if a.cmd == "selftest":
         return selftest()
-    load(a.seed, not a.no_specials)
+    load(a.seed, not a.no_specials, a.real_names)
     srv = ThreadingHTTPServer((a.bind, a.port), handler(Clock(a.start, a.speed)))
     print(f"網址前綴 http://{a.bind}:{srv.server_address[1]}/zh-TW/TC（選舉時鐘 {a.start} 起、{a.speed:g} 倍速）", flush=True)
     try:
