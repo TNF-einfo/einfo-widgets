@@ -23,9 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))   # python -I 不把腳
 from build_map import FRAME_SOUTH_OF, HERE, ISLES, SIX, bbox, font_text, geom_d, polys, proj  # noqa: E402
 
 DEFAULT_OUT = HERE / "referendum-2026.html"
-# 色階（11-26 改成連續漸層，原本是五階）：（同意－不同意）／投票數（含無效票）×100，0 是白色，往兩邊在 OKLab 裡線性漸變，
-# ±60 以上最深。-60 的深紫照 #8a4fd8 的色相與彩度、亮度壓到跟深黃褐 #7a5f00 一樣（OKLab L 0.499），兩頭一樣深（SPEC「公投地圖」）
-STOPS = [(-60, "#7739c2"), (-30, "#b48fe6"), (0, "#ffffff"), (30, "#d2b030"), (60, "#7a5f00")]
+# 色階（11-26 改成連續漸層，原本是五階）：（同意－不同意）／投票數（含無效票）×100，0 是白色，往兩邊在 OKLab 裡線性漸變，±70 以上最深。
+# 同日加強對比：錨點在 OKLCH 裡定，兩邊亮度對稱（±9 L 0.92、±22 L 0.8 上下、±45 L 0.6 上下、±70 L 0.34），
+# 同意側從黃（色相 98）轉到暖褐（60），不同意側是紫（298 到 294）；彩度超出 sRGB 就往下收（SPEC「公投地圖」）
+STOPS = [(-70, "#401c7c"), (-45, "#885ed0"), (-22, "#c3abf8"), (-9, "#e5dbff"), (0, "#ffffff"),
+         (9, "#f2e6a8"), (22, "#e7c03a"), (45, "#ac7805"), (70, "#552c00")]
+TICKS = (-60, -30, 0, 30, 60)   # 圖例刻度，照色條上的比例位置畫
 
 
 def _lin(c):
@@ -69,10 +72,11 @@ def lighter(h):
 
 
 def check_ramp():
-    """色階自我檢查（每次產生都跑）：錨點照原色、±60 之外不再變深、兩邊各自離 0 越遠越暗"""
+    """色階自我檢查（每次產生都跑）：錨點照原色、兩端之外不再變深、兩邊各自離 0 越遠越暗"""
+    lo, hi = STOPS[0][0], STOPS[-1][0]
     assert [ramp(m) for m, _ in STOPS] == [c for _, c in STOPS], [ramp(m) for m, _ in STOPS]
-    assert ramp(-90) == ramp(-60) and ramp(90) == ramp(60)
-    for side in (range(0, 61, 5), range(0, -61, -5)):
+    assert ramp(lo - 30) == ramp(lo) and ramp(hi + 30) == ramp(hi)
+    for side in (range(0, hi + 1, 5), range(0, lo - 1, -5)):
         Ls = [oklab(ramp(m))[0] for m in side]
         assert all(a > b for a, b in zip(Ls, Ls[1:])), side
 
@@ -80,7 +84,13 @@ def check_ramp():
 def ramp_css():
     """圖例色條：每 10 個百分點取一個色，瀏覽器在相鄰兩色之間的 sRGB 漸變就很接近 OKLab"""
     lo, hi = STOPS[0][0], STOPS[-1][0]
-    return "linear-gradient(to right," + ",".join(f"{ramp(m)} {(m - lo) / (hi - lo) * 100:g}%" for m in range(lo, hi + 1, 10)) + ")"
+    marks = sorted(set(range(lo, hi + 1, 10)) | {m for m, _ in STOPS})   # 每 10 個百分點加上錨點，錨點的色才不會被抹平
+    return "linear-gradient(to right," + ",".join(f"{ramp(m)} {(m - lo) / (hi - lo) * 100:.2f}%" for m in marks) + ")"
+
+
+def ramp_ticks():
+    lo, hi = STOPS[0][0], STOPS[-1][0]
+    return "".join(f'<b style="left:{(t - lo) / (hi - lo) * 100:.2f}%">{t}{"%" if t else ""}</b>' for t in TICKS)
 
 
 def f(n):
@@ -239,7 +249,8 @@ def main():
     for k, v in {
         "TITLE_FULL": full, "TITLE": title, "SUB": sub,
         "LOGO": Path(os.path.relpath(HERE.parent / "assets" / "eic-logo-green.svg", out.parent)).as_posix(),
-        "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits), "RAMP": ramp_css(),
+        "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits),
+        "RAMP": ramp_css(), "RAMP_TICKS": ramp_ticks(), "RAMP_END": str(STOPS[-1][0]),
         "SRC": f"{source} <i>{date} 投票</i>", "TABLE": table,
         "DATA": json.dumps(data, ensure_ascii=False, separators=(",", ":")),
     }.items():
