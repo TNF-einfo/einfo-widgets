@@ -1,0 +1,519 @@
+<!doctype html>
+<!-- build_referendum.py 的模板：{{…}} 由產生器填入，不要直接改產出的 referendum-2026.html。
+     版面、鏡頭、六都輪播、浮起、觸控照 map_template.html（選舉地圖）抄，不放暫停與回全台鈕；改那邊時記得看這邊要不要跟 -->
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE_FULL}}｜環境資訊中心</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap&text={{FONT_TEXT}}">
+<style>
+  /* 只有選舉地圖的 paper 淺底一套。五階：不同意多兩階紫、同意多三階黃褐（SPEC「公投地圖」，兩邊各自用 --ordinal 驗過）；
+     -hi 是浮起時打亮的板面（OKLCH 亮度 +0.06） */
+  :root{
+    --frame:#ffffff; --mast:#ffffff; --mast-ink:#232333; --sea:#f2f3f1; --inset:#e6e8e5; --line:#ffffff; --sel:#ffffff;
+    --n2:#8a4fd8; --n1:#b48fe6; --y1:#d2b030; --y2:#a88600; --y3:#7a5f00;
+    --n2-hi:#9c62ed; --n1-hi:#c7a2fa; --y1-hi:#e6c349; --y2-hi:#bb9928; --y3-hi:#8c701f;
+    --shade-a:rgba(26,35,50,.18); --shade-b:rgba(26,35,50,.10); --shade-c:rgba(26,35,50,.05); --frame-rgb:255,255,255;
+    --card:#ffffff; --card-shadow:0 6px 20px rgba(26,35,50,.14), 0 1px 3px rgba(26,35,50,.12);
+    --ink:#232333; --body:#373740; --mute:#6e6e71; --rule:rgba(26,35,50,.12); --btn:#eef0f2; --btn-2:#e4e7eb; --btn-3:#d9dde2; --win:#dd8346; --win-ink:#1a2332;
+    --ease-out:cubic-bezier(0.23,1,0.32,1);
+  }
+  html{ -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100% }
+  html,body{ margin:0; height:100%; background:var(--frame); overflow:hidden }
+  body{ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color:var(--ink) }
+  .frame{ position:relative; width:100vw; height:100vh; overflow:hidden; background:var(--frame) }
+  .mapwin{ position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; background:var(--sea) }
+  .mapwin, .isles{ touch-action:pan-y }
+  #map{ position:absolute; width:100%; height:100%; display:block }
+  #map path, .isle path{ fill-rule:evenodd; vector-effect:non-scaling-stroke }
+  .g-n2{ fill:var(--n2); background:var(--n2) } .g-n1{ fill:var(--n1); background:var(--n1) }
+  .g-y1{ fill:var(--y1); background:var(--y1) } .g-y2{ fill:var(--y2); background:var(--y2) } .g-y3{ fill:var(--y3); background:var(--y3) }
+  /* 點到的離島小地圖：打亮並抬高 3px（長度由 layout() 換算成小地圖單位，放在 --lf-t），不畫白邊；
+     影子是原位一塊半透明的島（.sd，JS 複製 d），不用 CSS 濾鏡（WebKit 不畫 SVG 元素上的 drop-shadow） */
+  .isle.on .g-n2{ fill:var(--n2-hi) } .isle.on .g-n1{ fill:var(--n1-hi) } .isle.on .g-y1{ fill:var(--y1-hi) } .isle.on .g-y2{ fill:var(--y2-hi) } .isle.on .g-y3{ fill:var(--y3-hi) }
+  .isle .lf{ transition:transform .25s var(--ease-out) }
+  .isle.on .lf{ transform:var(--lf-t) }
+  .isle .sd{ display:none } .isle.on .sd{ display:inline; fill:rgba(26,35,50,.28) }
+  @media (prefers-reduced-motion:reduce){ .isle .lf{ transition:none } .isle.on .lf{ transform:none } .isle.on .sd{ display:none } }
+  .isle path{ stroke:none } .isle.focus path{ stroke:var(--sel); stroke-width:2; stroke-linejoin:round }
+  .cty{ cursor:pointer; outline:none; touch-action:manipulation }
+  .cty path{ stroke:var(--line); stroke-width:1; stroke-linejoin:round } .cty path.isl{ stroke:none }
+  .hit{ fill:none; pointer-events:all; cursor:pointer; touch-action:manipulation }
+  /* 浮起的板子複製 d、不用 <use>；影子是平的半透明色塊，不用模糊濾鏡（WebKit 的坑，見 map_template.html） */
+  #lift{ pointer-events:none } #lc{ stroke:none } #cv{ stroke-width:1.5px; stroke-linejoin:round }
+  #sk{ fill:var(--shade-a); stroke:var(--shade-b); stroke-width:6px; stroke-linejoin:round }
+  #sh{ fill:var(--shade-c); stroke:var(--shade-c); stroke-width:14px; stroke-linejoin:round }
+  #lift.isl #sk{ fill:rgba(26,35,50,.28); stroke:none }   /* 澎湖：只留原位一條灰影（JS 也把 sh 關掉） */
+  #ol,#fo{ fill:none; stroke:var(--sel); stroke-width:2; stroke-linejoin:round; pointer-events:none }
+
+  /* 上緣漸層 40px（layout() 的 FADE 要一樣）；下緣不墊底 */
+  header{ position:absolute; left:0; right:0; top:0; z-index:3; pointer-events:none; padding-bottom:40px;
+    background:linear-gradient(rgb(var(--frame-rgb)) calc(100% - 40px), rgba(var(--frame-rgb),.97) calc(100% - 34px),
+      rgba(var(--frame-rgb),.87) calc(100% - 27px), rgba(var(--frame-rgb),.68) calc(100% - 20px), rgba(var(--frame-rgb),.43) calc(100% - 13px),
+      rgba(var(--frame-rgb),.18) calc(100% - 6px), rgba(var(--frame-rgb),0)) }
+  .ttl{ display:flex; align-items:center; gap:8px; margin:0; padding:9px 12px; background:var(--mast); color:var(--mast-ink) }
+  .ttl img{ height:18px; width:auto; flex:none; margin-left:auto }
+  h1{ margin:0; font-weight:900; font-size:clamp(20px, 6vw, 28px); line-height:1.25 }
+  /* 圖例：五段色條，刻度寫在段與段的交界下方 */
+  .legend{ display:flex; align-items:flex-start; gap:6px; margin:0; padding:7px 12px 18px; font-size:12px; line-height:12px }
+  .ramp{ position:relative; display:flex; width:150px; height:10px; flex:none; margin-top:1px }
+  .ramp i{ flex:1 } .ramp i:first-child{ border-radius:2px 0 0 2px } .ramp i:last-child{ border-radius:0 2px 2px 0 }
+  .ramp b{ position:absolute; top:13px; transform:translateX(-50%); font-weight:400; font-size:10px; color:var(--mute); white-space:nowrap; font-variant-numeric:tabular-nums }
+  .ramp b::before{ content:""; position:absolute; left:50%; top:-4px; width:1px; height:3px; background:var(--mute) }
+
+  .isles{ position:absolute; left:12px; top:80px; z-index:2; display:flex; flex-direction:column; gap:8px; transition:none }
+  .isle{ width:100px; cursor:pointer; outline:none; touch-action:manipulation }
+  .isle svg{ display:block; width:100px; height:88px; background:var(--inset); border-radius:6px }
+  .isle[data-code="09020"] svg{ height:54px }
+  .isle span{ display:block; margin-top:3px; font-size:11px; line-height:1.2; color:var(--mute); text-align:center }
+
+  .cardpos{ position:absolute; left:4%; right:4%; bottom:44px; z-index:4; pointer-events:none }
+  .card{ pointer-events:auto; box-sizing:border-box; max-height:45vh; overflow:auto; overscroll-behavior:auto;
+    background:var(--card); border-radius:8px; padding:12px 14px 13px; outline:none; box-shadow:var(--card-shadow) }
+  .card.measure{ position:absolute; left:0; right:0; bottom:0; visibility:hidden }
+  .card h2{ margin:0; font-size:17px; line-height:1.3 }
+  /* 副標：簡稱加主文，放在標題下（11-18 @gassao1998 要的；原本放在總覽卡裡） */
+  .sub{ margin:0; padding:0 12px 2px; background:var(--mast); font-size:13px; line-height:1.45; color:var(--mute) } .sub b{ font-weight:700; color:var(--body) }
+  .card .note{ margin:6px 0 0; font-size:11.5px; line-height:1.45; color:var(--mute) } .card .note span{ display:inline-block }   /* 總覽卡的色條說明（11-18），只在兩段之間換行 */
+  /* 「通過」用官網的橘（跟選舉地圖的「當選」同一組），「未通過」用按鈕灰；原因接在後面 */
+  .card h2 em{ font-style:normal; font-size:11.5px; font-weight:700; padding:1px 5px; border-radius:4px; margin-left:8px; white-space:nowrap; vertical-align:2px }
+  .card h2 em.ok{ color:var(--win-ink); background:var(--win) } .card h2 em.no{ color:var(--ink); background:var(--btn-3) }
+  .card h2 span{ margin-left:6px; font-size:13px; font-weight:400; color:var(--body); white-space:nowrap }
+  .card .kv{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 10px; margin:8px 0 0; padding-top:8px; border-top:1px solid var(--rule); font-size:13px; line-height:1.45; color:var(--mute) }
+  .card .kv b{ font-weight:400; color:var(--body); font-variant-numeric:tabular-nums } .card .kv .m{ font-size:11.5px }
+  /* 同意對不同意的長條：同意用中間那階黃褐、不同意用深紫；門檻是一條深色刻度 */
+  .bar{ position:relative; display:flex; height:10px; margin-top:10px; border-radius:2px; background:var(--btn) }
+  .bar i{ display:block; height:100%; flex:none } .bar i:first-child{ border-radius:2px 0 0 2px }
+  .ya{ background:var(--y2) } .na{ background:var(--n2) }
+  .bar b{ position:absolute; top:-4px; bottom:-4px; width:2px; margin-left:-1px; background:var(--ink) }
+  .thl{ position:relative; height:15px; margin:3px 0 0; font-size:11.5px; line-height:15px; color:var(--body) }
+  .thl span{ position:absolute; top:0; white-space:nowrap; font-variant-numeric:tabular-nums }
+  .card ol{ list-style:none; margin:8px 0 0; padding:0 }
+  .card li{ display:grid; grid-template-columns:10px minmax(0,1fr) auto 4.6em; column-gap:8px; align-items:center; font-size:14px; line-height:1.45 }
+  .card li + li{ margin-top:3px }
+  .card li .sw{ width:10px; height:10px; border-radius:2px }
+  .card .nm{ font-weight:500 }
+  .card .v, .card .pc{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--body) }
+  .card dl{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:3px 10px; margin:8px 0 0; padding-top:8px; border-top:1px solid var(--rule); font-size:13px; line-height:1.45 }
+  .card dt{ color:var(--mute) } .card dd{ margin:0; color:var(--body); font-variant-numeric:tabular-nums } .card dd i{ font-style:normal; white-space:nowrap }
+
+  footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
+    padding:7px 10px 8px 12px; font-size:10px; color:var(--mute); background:none }
+  .src{ margin:0; line-height:1.45; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+  :focus-visible{ outline:2px solid var(--sel); outline-offset:2px }
+  .cty:focus-visible, .isle:focus-visible{ outline:none }
+  @media (hover:hover) and (pointer:fine){
+    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) }
+  }
+
+  /* 橫式（框比 1:1 寬）：資訊卡在右側 */
+  @media (min-aspect-ratio:1/1){
+    h1{ font-size:24px } .ttl img{ height:22px }
+    .cardpos{ left:auto; right:16px; width:300px; top:56px; bottom:44px; display:flex; align-items:center }
+    .card{ width:100%; max-height:100% }
+  }
+  @media (min-aspect-ratio:1/1) and (max-width:620px){
+    .ttl{ padding:7px 12px } h1{ font-size:19px } .ttl img{ height:16px } .legend{ font-size:11px; padding:5px 12px 17px }
+    .cardpos{ width:260px; right:12px }
+    .card{ padding:9px 12px } .card h2{ font-size:15px } .sub{ font-size:11px; line-height:1.35 } .card h2 span{ font-size:12px }
+    .card .note{ margin-top:3px; font-size:10.5px; line-height:1.35 }
+    .bar{ margin-top:7px } .card ol{ margin-top:6px } .card li{ font-size:12.5px; column-gap:6px }
+    .card dl, .card .kv{ margin-top:6px; padding-top:6px; font-size:12px } .card .kv .m{ font-size:10.5px }
+    .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header>
+    <div class="ttl"><h1>{{TITLE}}</h1><img src="{{LOGO}}" alt="環境資訊中心"></div>
+    <p class="sub">{{SUB}}</p>
+    <div class="legend" role="img" aria-label="圖例：縣市顏色依同意票減不同意票占投票數的比例分五階，刻度 -10%、0、30%、60%">
+      <span>不同意多</span>
+      <div class="ramp"><i class="g-n2"></i><i class="g-n1"></i><i class="g-y1"></i><i class="g-y2"></i><i class="g-y3"></i>
+        <b style="left:20%">-10%</b><b style="left:40%">0</b><b style="left:60%">30%</b><b style="left:80%">60%</b></div>
+      <span>同意多</span>
+    </div>
+  </header>
+  <div class="mapwin">
+  <svg id="map" viewBox="0 0 8000 10000" role="group" aria-label="22 縣市公投結果地圖，可用 Tab 選縣市、Enter 看結果、Esc 回全國">
+    <defs>{{DEFS}}</defs>
+    <g id="counties">{{PATHS}}</g>
+    <g id="lift"><path id="cv" d=""/><path id="sh" d=""/><path id="sk" d=""/><g id="lt"><path id="lc" d=""/><path id="ol" d=""/></g></g>
+    <path id="fo" d=""/>
+    <g id="hits">{{HITS}}</g>
+  </svg>
+  </div>
+  <div class="isles">{{ISLES}}</div>
+  <div class="cardpos">
+    <!-- 輪播一直在換卡，不設 aria-live（照選舉地圖）；完整數字在下面給螢幕閱讀器的表 -->
+    <section class="card" id="card" tabindex="0" aria-label="公投結果"><div class="in"></div></section>
+    <div class="card measure" aria-hidden="true"><div class="in"></div></div>
+  </div>
+  <footer>
+    <p class="src"><span>資料來源：{{SRC}}；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>  </footer>
+  <table class="sr"><caption>{{TITLE_FULL}}，各縣市同意與不同意票</caption><tbody>{{TABLE}}</tbody></table>
+</div>
+<script>
+"use strict";
+const D = {{DATA}};
+const $ = s => document.querySelector(s);
+const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
+const ol = $("#ol"), fo = $("#fo"), isles = $(".isles");
+const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), liftG = $("#lift"), mapwin = $(".mapwin");
+const $id = id => document.getElementById(id);
+const dOf = (code, outer) => !code ? "" : outer && $id("o" + code) ? $id("o" + code).getAttribute("d")
+  : $id("p" + code).getAttribute("d") + ($id("i" + code)?.getAttribute("d") || "");
+const dOl = code => $id("p" + code).classList.contains("isl") ? "" : $id("p" + code).getAttribute("d");   // 白色外框只框本島，澎湖不框
+const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
+const SIX = D.six, ISLE = new Set(D.isles), HTML = D.cards;   // HTML.TW 是全國總覽
+const RM = matchMedia("(prefers-reduced-motion: reduce)");
+const DEV = new URLSearchParams(location.search).has("dev");
+// 小地圖浮起的影子：原位複製一份島的路徑（複製 d、不用 <use>）
+isles.querySelectorAll(".isle svg").forEach(s => { const sd = s.querySelector(".lf path").cloneNode(); sd.setAttribute("class", "sd"); s.insertBefore(sd, s.firstChild); });
+
+// ── 曲線 ──
+function bezier(x1, y1, x2, y2) {
+  const f = (u, a, b) => 3 * (1 - u) * (1 - u) * u * a + 3 * (1 - u) * u * u * b + u * u * u;
+  return t => { if (t <= 0) return 0; if (t >= 1) return 1; let lo = 0, hi = 1, u = t;
+    for (let i = 0; i < 24; i++) { u = (lo + hi) / 2; if (f(u, x1, x2) < t) lo = u; else hi = u; } return f(u, y1, y2); };
+}
+const easeOut = bezier(0.23, 1, 0.32, 1);
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const easeInv = v => v < .5 ? Math.sqrt(v / 2) : 1 - Math.sqrt((1 - v) / 2);
+const clamp = v => Math.min(1, Math.max(0, v));
+
+// ── 傾斜（2.5D）：拉近時地圖往後倒，全景是平的 ──
+const TILT_DEG = 16, LIFT = 5, SH_OFF = 2, UP = 260, DOWN = 180;
+let TILT = 0, O = { x: 0, y: 0, p: 1, ml: 0, mr: 0, mt: 0 };
+function proj(px, py, t) {
+  if (!t || !TILT) return [px, py];
+  const a = t * TILT, dy = py - O.y, s = O.p / (O.p - dy * Math.sin(a));
+  return [O.x + (px - O.x) * s, O.y + dy * Math.cos(a) * s];
+}
+function unproj(X, Y, a = TILT) {
+  if (!a) return [X, Y];
+  const yd = Y - O.y, dy = yd * O.p / (O.p * Math.cos(a) + yd * Math.sin(a)), s = O.p / (O.p - dy * Math.sin(a));
+  return [O.x + (X - O.x) / s, O.y + dy];
+}
+
+// ── 版面 ──
+let W, H, cams = {}, tour = null, smallHits = [];
+function fit(bb, R, pad, t, kmax = Infinity, kmin = 0) {
+  const tw = (R.r - R.l) * (1 - 2 * pad), th = (R.b - R.t) * (1 - 2 * pad), rx = (R.l + R.r) / 2, ry = (R.t + R.b) / 2;
+  let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.max(kmin, Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]), kmax));
+  const box = () => { const p = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([mx, my]) => proj(W / 2 + (mx - x) * k, H / 2 + (my - y) * k, t));
+    const X = p.map(q => q[0]), Y = p.map(q => q[1]); return [Math.min(...X), Math.min(...Y), Math.max(...X), Math.max(...Y)]; };
+  for (let i = 0; i < (t && TILT ? 24 : 1); i++) {
+    let b = box(); k = Math.max(kmin, Math.min(k * Math.min(tw / (b[2] - b[0]), th / (b[3] - b[1])), kmax));
+    b = box(); x += ((b[0] + b[2]) / 2 - rx) / k; y += ((b[1] + b[3]) / 2 - ry) / k;
+  }
+  return { x, y, k, t };
+}
+function layout() {
+  W = frame.clientWidth; H = frame.clientHeight;
+  const land = matchMedia("(min-aspect-ratio: 1/1)").matches;
+  const hdrB = $("header").getBoundingClientRect().bottom, ftrH = H - $("footer").getBoundingClientRect().top;
+  const FADE = 40, mwT = Math.max(0, hdrB - FADE);
+  mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px"; BD = { t: mwT, b: H - ftrH };
+  const pos = $(".cardpos");
+  pos.style.top = land ? hdrB - FADE + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
+  isles.style.top = hdrB + 8 + "px";
+  const pr = pos.getBoundingClientRect();
+  TILT = RM.matches ? 0 : TILT_DEG * Math.PI / 180;
+  O = { x: land ? (pr.left - 8) / 2 : W / 2, y: (hdrB + H - ftrH) / 2, p: 2.2 * Math.max(W, H), ml: 0, mr: 0, mt: 0 };
+  if (TILT) { const a = unproj(0, 0), b = unproj(W, 0);
+    O.ml = Math.ceil(Math.max(0, -a[0])) + 2; O.mr = Math.ceil(Math.max(0, b[0] - W)) + 2; O.mt = Math.ceil(Math.max(0, -a[1])) + 2; }
+  Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt - mwT + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
+    transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
+  lastTr = null;
+  // 全國總覽卡一直在：全景也要避開卡片（選舉地圖的全景沒有卡，用整塊板子）
+  const area = key => { measure.innerHTML = HTML[key]; const m = measure.parentNode.getBoundingClientRect();
+    return land ? { l: 0, t: hdrB, r: pr.left - 8, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 }; };
+  // 全景的空白扣掉卡片後變窄，澎湖會被金門、連江小地圖蓋到：全景從小地圖右緣開始算
+  cams = { pano: fit(D.pano, { ...area("TW"), l: isles.getBoundingClientRect().right }, land ? 0.02 : 0.025, 0) };
+  const panoH = D.pano[3] - D.pano[1];
+  for (const c of D.counties) {
+    if (ISLE.has(c.code)) { cams[c.code] = cams.pano; continue; }
+    const R = area(c.code);
+    const KMAX = Math.max(cams.pano.k, Math.min(cams.pano.k * 2, (R.b - R.t) / (0.5 * panoH)));
+    cams[c.code] = fit(c.bbox, R, 0.3, 1, KMAX, cams.pano.k);
+  }
+  smallHits = [...document.querySelectorAll(".hit.dot")].map(el => ({ el, c: C[el.dataset.code] }));
+  isles.querySelectorAll("svg").forEach(s => { const v = s.viewBox.baseVal, r = s.getBoundingClientRect();
+    const u = r.width && r.height ? Math.max(v.width / r.width, v.height / r.height) : 1;
+    s.style.setProperty("--lf-t", `translateY(${(-3 * u).toFixed(1)}px)`); });
+  buildTour();
+}
+
+// ── 鏡頭：中心線性、縮放取對數內插；太遠就中途先拉遠再推近 ──
+function lerpCam(a, b, t, dip) {
+  const lk = Math.log2(a.k) + (Math.log2(b.k) - Math.log2(a.k)) * t - dip * Math.sin(Math.PI * t);
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk, t: a.t + (b.t - a.t) * t };
+}
+function seg(from, to, dur, cardFrom, cardTo, t0, keyTo) {   // 資訊卡在鏡頭走到六成時換（沒飛就當下換）；cardTo＝null 是全國總覽
+  const a = cams[from] || from, b = cams[to] || to, same = Math.hypot(a.x - b.x, a.y - b.y) * a.k < 0.01 && Math.abs(a.k / b.k - 1) < 1e-9;
+  let dip = 0;
+  if (same) dur = from === to && typeof from === "string" ? dur : 0;   // 輪播停在同一格的那段照樣有長度
+  else { const d = Math.hypot(a.x - b.x, a.y - b.y) * Math.sqrt(a.k * b.k);
+    if (d > 1.85 * W) { dip = Math.log2(d / (1.3 * W)); dur += dip * 600; } }
+  // 中途拉遠也不收卡：這張圖一直有卡，收起只會閃一下總覽（選舉地圖那邊會先收起）
+  const ev = from !== to || !same ? [[dur ? t0 + easeInv(.6) * dur : t0, cardTo]] : [];
+  return { a, b, dur, dip, t0, ev, cardFrom, keyTo: keyTo ?? to };
+}
+function camAt(s, t) {
+  const u = s.dur ? clamp((t - s.t0) / s.dur) : 1;
+  if (RM.matches) return u >= easeInv(.6) ? s.b : s.a;
+  return lerpCam(s.a, s.b, ease(u), s.dip);
+}
+// 六都輪播照選舉地圖（11-18 加）：全景停 1.75 秒 → 臺北到高雄各停 3.5 秒 → 回全景，一直重複；全景時是全國總覽卡
+function buildTour() {
+  const keep = tour ? tourT / tour.cycle : 0, S = []; let t = 0;
+  const add = (f, to, dur, cf, ct) => { const s = seg(f, to, dur, cf, ct, t); S.push(s); t += s.dur; };
+  add("pano", "pano", 1750, null, null);
+  add("pano", SIX[0], 1500, null, SIX[0]);
+  SIX.forEach((c, i) => { add(c, c, 3500, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
+  add(SIX[5], "pano", 1500, SIX[5], null);
+  const ev = S.flatMap(s => s.ev);
+  tour = { S, cycle: t, ev, holdStart: Object.fromEntries(S.filter(s => s.a === s.b && s.cardFrom).map(s => [s.cardFrom, s.t0])) };
+  tourT = keep * t;
+  // 換尺寸：讀者點選中的鏡頭直接跳到目的地的新位置
+  if (mode === "user" && userSeg) userSeg = seg(cams[userSeg.keyTo] || cams.pano, userSeg.keyTo, 0, curCard, curCard, performance.now() - 1e4);
+}
+
+// ── 狀態：輪播（tour）與讀者點選（user），照選舉地圖 ──
+let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, userEv = [], resumeTo = -1, lastSix = -1;
+let backAt = 0;   // 點六都以外的縣市（含金門、連江）：這個時刻自動回全國總覽；0＝沒有排
+let hover = false, focusIn = false, held = false, inView = DEV, lastInteract = 0;
+let curCam = null, curCard = null, shown, lastVB = "", lastTr = null;
+let curLift = { code: null, v: 0 }, drop = null, liftKey = "", foCode = null, curBase = null;
+let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };
+// 沒有暫停鈕（11-18 定）：滑鼠停在地圖上、手指按著、鍵盤聚焦、地圖捲出畫面時暫停
+const paused = () => hover || focusIn || held || !inView || document.hidden || moved() || zb != null;
+
+function cardAt(evs, t) {
+  let i = -1; for (let j = 0; j < evs.length; j++) if (evs[j][0] <= t) i = j;
+  return i < 0 ? [evs.at(-1)?.[1] ?? null, null, 1e9] : [evs[i][1], i > 0 ? evs[i - 1][1] : evs.at(-1)[1], t - evs[i][0]];
+}
+function tourState(t) {
+  const s = tour.S.find(s => t >= s.t0 && t < s.t0 + s.dur) || tour.S.at(-1);
+  let [cur, prev, el] = cardAt(tour.ev, t);
+  if (el === 1e9) { const ev = tour.ev.at(-1); el = t + tour.cycle - ev[0]; prev = tour.ev.at(-2)[1]; }
+  lastSix = SIX.indexOf(cur) >= 0 ? SIX.indexOf(cur) : (t < tour.S[2].t0 ? -1 : 5);
+  // 浮起只在停住的那段：抵達後抬起，離開前先放下
+  const hold = s.a === s.b && s.cardFrom && !ISLE.has(s.cardFrom);
+  const lift = hold ? { code: s.cardFrom, v: ease(clamp(Math.min((t - s.t0) / UP, (s.t0 + s.dur - t) / DOWN))) } : { code: null, v: 0 };
+  return { cam: camAt(s, t), cur, prev, el, atPano: s.a === cams.pano && s.b === cams.pano, lift };
+}
+function userState(now) {
+  const [cur, prev, el] = cardAt(userEv, now), end = userSeg.t0 + userSeg.dur, to = userSeg.keyTo;
+  let lift = { code: null, v: 0 };
+  if (drop && now < drop.end) lift = { code: drop.code, v: drop.v * (1 - ease(clamp((now - drop.t0) / (drop.end - drop.t0)))) };
+  else if (to !== "pano" && now >= end) lift = { code: to, v: ease(clamp((now - end) / UP)) };
+  return { cam: camAt(userSeg, now), cur, prev, el, atPano: userSeg.b === cams.pano && now >= end, lift };
+}
+
+function draw(now) {
+  const st = mode === "tour" ? tourState(tourT) : userState(now);
+  if (zb && now >= zb.t0) {
+    const u = RM.matches ? 1 : clamp((now - zb.t0) / ZBACK), e = easeOut(u);
+    Z = u >= 1 ? { s: 1, x: 0, y: 0 } : { s: zb.s + (1 - zb.s) * e, x: zb.x * (1 - e), y: zb.y * (1 - e) };
+    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 2.5 秒
+  }
+  curBase = st.cam;
+  const c = curCam = zcam(st.cam);
+  const vb = [c.x - (W / 2 + O.ml) / c.k, c.y - (H / 2 + O.mt) / c.k, (W + O.ml + O.mr) / c.k, (H + O.mt) / c.k].map(v => v.toFixed(1)).join(" ");
+  const tr = TILT && c.t > 0.001 ? `perspective(${O.p.toFixed(0)}px) rotateX(${(c.t * TILT_DEG).toFixed(2)}deg)` : "";
+  if (tr !== lastTr) { lastTr = tr; svg.style.transform = tr; }
+  if (vb !== lastVB) {
+    lastVB = vb; svg.setAttribute("viewBox", vb); liftKey = "";
+    for (const { el, c: cc } of smallHits) { const size = Math.max(cc.bbox[2] - cc.bbox[0], cc.bbox[3] - cc.bbox[1]) * c.k;
+      el.setAttribute("r", size < 44 ? (22 / c.k).toFixed(1) : 0); }
+    const pz = cams.pano, dk = Math.abs(Math.log2(c.k / pz.k)), dp = Math.hypot((c.x - pz.x) * pz.k / W, (c.y - pz.y) * pz.k / H);
+    const op = clamp(1 - Math.max(dk / 0.4, dp / 0.08, c.t / 0.3));
+    isles.style.opacity = op; isles.style.pointerEvents = op > .5 ? "" : "none"; isles.style.visibility = op ? "" : "hidden";
+  }
+  renderCard(st.cur, st.prev, st.el);
+  renderLift(RM.matches ? { code: st.cur && !ISLE.has(st.cur) ? st.cur : null, v: 1 } : st.lift, c.k);
+}
+let liftCode = null;
+function renderLift(L, k) {
+  if (L.v <= 0) L = { code: null, v: 0 };
+  curLift = L;
+  const key = `${L.code} ${L.v.toFixed(3)}`;
+  if (key === liftKey) return;
+  liftKey = key;
+  // 澎湖（整個縣標 isl）：影子只留原位一條灰，不要往下錯開那層，跟選舉地圖一樣
+  const on = L.code != null, motion = on && !RM.matches, isl = on && $id("p" + L.code).classList.contains("isl");
+  liftG.classList.toggle("isl", isl);
+  if (L.code !== liftCode) {
+    liftCode = L.code;
+    const d = dOf(L.code), g = on ? C[L.code].tier : "";
+    for (const el of [lc, sk, sh, cv]) el.setAttribute("d", d);
+    lc.style.fill = g ? `var(--${g}-hi)` : "";
+    cv.style.fill = cv.style.stroke = g ? `var(--${g})` : "";
+  }
+  lc.style.opacity = on ? L.v : 0;
+  fo.style.visibility = on && foCode === L.code ? "hidden" : "";
+  lt.setAttribute("transform", motion ? `translate(0 ${(-LIFT * L.v / k).toFixed(2)})` : "");
+  sk.style.display = cv.style.display = motion ? "" : "none"; sh.style.display = motion && !isl ? "" : "none";
+  if (motion) { sk.style.opacity = sh.style.opacity = L.v; sh.setAttribute("transform", `translate(0 ${(SH_OFF * L.v / k).toFixed(2)})`); }
+}
+function renderCard(cur, prev, el) {   // cur＝null 是全國總覽；換卡只淡入內容 180ms
+  const key = cur ?? "TW";
+  if (key !== shown) { shown = key; cardIn.innerHTML = HTML[key]; card.scrollTop = 0; }
+  cardIn.style.opacity = prev !== cur ? easeOut(clamp(el / 180)) : 1;
+  if (curCard !== cur) {
+    curCard = cur;
+    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOl(cur) : "");
+    isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("on", i.dataset.code === cur));
+  }
+}
+
+// ── 互動：照選舉地圖。點六都跳到輪播那一站接著輪；點其他縣市（含金門、連江）停 3.5 秒自動回全國總覽（11-18）。
+// 再點、捏、拖、Esc 都會蓋掉自動回去；滑鼠停在地圖上、鍵盤聚焦時先不回。回到總覽 2.5 秒沒動作就接著輪。
+// 沒有回全台鈕（11-18 定）：回總覽靠點地圖空白處、Esc，或等自動回去
+function go(code, instant) {   // code＝縣市代碼，null＝回全國總覽
+  const now = performance.now(); lastInteract = now; resumeTo = -1;
+  Z = { s: 1, x: 0, y: 0 }; zb = null;
+  if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  mode = "user";
+  const to = code == null || ISLE.has(code) ? "pano" : code;
+  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
+  userEv.push(...userSeg.ev);
+  if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
+  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
+}
+function putDown(now, to, instant) {
+  drop = null;
+  if (instant || RM.matches || curLift.v <= 0 || curLift.code === to) return 0;
+  drop = { code: curLift.code, v: curLift.v, t0: now, end: now + DOWN * curLift.v };
+  return drop.end - now;
+}
+function maybeResume(now) {
+  if (resumeTo >= 0) {
+    if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
+    return;
+  }
+  const end = userSeg.t0 + userSeg.dur;
+  if (paused() || now < end) return;
+  if (backAt) { if (now >= backAt) go(null, RM.matches); return; }   // 減少動態：直接切回，不飛
+  const pano = userSeg.keyTo === "pano" && curCard == null;
+  if (now - (pano ? Math.max(lastInteract, end) : lastInteract) < 2500) return;
+  const n = (lastSix + 1) % 6;
+  userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
+}
+function codeOf(e) { const t = e.target.closest("[data-code]"); return t && t.dataset.code; }
+const nearestDot = e => { let best = null, bd = Infinity;   // 點擊圓重疊時選離手指最近的圓心
+  for (const { el } of smallHits) { if (!(+el.getAttribute("r") > 0)) continue;
+    const b = el.getBoundingClientRect(), d = Math.hypot(e.clientX - b.left - b.width / 2, e.clientY - b.top - b.height / 2);
+    if (d < bd) { bd = d; best = el.dataset.code; } }
+  return best; };
+svg.addEventListener("click", e => { const c = e.target.classList.contains("dot") ? nearestDot(e) : codeOf(e); go(c || null); });
+isles.addEventListener("click", e => { const c = codeOf(e); if (c) go(c); });
+frame.addEventListener("keydown", e => {
+  if (e.key === "Escape") { go(null); return; }
+  if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.code) { e.preventDefault(); go(e.target.dataset.code); }
+});
+// 焦點外緣只給鍵盤用（手指點縣市也會聚焦，畫了會在 iPhone 上變成兩圈破邊）；也只有鍵盤聚焦才算暫停
+frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
+  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
+  foCode = kb && c && !ISLE.has(c) ? c : null;
+  fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
+  isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });
+frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
+frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
+frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
+frame.addEventListener("pointerdown", () => { held = true; lastInteract = performance.now(); });
+addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
+
+// ── 觸控縮放：照選舉地圖。雙指 0.5 到 2 倍、縮放中單指拖、1 倍時橫向起手的單指拖；放手 0.5 秒後 0.3 秒彈回 ──
+const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
+function zcam(b) {
+  if (Z.s === 1 && !Z.x && !Z.y) return b;
+  return { x: b.x + (W / 2 * (1 - Z.s) - Z.x) / (Z.s * b.k), y: b.y + (H / 2 * (1 - Z.s) - Z.y) / (Z.s * b.k), k: b.k * Z.s, t: b.t };
+}
+function setZ(s, x, y) {
+  const f = Math.max(0, 1 - Math.abs(Math.log2(s))), mx = W / 2 * f, my = (BD.b - BD.t) / 2 * f;
+  const cl = (v, a, b, m) => Math.min(Math.max(a, b) + m, Math.max(Math.min(a, b) - m, v));
+  Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
+}
+function holdCam(now) {   // 開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格；不再自動回全國總覽
+  lastInteract = now; zb = null; backAt = 0;
+  if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
+  const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
+  const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
+  userEv = [[-1e9, curCard]]; mode = "user"; resumeTo = -1; drop = null;
+  userSeg = seg(atP ? P : b, atP ? P : b, 0, curCard, curCard, curLift.code === key ? now - 1e4 : now, key);
+}
+const moved = () => Z.s !== 1 || Z.x !== 0 || Z.y !== 0;
+const plane = (x, y) => { const r = frame.getBoundingClientRect(); return unproj(x - r.left, y - r.top, curBase.t * TILT); };
+const mid = ts => plane((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
+const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+const grab = t => ({ p: plane(t.clientX, t.clientY), x: Z.x, y: Z.y });
+let pinch = null, drag = null, aim = null;
+const AIM = 8;
+const springBack = () => { lastInteract = performance.now(); zb = { ...Z, t0: performance.now() + ZWAIT }; };
+for (const el of [mapwin, isles]) {
+  el.addEventListener("touchstart", e => {
+    aim = null;
+    if (e.touches.length === 2) { holdCam(performance.now()); drag = null; pinch = { d: gap(e.touches), m: mid(e.touches), s: Z.s, x: Z.x, y: Z.y }; }
+    else if (e.touches.length === 1 && moved()) { holdCam(performance.now()); drag = grab(e.touches[0]); }
+    else if (e.touches.length === 1) aim = [e.touches[0].clientX, e.touches[0].clientY];
+  }, { passive: true });
+  el.addEventListener("touchmove", e => {
+    if (aim && e.touches.length === 1) {
+      const t = e.touches[0], dx = t.clientX - aim[0], dy = t.clientY - aim[1];
+      if (Math.hypot(dx, dy) < AIM) return;
+      if (Math.abs(dx) > Math.abs(dy)) { holdCam(performance.now()); drag = { p: plane(...aim), x: Z.x, y: Z.y }; }
+      aim = null;
+    }
+    if (pinch && e.touches.length === 2) {
+      e.preventDefault();
+      const s = Math.min(ZMAX, Math.max(ZMIN, pinch.s * gap(e.touches) / pinch.d)), m = mid(e.touches), k = s / pinch.s;
+      setZ(s, m[0] - (pinch.m[0] - pinch.x) * k, m[1] - (pinch.m[1] - pinch.y) * k);
+    } else if (drag && e.touches.length === 1) {
+      e.preventDefault();
+      const q = plane(e.touches[0].clientX, e.touches[0].clientY);
+      setZ(Z.s, drag.x + q[0] - drag.p[0], drag.y + q[1] - drag.p[1]);
+    }
+  }, { passive: false });
+  const untouch = e => {
+    if (pinch && e.touches.length < 2) {
+      pinch = null;
+      if (e.touches.length === 1 && moved()) drag = grab(e.touches[0]); else springBack();
+    } else if (drag && !e.touches.length) { drag = null; springBack(); }
+    if (!e.touches.length) aim = null;
+  };
+  el.addEventListener("touchend", untouch); el.addEventListener("touchcancel", untouch);
+}
+new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) started = true; }, { threshold: 0.25 }).observe(frame);
+new ResizeObserver(() => layout()).observe(frame);
+RM.addEventListener("change", () => { layout(); liftKey = ""; });
+document.fonts && document.fonts.ready.then(layout);
+
+let last = performance.now();
+function loop() {
+  const now = performance.now(), dt = Math.min(100, now - last); last = now;
+  if (!frozen) {
+    if (mode === "tour") { if (started && !paused()) tourT = (tourT + dt) % tour.cycle; }
+    else maybeResume(now);
+  }
+  draw(now); requestAnimationFrame(loop);
+}
+layout(); draw(performance.now()); requestAnimationFrame(loop);
+
+if (DEV) {   // 開發用：?dev 才有，截圖用
+  window.__tour = {
+    get cycle() { return tour.cycle; }, get segs() { return tour.S.map(s => ({ t0: s.t0, dur: s.dur, dip: s.dip, card: s.ev.length ? s.ev.at(-1)[1] : s.cardFrom })); },
+    seek(ms) { frozen = true; mode = "tour"; tourT = ((ms % tour.cycle) + tour.cycle) % tour.cycle; draw(performance.now()); },
+  };
+  window.__dev = { select(code) { frozen = true; go(code, true); draw(performance.now()); }, cams: () => cams };
+}
+</script>
+</body>
+</html>

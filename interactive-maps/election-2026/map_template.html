@@ -1,0 +1,603 @@
+<!doctype html>
+<!-- build_map.py 的模板：{{…}} 由產生器填入，不要直接改產出的 election-2026.html -->
+<html lang="zh-Hant-TW" data-theme="{{THEME}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}｜環境資訊中心</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 字體照環資官網：思源黑體 Noto Sans TC，text= 只載這頁用到的字（build_map.py 收集） -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap&text={{FONT_TEXT}}">
+<style>
+  /* 兩套主題，build_map.py --theme 決定 <html data-theme>（SPEC「配色」）。政黨色都在各自的 --sea 上用 validate_palette.js 驗過；
+     -hi 是浮起時打亮的板面（OKLCH 亮度 +0.06／+0.07）；--shade-* 是板子底下的影子，三層半透明疊出柔邊（不用濾鏡） */
+  :root[data-theme="paper"]{
+    --frame:#ffffff; --mast:#ffffff; --mast-ink:#232333; --sea:#f2f3f1; --inset:#e6e8e5; --line:#ffffff; --sel:#ffffff;
+    --kmt:#4170e9; --dpp:#218b30; --tpp:#26c0cf; --oth:#7d838b; --pend:#e3e6e9; --pend-line:#b5bcc5;
+    --kmt-hi:#5283fe; --dpp-hi:#399e43; --tpp-hi:#45d4e3; --oth-hi:#8f959d; --pend-hi:#f7fafd; --pend-line-hi:#c8cfd8;
+    --shade-a:rgba(26,35,50,.18); --shade-b:rgba(26,35,50,.10); --shade-c:rgba(26,35,50,.05); --frame-rgb:255,255,255;
+    --card:#ffffff; --card-shadow:0 6px 20px rgba(26,35,50,.14), 0 1px 3px rgba(26,35,50,.12);
+    --ink:#232333; --body:#373740; --mute:#6e6e71; --rule:rgba(26,35,50,.12); --btn:#eef0f2; --btn-2:#e4e7eb; --btn-3:#d9dde2; --win:#dd8346; --win-ink:#1a2332;
+  }
+  :root[data-theme="night"]{
+    --frame:#141b27; --mast:#141b27; --mast-ink:#f4f6f8; --sea:#1a2332; --inset:#222d3f; --line:#1a2332; --sel:#ffffff;
+    --kmt:#3567de; --dpp:#0b8932; --tpp:#12a5b1; --oth:#b8bdc4; --pend:#263041; --pend-line:#55637b;
+    --kmt-hi:#497df6; --dpp-hi:#309f47; --tpp-hi:#3abbc7; --oth-hi:#ced3db; --pend-hi:#384254; --pend-line-hi:#697790;
+    --shade-a:rgba(5,8,13,.42); --shade-b:rgba(5,8,13,.24); --shade-c:rgba(5,8,13,.12); --frame-rgb:20,27,39;
+    --card:#2d3748; --card-shadow:0 12px 32px rgba(5,8,13,.5), 0 1px 3px rgba(5,8,13,.35);
+    --ink:#f4f6f8; --body:#e2e6eb; --mute:#a9b4c2; --rule:rgba(255,255,255,.12); --btn:#2d3748; --btn-2:#364257; --btn-3:#3e4b61; --win:#dd8346; --win-ink:#1a2332;
+  }
+  /* 徽章底色兩套主題共用：同色相壓深到白字 4.5:1 以上（國 5.47、民 5.10、眾 5.09、無 6.33） */
+  :root{ --ease-out:cubic-bezier(0.23,1,0.32,1); --kmt-badge:#2f62d6; --dpp-badge:#1a7f2b; --tpp-badge:#007a86; --oth-badge:#5b6068 }
+  html{ -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100% }
+  html,body{ margin:0; height:100%; background:var(--frame); overflow:hidden }
+  body{ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color:var(--ink) }
+  .frame{ position:relative; width:100vw; height:100vh; overflow:hidden; background:var(--frame) }
+  /* 地圖只畫在標題與出處之間這塊板子裡，上下是直切的邊、不做漸層（top／bottom 由 layout() 量）；
+     傾斜時地圖頂端往後倒，SVG 比框大一圈（大小與 transform-origin 也由 layout() 量），邊角才不會露底 */
+  .mapwin{ position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; background:var(--sea) }
+  /* 觸控：直向捲動交給瀏覽器，橫向與捏由 JS 處理（縣市、小地圖的 manipulation 跟這裡取交集，也只剩 pan-y） */
+  .mapwin, .isles{ touch-action:pan-y }
+  #map{ position:absolute; width:100%; height:100%; display:block }
+  /* 縣市的洞（新北包臺北、嘉義縣包嘉義市）靠 evenodd；線寬不跟著縮放 */
+  #map path, .isle path{ fill-rule:evenodd; vector-effect:non-scaling-stroke }
+  .g-kmt{ fill:var(--kmt); background:var(--kmt) } .g-dpp{ fill:var(--dpp); background:var(--dpp) }
+  .g-tpp{ fill:var(--tpp); background:var(--tpp) } .g-oth{ fill:var(--oth); background:var(--oth) }
+  .g-pend{ fill:url(#hatch); background:repeating-linear-gradient(-45deg,var(--pend-line) 0 1.2px,var(--pend) 1.2px 4px) }
+  .hp{ fill:var(--pend) } .hl{ fill:var(--pend-line) } #hatchH .hp{ fill:var(--pend-hi) } #hatchH .hl{ fill:var(--pend-line-hi) }
+  /* 點到的離島小地圖：打亮並浮起（11-18），不畫白邊（離島都不要白框；鍵盤焦點照樣畫）。
+     小地圖的 SVG 單位不是螢幕 px：抬高與影子的長度由 layout() 照小地圖的縮放算好，放在 --lf-t、--lf-f */
+  .isle.on .g-kmt{ fill:var(--kmt-hi) } .isle.on .g-dpp{ fill:var(--dpp-hi) } .isle.on .g-tpp{ fill:var(--tpp-hi) } .isle.on .g-oth{ fill:var(--oth-hi) }
+  .isle .lf{ transition:transform .25s var(--ease-out) }
+  .isle.on .lf{ transform:var(--lf-t) }
+  /* 影子只有一條灰：原位一塊半透明的島，板面抬高後在下緣露出來（11-18 定，澎湖也一樣）。
+     不用 CSS 濾鏡（WebKit 不畫 SVG 元素上的 drop-shadow），也不加寬描邊（小島會被撐成一顆顆灰點） */
+  .isle .sd{ display:none } .isle.on .sd{ display:inline; fill:rgba(26,35,50,.28) }
+  @media (prefers-reduced-motion:reduce){ .isle .lf{ transition:none } .isle.on .lf{ transform:none } .isle.on .sd{ display:none } }
+  .isle path{ stroke:none } .isle.focus path{ stroke:var(--sel); stroke-width:2; stroke-linejoin:round }
+  .cty{ cursor:pointer; outline:none; touch-action:manipulation }
+  .cty path{ stroke:var(--line); stroke-width:1; stroke-linejoin:round } .cty path.isl{ stroke:none }
+  .hit{ fill:none; pointer-events:all; cursor:pointer; touch-action:manipulation }
+  /* 浮起的板子是複製過來的 <path>（不用 <use>：WebKit 會把原路徑的 .cty path 樣式帶進 <use> 的複本，畫出深色雙邊）；
+     影子不用模糊濾鏡，只用兩層平的色塊：原位的側面、再往下錯開的半透明接觸影 */
+  #lift{ pointer-events:none } #lc{ stroke:none } #cv{ stroke-width:1.5px; stroke-linejoin:round }
+  #sk{ fill:var(--shade-a); stroke:var(--shade-b); stroke-width:6px; stroke-linejoin:round }
+  #sh{ fill:var(--shade-c); stroke:var(--shade-c); stroke-width:14px; stroke-linejoin:round }
+  #lift.isl #sk{ fill:rgba(26,35,50,.28); stroke:none }   /* 澎湖：只留原位一條灰影（JS 也把 sh 關掉） */
+  #ol,#fo{ fill:none; stroke:var(--sel); stroke-width:2; stroke-linejoin:round; pointer-events:none }
+
+  /* 上緣漸層：地圖從標題底下淡出（第二版的做法，11-17 加回來）。下緣不加漸層也不墊底色（11-17 定），
+     出處直接壓在地圖上，靠同海面色的字暈讀得到 */
+  /* 漸層 40px、兩端放慢（smoothstep 取樣），實心接漸層的地方才不會看到一條線；40 要跟 layout() 的 FADE 一樣 */
+  header{ position:absolute; left:0; right:0; top:0; z-index:3; pointer-events:none; padding-bottom:40px;
+    background:linear-gradient(rgb(var(--frame-rgb)) calc(100% - 40px), rgba(var(--frame-rgb),.97) calc(100% - 34px),
+      rgba(var(--frame-rgb),.87) calc(100% - 27px), rgba(var(--frame-rgb),.68) calc(100% - 20px), rgba(var(--frame-rgb),.43) calc(100% - 13px),
+      rgba(var(--frame-rgb),.18) calc(100% - 6px), rgba(var(--frame-rgb),0)) }
+  .ttl{ display:flex; align-items:center; gap:8px; margin:0; padding:9px 12px; background:var(--mast); color:var(--mast-ink) }
+  .ttl img{ height:18px; width:auto; flex:none; margin-left:auto }   /* logo 靠右 */
+  /* 標題照官網段落標題 h2：黑體、字重 900，字級跟著框寬縮放；352.8 寬時約 21px，加上靠右的 logo 剛好一行 */
+  h1{ margin:0; font-weight:900; font-size:clamp(20px, 6vw, 28px); line-height:1.25 }
+  .legend{ display:flex; flex-wrap:wrap; gap:4px 12px; list-style:none; margin:0; padding:7px 12px 8px; font-size:13px }
+  .legend li{ display:flex; align-items:center; gap:5px }
+  .sw{ display:inline-block; width:10px; height:10px; flex:none; border-radius:2px }
+
+  .isles{ position:absolute; left:12px; top:80px; z-index:2; display:flex; flex-direction:column; gap:8px; transition:none }
+  .isle{ width:100px; cursor:pointer; outline:none; touch-action:manipulation }
+  .isle svg{ display:block; width:100px; height:88px; background:var(--inset); border-radius:6px }
+  .isle[data-code="09020"] svg{ height:54px }
+  .isle span{ display:block; margin-top:3px; font-size:11px; line-height:1.2; color:var(--mute); text-align:center }
+
+  .cardpos{ position:absolute; left:4%; right:4%; bottom:44px; z-index:4; pointer-events:none }
+  /* 卡片浮在地圖板子上：淺色主題白卡、深色主題比海面淺一階；圓角 8px，跟小地圖底塊、按鈕同一組 */
+  .card{ pointer-events:auto; box-sizing:border-box; max-height:45vh; overflow:auto; overscroll-behavior:auto;   /* 卡片捲到底就接著捲文章；contain 會讓手指在卡片上直滑時整頁卡住（11-17） */
+    background:var(--card); border-radius:8px; padding:12px 14px 13px; outline:none; box-shadow:var(--card-shadow) }
+  .card.measure{ position:absolute; left:0; right:0; bottom:0; visibility:hidden }
+  .card h2{ margin:0; font-size:17px; line-height:1.3 }
+  .card .st{ margin:2px 0 0; font-size:13px; color:var(--mute) }
+  .card ol{ list-style:none; margin:9px 0 0; padding:0 }
+  .card li{ display:grid; grid-template-columns:20px minmax(0,1fr) auto 4.4em; column-gap:8px; align-items:baseline; font-size:14px; line-height:1.45 }
+  .card li + li{ margin-top:6px }
+  /* 政黨徽章：政黨色圓角方塊配白色粗體單字，白字對底色都過 4.5:1（SPEC「配色」）；旁邊照樣寫政黨名稱 */
+  .bd{ align-self:start; display:grid; place-items:center; width:20px; height:20px; border-radius:5px; color:#fff;
+    font-style:normal; font-weight:800; font-size:12.5px; line-height:1; user-select:none; -webkit-user-select:none }
+  .b-kmt{ background:var(--kmt-badge) } .b-dpp{ background:var(--dpp-badge) } .b-tpp{ background:var(--tpp-badge) } .b-oth{ background:var(--oth-badge) }
+  .card .nm b{ font-weight:500 } .card li.win .nm b{ font-weight:700 }
+  /* 「當選」用官網的橘，不用綠（綠是民進黨） */
+  .card .nm em{ font-style:normal; font-size:11.5px; font-weight:700; color:var(--win-ink); background:var(--win); padding:1px 5px; border-radius:4px; margin-left:6px; white-space:nowrap }
+  .card .v, .card .pc{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--body) }
+  .card .note{ margin:7px 0 0; font-size:12px; color:var(--mute) }
+  .card blockquote{ margin:10px 0 0; padding:9px 0 0; border-top:1px solid var(--rule) }
+  .card blockquote .k{ font-size:11.5px; font-weight:700; color:var(--mute) }
+  .card blockquote p{ margin:2px 0 3px; font-size:14px; line-height:1.55; color:var(--body) }
+  .card cite{ display:block; font-size:11.5px; font-style:normal; color:var(--mute) }
+
+  footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
+    padding:7px 10px 8px 12px; font-size:10px; color:var(--mute); background:none }
+  .src{ margin:0; line-height:1.45; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
+  .btns{ display:flex; gap:4px; flex:none }
+  button{ font:inherit; font-size:12px; color:var(--ink); background:var(--btn); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
+  button:active{ transform:scale(.97); background:var(--btn-3) }
+  #home[aria-hidden="true"]{ visibility:hidden }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+  :focus-visible{ outline:2px solid var(--sel); outline-offset:2px }
+  .cty:focus-visible, .isle:focus-visible{ outline:none }
+  @media (hover:hover) and (pointer:fine){
+    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) } button:hover{ background:var(--btn-2) }
+  }
+
+  /* 橫式（框比 1:1 寬）：資訊卡在右側 */
+  @media (min-aspect-ratio:1/1){
+    h1{ font-size:24px } .ttl img{ height:22px }
+    .cardpos{ left:auto; right:16px; width:300px; top:56px; bottom:44px; display:flex; align-items:center }
+    .card{ width:100%; max-height:100% }
+  }
+  @media (min-aspect-ratio:1/1) and (max-width:620px){
+    .ttl{ padding:7px 12px } h1{ font-size:19px } .ttl img{ height:16px } .legend{ font-size:12px; gap:3px 9px; padding:5px 12px 6px }
+    /* 卡片 260px、每位候選人一列：11-18 起每個縣市都有環境金句，原本 230px 把姓名與票數拆兩列，金句被切在卡片外 */
+    .cardpos{ width:260px; right:12px }
+    .card{ padding:9px 12px } .card h2{ font-size:15px } .card ol{ margin-top:7px }
+    .card li{ font-size:12.5px; column-gap:6px; grid-template-columns:18px minmax(0,1fr) auto 4.4em }
+    .bd{ width:18px; height:18px; font-size:11.5px; border-radius:4px }
+    .card blockquote{ margin-top:6px; padding-top:6px } .card blockquote p{ font-size:12px; line-height:1.5 } .card cite{ font-size:11px }
+    .card .nm em{ margin-left:4px }
+    .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
+  }
+  @media (prefers-reduced-motion:reduce){ button{ transition:none } }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header>
+    <div class="ttl"><h1>{{TITLE}}</h1><img src="{{LOGO}}" alt="環境資訊中心"></div>
+    <ul class="legend" aria-label="圖例">{{LEGEND}}</ul>
+  </header>
+  <div class="mapwin">
+  <svg id="map" viewBox="0 0 8000 10000" role="group" aria-label="22 縣市當選地圖，可用 Tab 選縣市、Enter 看結果、Esc 回全台">
+    <defs>
+      <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6"><rect class="hp" width="6" height="6"/><rect class="hl" width="1.3" height="6"/></pattern>
+      <pattern id="hatchI" patternUnits="userSpaceOnUse" width="6" height="6"><rect class="hp" width="6" height="6"/><rect class="hl" width="1.3" height="6"/></pattern>
+      <pattern id="hatchH" patternUnits="userSpaceOnUse" width="6" height="6"><rect class="hp" width="6" height="6"/><rect class="hl" width="1.3" height="6"/></pattern>
+      {{DEFS}}
+    </defs>
+    <g id="counties">{{PATHS}}</g>
+    <!-- 浮起的板子：sh 接觸影（往下錯開）、sk 側面（原位）、lc 板面（抬高）、ol 外緣；路徑由 JS 從縣市複製 d -->
+    <g id="lift"><path id="cv" d=""/><path id="sh" d=""/><path id="sk" d=""/><g id="lt"><path id="lc" d=""/><path id="ol" d=""/></g></g>
+    <path id="fo" d=""/>
+    <g id="hits">{{HITS}}</g>
+  </svg>
+  </div>
+  <div class="isles">{{ISLES}}</div>
+  <div class="cardpos">
+    <section class="card" id="card" tabindex="0" aria-label="縣市結果" hidden><div class="in"></div></section>
+    <div class="card measure" aria-hidden="true"><div class="in"></div></div>
+  </div>
+  <footer>
+    <p class="src"><span>資料來源：中央選舉委員會 {{SRC_DATE}}；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
+    <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1">回全台</button><button id="pause" type="button">暫停輪播</button></div>
+  </footer>
+  <table class="sr"><caption>{{TITLE}}，各縣市前兩名</caption><tbody>{{TABLE}}</tbody></table>
+</div>
+<script>
+"use strict";
+const D = {{DATA}};
+const $ = s => document.querySelector(s);
+const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
+const hatch = $("#hatch"), hatchH = $("#hatchH"), hatchI = $("#hatchI"), ol = $("#ol"), fo = $("#fo"), isles = $(".isles"), homeBtn = $("#home"), pauseBtn = $("#pause");
+const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), liftG = $("#lift"), mapwin = $(".mapwin");
+// 縣市路徑的 d（outer＝外緣只框自己，新北不框到臺北）；浮起、外緣、焦點都複製 d，不用 <use>
+// p 是本島（澎湖是整個縣、標 isl），i 是外海小島（11-18 拆開：離島不畫白邊）
+const $id = id => document.getElementById(id);
+const dOf = (code, outer) => !code ? "" : outer && $id("o" + code) ? $id("o" + code).getAttribute("d")
+  : $id("p" + code).getAttribute("d") + ($id("i" + code)?.getAttribute("d") || "");
+const dOl = code => $id("p" + code).classList.contains("isl") ? "" : $id("p" + code).getAttribute("d");   // 白色外框只框本島，澎湖不框
+const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
+const SIX = D.six, ISLE = new Set(D.isles);
+const RM = matchMedia("(prefers-reduced-motion: reduce)");
+const DEV = new URLSearchParams(location.search).has("dev");
+
+// ── 資訊卡內容 ──
+const fmt = n => n.toLocaleString("en-US");
+function statusLine(c) {
+  const s = c.stations ? `已開 ${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所，${c.updated}` : "";
+  return { counting: "開票中，" + s, called: "當選已確定，開票中，" + s, postponed: "選舉延後", pending: D.date.slice(5).replace("-", "/") + " 開票後更新" }[c.status] || "";
+}
+function cardHTML(c) {
+  const st = statusLine(c);
+  let h = `<h2>${c.name}</h2>` + (st ? `<p class="st">${st}</p>` : "");
+  if (c.cands.length && c.status !== "pending") h += "<ol>" + c.cands.map(p =>
+    `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? "<em>當選</em>" : ""}<span class="sr">（${p.party}）</span></span>` +
+    `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span></li>`).join("") + "</ol>";
+  if (c.note) h += `<p class="note">${c.note}</p>`;
+  if (c.quote) h += `<blockquote><span class="k">環境金句</span><p>${c.quote.text}</p><cite>${c.quote.source}</cite></blockquote>`;
+  return h;
+}
+const HTML = Object.fromEntries(D.counties.map(c => [c.code, cardHTML(c)]));
+// 小地圖浮起的影子：在原位複製一份島的路徑，點到時才顯示（複製 d、不用 <use>：WebKit 會把原路徑的樣式帶進 <use> 的複本）
+isles.querySelectorAll(".isle svg").forEach(s => { const sd = s.querySelector(".lf path").cloneNode(); sd.setAttribute("class", "sd"); s.insertBefore(sd, s.firstChild); });
+
+// ── 曲線 ──
+function bezier(x1, y1, x2, y2) {
+  const f = (u, a, b) => 3 * (1 - u) * (1 - u) * u * a + 3 * (1 - u) * u * u * b + u * u * u;
+  return t => { if (t <= 0) return 0; if (t >= 1) return 1; let lo = 0, hi = 1, u = t;
+    for (let i = 0; i < 24; i++) { u = (lo + hi) / 2; if (f(u, x1, x2) < t) lo = u; else hi = u; } return f(u, y1, y2); };
+}
+const easeOut = bezier(0.23, 1, 0.32, 1);
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;   // easeInOutQuad，跟東京短影音一樣
+const easeInv = v => v < .5 ? Math.sqrt(v / 2) : 1 - Math.sqrt((1 - v) / 2);   // 鏡頭走到幾成是在第幾成時間
+const clamp = v => Math.min(1, Math.max(0, v));
+
+// ── 傾斜（2.5D）：拉近出卡時地圖往後倒一點，全景是平的。鏡頭的 t 是傾斜的幾成（0 平、1 最斜） ──
+const TILT_DEG = 16, LIFT = 5, SH_OFF = 2, UP = 260, DOWN = 180;   // 浮起：板面抬 5px、接觸影再往下 2px；抬起 260ms、放下 180ms
+let TILT = 0, O = { x: 0, y: 0, p: 1, ml: 0, mr: 0, mt: 0 };   // O：傾斜的軸心（框內座標）、透視距離、SVG 往外多長的邊
+function proj(px, py, t) {   // 框內平面座標 → 傾斜後的螢幕座標（CSS perspective(p) rotateX(t·TILT)，軸心 O）
+  if (!t || !TILT) return [px, py];
+  const a = t * TILT, dy = py - O.y, s = O.p / (O.p - dy * Math.sin(a));
+  return [O.x + (px - O.x) * s, O.y + dy * Math.cos(a) * s];
+}
+function unproj(X, Y, a = TILT) {   // 反算：傾斜 a 時螢幕上的點原本在平面哪裡（預設最斜，量 SVG 要多大；觸控縮放換算手指位置）
+  if (!a) return [X, Y];
+  const yd = Y - O.y, dy = yd * O.p / (O.p * Math.cos(a) + yd * Math.sin(a)), s = O.p / (O.p - dy * Math.sin(a));
+  return [O.x + (X - O.x) / s, O.y + dy];
+}
+
+// ── 版面：量標題、出處、每張資訊卡，算每個縣市的鏡頭 ──
+let W, H, cams = {}, tour = null, smallHits = [];
+function fit(bb, R, pad, t, kmax = Infinity, kmin = 0) {   // 把縣市外框（傾斜後的梯形外框）塞進 R、四周留 pad；縮放夾在 kmin 到 kmax
+  const tw = (R.r - R.l) * (1 - 2 * pad), th = (R.b - R.t) * (1 - 2 * pad), rx = (R.l + R.r) / 2, ry = (R.t + R.b) / 2;
+  let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.max(kmin, Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]), kmax));
+  const box = () => { const p = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([mx, my]) => proj(W / 2 + (mx - x) * k, H / 2 + (my - y) * k, t));
+    const X = p.map(q => q[0]), Y = p.map(q => q[1]); return [Math.min(...X), Math.min(...Y), Math.max(...X), Math.max(...Y)]; };
+  for (let i = 0; i < (t && TILT ? 24 : 1); i++) {   // 平的一輪就準；斜的要迭代（透視不是線性）
+    let b = box(); k = Math.max(kmin, Math.min(k * Math.min(tw / (b[2] - b[0]), th / (b[3] - b[1])), kmax));
+    b = box(); x += ((b[0] + b[2]) / 2 - rx) / k; y += ((b[1] + b[3]) / 2 - ry) / k;
+  }
+  return { x, y, k, t };
+}
+function layout() {
+  W = frame.clientWidth; H = frame.clientHeight;
+  const land = matchMedia("(min-aspect-ratio: 1/1)").matches;
+  // 地圖板子＝標題下緣到出處上緣；卡片與小地圖離板子邊 8px
+  const hdrB = $("header").getBoundingClientRect().bottom, ftrH = H - $("footer").getBoundingClientRect().top;
+  // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom），地圖才會從標題底下淡出；取景照樣從 hdrB 算
+  const FADE = 40, mwT = Math.max(0, hdrB - FADE);
+  mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px"; BD = { t: mwT, b: H - ftrH };
+  const pos = $(".cardpos");
+  // 橫式卡片從圖例下面就開始（蓋在漸層上）：漸層那 40px 只是地圖淡出，平板 528×352 少了它金句會放不下（11-18）
+  pos.style.top = land ? hdrB - FADE + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px";
+  isles.style.top = hdrB + 8 + "px";
+  const pr = pos.getBoundingClientRect();
+  // 軸心放在留給縣市的空白中央，透視距離約框長邊的 2.2 倍（角度小、近大遠小也小）
+  TILT = RM.matches ? 0 : TILT_DEG * Math.PI / 180;
+  O = { x: land ? (pr.left - 8) / 2 : W / 2, y: (hdrB + H - ftrH) / 2, p: 2.2 * Math.max(W, H), ml: 0, mr: 0, mt: 0 };
+  if (TILT) { const a = unproj(0, 0), b = unproj(W, 0);
+    O.ml = Math.ceil(Math.max(0, -a[0])) + 2; O.mr = Math.ceil(Math.max(0, b[0] - W)) + 2; O.mt = Math.ceil(Math.max(0, -a[1])) + 2; }
+  // SVG 放在板子裡，座標照樣以框為準（往上多扣板子的 top）
+  Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt - mwT + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
+    transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
+  lastTr = null;
+  cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };
+  const panoH = D.pano[3] - D.pano[1];   // 台灣（含澎湖）外框的高
+  for (const c of D.counties) {
+    if (ISLE.has(c.code)) { cams[c.code] = cams.pano; continue; }
+    measure.innerHTML = HTML[c.code];
+    const m = measure.parentNode.getBoundingClientRect();
+    const R = land ? { l: 0, t: hdrB, r: pr.left - 8, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 };
+    // 縣市佔空白的四成（11-17：原本佔八成太大，縮一半）。拉近的上限：卡片以外的空白區至少放得下半個台灣的高度
+    // （11-17：臺中這類還是太大），最多全景的 2 倍；下限是全景，長條縣不會比全景還遠
+    const KMAX = Math.max(cams.pano.k, Math.min(cams.pano.k * 2, (R.b - R.t) / (0.5 * panoH)));
+    cams[c.code] = fit(c.bbox, R, 0.3, 1, KMAX, cams.pano.k);
+  }
+  const ib = isles.getBoundingClientRect(), isv = isles.querySelector("svg").getBoundingClientRect();
+  smallHits = [...document.querySelectorAll(".hit.dot")].map(el => ({ el, c: C[el.dataset.code] }));
+  // 小地圖的斜線：照小地圖自己的縮放換算成 6px 一格
+  const iv = isles.querySelector("svg").viewBox.baseVal;
+  hatchI.setAttribute("patternTransform", `rotate(45) scale(${iv.width / isv.width})`);
+  isles.querySelectorAll('.g-pend').forEach(u => u.style.fill = "url(#hatchI)");
+  // 小地圖浮起抬 3px，換算成小地圖自己的 viewBox 單位（preserveAspectRatio meet 取較小的縮放）
+  isles.querySelectorAll("svg").forEach(s => { const v = s.viewBox.baseVal, r = s.getBoundingClientRect();
+    const u = r.width && r.height ? Math.max(v.width / r.width, v.height / r.height) : 1;
+    s.style.setProperty("--lf-t", `translateY(${(-3 * u).toFixed(1)}px)`); });
+  buildTour();
+}
+
+// ── 鏡頭：中心線性、縮放取對數內插；太遠就中途先拉遠再推近（照東京短影音） ──
+function lerpCam(a, b, t, dip) {
+  const lk = Math.log2(a.k) + (Math.log2(b.k) - Math.log2(a.k)) * t - dip * Math.sin(Math.PI * t);
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk, t: a.t + (b.t - a.t) * t };   // 傾斜跟著拉近一起走
+}
+function seg(from, to, dur, cardFrom, cardTo, t0, keyTo) {
+  // 同一格：容許浮點誤差（飛到的鏡頭是內插算出來的，跟 cams 裡的差一點點，點金門、連江才不會原地「飛」1.5 秒）
+  const a = cams[from] || from, b = cams[to] || to, same = Math.hypot(a.x - b.x, a.y - b.y) * a.k < 0.01 && Math.abs(a.k / b.k - 1) < 1e-9;
+  let dip = 0;
+  if (same) dur = from === to && typeof from === "string" ? dur : 0;
+  else { const d = Math.hypot(a.x - b.x, a.y - b.y) * Math.sqrt(a.k * b.k);   // 兩端縮放的中間值量距離
+    if (d > 1.85 * W) { dip = Math.log2(d / (1.3 * W)); dur += dip * 600; } }
+  const ev = [];   // 資訊卡換的時刻（絕對時間）
+  if (from !== to || !same) {
+    if (cardTo == null) ev.push([t0, null]);
+    else if (!dur) ev.push([t0, cardTo]);
+    else { if (dip && !RM.matches) ev.push([t0 + easeInv(.25) * dur, null]); ev.push([t0 + easeInv(.6) * dur, cardTo]); }
+  }
+  return { a, b, dur, dip, t0, ev, cardFrom, keyTo: keyTo ?? to, six: SIX.indexOf(cardTo) };
+}
+function camAt(s, t) {
+  const u = s.dur ? clamp((t - s.t0) / s.dur) : 1;
+  if (RM.matches) return u >= easeInv(.6) ? s.b : s.a;   // 減少動態：不飛，到換卡那一刻直接切
+  return lerpCam(s.a, s.b, ease(u), s.dip);
+}
+function buildTour() {
+  const keep = tour ? tourT / tour.cycle : 0, S = []; let t = 0;
+  const add = (f, to, dur, cf, ct) => { const s = seg(f, to, dur, cf, ct, t); S.push(s); t += s.dur; };
+  add("pano", "pano", 1750, null, null);   // 一打開與每輪回到全景停 1.75 秒（11-18：原本 3 秒，先改 2.5 秒）
+  add("pano", SIX[0], 1500, null, SIX[0]);
+  // 每個六都停 3.5 秒（11-17：原本 6 秒）
+  SIX.forEach((c, i) => { add(c, c, 3500, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
+  add(SIX[5], "pano", 1500, SIX[5], null);
+  const ev = S.flatMap(s => s.ev);
+  tour = { S, cycle: t, ev, holdStart: Object.fromEntries(S.filter(s => s.a === s.b && s.cardFrom).map(s => [s.cardFrom, s.t0])) };
+  tourT = keep * t;
+  if (mode === "user" && userSeg) userSeg = seg(cams[userSeg.keyTo] || cams.pano, userSeg.keyTo, 0, curCard, curCard, performance.now() - 1e4);
+}
+
+// ── 狀態 ──
+let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, userEv = [], resumeTo = -1, lastSix = -1;
+let backAt = 0;   // 點六都以外的縣市（含金門、連江）：這個時刻自動回全台；0＝沒有排
+let hover = false, focusIn = false, held = false, inView = DEV, userPaused = false, lastInteract = 0;
+let curCam = null, curCard = null, shown = undefined, lastVB = "", lastTr = null;
+let curLift = { code: null, v: 0 }, drop = null, liftKey = "";   // 浮起的縣市與抬了幾成；drop＝點別處時先放下
+let foCode = null;   // 鍵盤聚焦中的縣市（焦點外緣畫在它身上）
+let curBase = null;   // 輪播或點選給的鏡頭（curCam 是疊上讀者縮放後、畫面上實際的鏡頭）
+// 讀者的觸控縮放：疊在基準鏡頭上的一層，平面座標（傾斜前的框內座標）P' = (Z.x, Z.y) + Z.s × P；zb＝放手後的彈回
+let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };   // BD：地圖板子的上下緣（平移夾在這裡面）
+const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused || moved() || zb != null;
+
+function cardAt(evs, t) {   // 最後一次換卡與前一次 → [現在, 前一張, 換了多久]
+  let i = -1; for (let j = 0; j < evs.length; j++) if (evs[j][0] <= t) i = j;
+  return i < 0 ? [evs.at(-1)?.[1] ?? null, null, 1e9] : [evs[i][1], i > 0 ? evs[i - 1][1] : evs.at(-1)[1], t - evs[i][0]];
+}
+function tourState(t) {
+  const s = tour.S.find(s => t >= s.t0 && t < s.t0 + s.dur) || tour.S.at(-1);
+  let [cur, prev, el] = cardAt(tour.ev, t);
+  if (el === 1e9) { const ev = tour.ev.at(-1); el = t + tour.cycle - ev[0]; prev = tour.ev.at(-2)[1]; }
+  lastSix = SIX.indexOf(cur) >= 0 ? SIX.indexOf(cur) : (t < tour.S[2].t0 ? -1 : 5);
+  // 浮起只在停住的那段：抵達後抬起，離開前先放下
+  const hold = s.a === s.b && s.cardFrom && !ISLE.has(s.cardFrom);
+  const lift = hold ? { code: s.cardFrom, v: ease(clamp(Math.min((t - s.t0) / UP, (s.t0 + s.dur - t) / DOWN))) } : { code: null, v: 0 };
+  return { cam: camAt(s, t), cur, prev, el, atPano: s.a === cams.pano && s.b === cams.pano, lift };
+}
+function userState(now) {
+  const [cur, prev, el] = cardAt(userEv, now), end = userSeg.t0 + userSeg.dur, to = userSeg.keyTo;
+  let lift = { code: null, v: 0 };
+  if (drop && now < drop.end) lift = { code: drop.code, v: drop.v * (1 - ease(clamp((now - drop.t0) / (drop.end - drop.t0)))) };
+  else if (to !== "pano" && now >= end) lift = { code: to, v: ease(clamp((now - end) / UP)) };
+  return { cam: camAt(userSeg, now), cur, prev, el, atPano: userSeg.b === cams.pano && now >= end, lift };
+}
+
+function draw(now) {
+  const st = mode === "tour" ? tourState(tourT) : userState(now);
+  if (zb && now >= zb.t0) {   // 放手停 ZWAIT 後彈回；減少動態直接切回去
+    const u = RM.matches ? 1 : clamp((now - zb.t0) / ZBACK), e = easeOut(u);
+    Z = u >= 1 ? { s: 1, x: 0, y: 0 } : { s: zb.s + (1 - zb.s) * e, x: zb.x * (1 - e), y: zb.y * (1 - e) };
+    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 5 秒
+  }
+  curBase = st.cam;
+  const c = curCam = zcam(st.cam);
+  const vb = [c.x - (W / 2 + O.ml) / c.k, c.y - (H / 2 + O.mt) / c.k, (W + O.ml + O.mr) / c.k, (H + O.mt) / c.k].map(v => v.toFixed(1)).join(" ");
+  const tr = TILT && c.t > 0.001 ? `perspective(${O.p.toFixed(0)}px) rotateX(${(c.t * TILT_DEG).toFixed(2)}deg)` : "";
+  if (tr !== lastTr) { lastTr = tr; svg.style.transform = tr; }
+  if (vb !== lastVB) {
+    lastVB = vb; svg.setAttribute("viewBox", vb); liftKey = "";
+    for (const p of [hatch, hatchH]) p.setAttribute("patternTransform", `rotate(45) scale(${(1 / c.k).toFixed(4)})`);
+    for (const { el, c: cc } of smallHits) { const size = Math.max(cc.bbox[2] - cc.bbox[0], cc.bbox[3] - cc.bbox[1]) * c.k;
+      el.setAttribute("r", size < 44 ? (22 / c.k).toFixed(1) : 0); }
+    // 小地圖只在全景出現：拉近、平移或傾斜離開全景就淡出（手機上六都幾乎不放大、只平移，只看縮放會留著壓到地圖）
+    const pz = cams.pano, dk = Math.abs(Math.log2(c.k / pz.k)), dp = Math.hypot((c.x - pz.x) * pz.k / W, (c.y - pz.y) * pz.k / H);
+    const op = clamp(1 - Math.max(dk / 0.4, dp / 0.08, c.t / 0.3));
+    isles.style.opacity = op; isles.style.pointerEvents = op > .5 ? "" : "none"; isles.style.visibility = op ? "" : "hidden";
+  }
+  renderCard(st.cur, st.prev, st.el);
+  renderLift(RM.matches ? { code: st.cur && !ISLE.has(st.cur) ? st.cur : null, v: 1 } : st.lift, c.k);
+  homeBtn.setAttribute("aria-hidden", st.atPano && st.cur == null); homeBtn.tabIndex = st.atPano && st.cur == null ? -1 : 0;
+}
+// 浮起的板子：打亮的板面抬高 LIFT px；原位先用原色蓋掉自己的白界線（cv），再疊兩層半透明的影子（sk 原位、sh 往下 SH_OFF px），
+// 寬的半透明描邊疊出柔邊。原本原位畫實心的深色側面，在 iPhone 上看起來像一圈破掉的雙邊，11-17 改掉。
+// 全是平的色塊、沒有濾鏡，各家瀏覽器畫出來一樣；v＝0（飛行途中）整組關掉。減少動態：只留打亮與外緣，不抬、沒有影子
+let liftCode = null;
+function renderLift(L, k) {
+  if (L.v <= 0) L = { code: null, v: 0 };
+  curLift = L;
+  const key = `${L.code} ${L.v.toFixed(3)}`;
+  if (key === liftKey) return;
+  liftKey = key;
+  // 澎湖（整個縣標 isl）：影子只留原位一條灰，不加寬描邊、不要往下錯開那層（小島一多會變成一圈圈灰暈），跟金門、連江小地圖一樣（11-18）
+  const on = L.code != null, motion = on && !RM.matches, isl = on && $id("p" + L.code).classList.contains("isl");
+  liftG.classList.toggle("isl", isl);
+  if (L.code !== liftCode) {
+    liftCode = L.code;
+    const d = dOf(L.code), g = on ? C[L.code].group : "";
+    for (const el of [lc, sk, sh, cv]) el.setAttribute("d", d);
+    lc.style.fill = g === "pend" ? "url(#hatchH)" : g ? `var(--${g}-hi)` : "";
+    cv.style.fill = cv.style.stroke = g === "pend" ? "url(#hatch)" : g ? `var(--${g})` : "";   // 蓋掉自己的白界線，抬起後下緣才不會多一條白線
+  }
+  lc.style.opacity = on ? L.v : 0;
+  fo.style.visibility = on && foCode === L.code ? "hidden" : "";   // 抬起的那個已經有外緣，焦點外緣不要在原位再畫一圈
+  lt.setAttribute("transform", motion ? `translate(0 ${(-LIFT * L.v / k).toFixed(2)})` : "");
+  sk.style.display = cv.style.display = motion ? "" : "none"; sh.style.display = motion && !isl ? "" : "none";
+  if (motion) { sk.style.opacity = sh.style.opacity = L.v; sh.setAttribute("transform", `translate(0 ${(SH_OFF * L.v / k).toFixed(2)})`); }
+}
+function renderCard(cur, prev, el) {
+  let show = cur, op = 1, ty = 0, inOp = 1;
+  if (cur == null) { if (prev != null && el < 150) { show = prev; op = 1 - easeOut(el / 150); } else show = null; }
+  else if (prev == null) { const p = easeOut(clamp(el / 200)); op = p; ty = RM.matches ? 0 : 8 * (1 - p); }
+  else if (prev !== cur) inOp = easeOut(clamp(el / 180));
+  if (show !== shown) { shown = show; card.hidden = show == null; if (show) { cardIn.innerHTML = HTML[show]; card.scrollTop = 0; } }
+  card.style.opacity = op; card.style.transform = ty ? `translateY(${ty.toFixed(2)}px)` : ""; cardIn.style.opacity = inOp;
+  if (curCard !== cur) {   // 外緣跟資訊卡同一刻換
+    curCard = cur;
+    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOl(cur) : "");   // 連內環一起框：新北跟臺北、嘉義縣跟嘉義市的交界也畫白邊（11-17）；離島不框（11-18）
+    isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("on", i.dataset.code === cur));
+  }
+}
+
+// ── 互動 ──
+function go(code, instant) {   // code＝縣市代碼，null＝回全台
+  const now = performance.now(); lastInteract = now; resumeTo = -1;
+  Z = { s: 1, x: 0, y: 0 }; zb = null;   // 放大中點縣市：從畫面上的樣子直接飛過去，讀者的縮放併進這段飛行
+  if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  mode = "user";
+  const to = code == null || ISLE.has(code) ? "pano" : code;
+  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
+  userEv.push(...userSeg.ev);
+  // 點六都：輪播直接跳到那一站，飛到後照原本順序接著輪（11-17：原本停住等 5 秒）
+  if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
+  // 六都以外：抵達後停 3.5 秒自動回全台（金門、連江鏡頭不動，從現在算）；讀者中途再點、捏、拖、Esc、回全台都會蓋掉
+  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
+}
+function putDown(now, to, instant) {   // 板子還抬著就先放下再飛（放下的時間照抬了幾成）；回傳要等多久
+  drop = null;
+  if (instant || RM.matches || curLift.v <= 0 || curLift.code === to) return 0;
+  drop = { code: curLift.code, v: curLift.v, t0: now, end: now + DOWN * curLift.v };
+  return drop.end - now;
+}
+function maybeResume(now) {
+  if (resumeTo >= 0) {
+    if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
+    return;
+  }
+  const end = userSeg.t0 + userSeg.dur;
+  if (paused() || now < end) return;
+  if (backAt) { if (now >= backAt) go(null, RM.matches); return; }   // 減少動態：直接切回全台，不飛
+  // 停在縣市或回到全台：2.5 秒沒動作就接著輪（11-18：原本縣市 5 秒、全台抵達後 4 秒；11-17 以前是 20 秒）
+  const pano = userSeg.keyTo === "pano" && curCard == null;
+  if (now - (pano ? Math.max(lastInteract, end) : lastInteract) < 2500) return;
+  const n = (lastSix + 1) % 6;
+  userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
+}
+function codeOf(e) { const t = e.target.closest("[data-code]"); return t && t.dataset.code; }
+// 小縣市的隱形點擊圓會互相蓋住（臺北、基隆的圓心在手機全景只差約 18px，點基隆中間會選到臺北）：
+// 點到圓的時候改選離手指最近的圓心（11-18）
+const nearestDot = e => { let best = null, bd = Infinity;
+  for (const { el } of smallHits) { if (!(+el.getAttribute("r") > 0)) continue;
+    const b = el.getBoundingClientRect(), d = Math.hypot(e.clientX - b.left - b.width / 2, e.clientY - b.top - b.height / 2);
+    if (d < bd) { bd = d; best = el.dataset.code; } }
+  return best; };
+svg.addEventListener("click", e => { const c = e.target.classList.contains("dot") ? nearestDot(e) : codeOf(e); go(c || null); });
+isles.addEventListener("click", e => { const c = codeOf(e); if (c) go(c); });
+frame.addEventListener("keydown", e => {
+  if (e.key === "Escape") { go(null); return; }
+  if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.code) { e.preventDefault(); go(e.target.dataset.code); }
+});
+// 焦點外緣只給鍵盤用：手指點縣市也會聚焦，原位多畫一圈白邊、跟抬起的外緣錯開 5px，iPhone 上看就是兩圈破掉的邊（11-17）
+// 只有鍵盤聚焦才算暫停：手指、滑鼠點縣市也會聚焦，算進去的話點過就再也不接著輪（11-17 發現）
+frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
+  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
+  foCode = kb && c && !ISLE.has(c) ? c : null;
+  fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
+  isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });   // 手指點小地圖不畫白邊（11-18）
+frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
+frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
+frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
+frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); });
+addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
+homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
+pauseBtn.addEventListener("click", () => {
+  userPaused = !userPaused; pauseBtn.textContent = userPaused ? "繼續輪播" : "暫停輪播";
+  if (!userPaused && mode === "user") lastInteract = -1e9;   // 按繼續就接著輪，不再等 5 秒
+});
+
+// ── 觸控縮放：照吐瓦魯地圖（template/gen_map.py）的捏開放大改寫。只做觸控，桌機不縮放、滾輪不攔 ──
+// 雙指捏：目前鏡頭的 0.5 到 2 倍、原地縮放，兩指一起移動可平移；縮放中單指拖就移動畫面；1 倍時橫向起手的單指拖也移動；
+// 放手停 0.5 秒彈回基準鏡頭。
+// 走鏡頭本身：Z 換算成鏡頭再改 viewBox，向量照樣清楚、線寬不變，浮起與斜線也照放大後的鏡頭算。
+// 傾斜不收平：手指位置用 unproj 照目前的傾斜反算回平面，捏的那一點照樣留在兩指中間；收平的話一開始捏，地圖就在手指底下變形
+const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
+function zcam(b) {   // 基準鏡頭疊上 Z：平面座標 P = (w − b)·k + 框中心，解出新的鏡頭
+  if (Z.s === 1 && !Z.x && !Z.y) return b;
+  return { x: b.x + (W / 2 * (1 - Z.s) - Z.x) / (Z.s * b.k), y: b.y + (H / 2 * (1 - Z.s) - Z.y) / (Z.s * b.k), k: b.k * Z.s, t: b.t };
+}
+function setZ(s, x, y) {   // 夾住平移：放大時板子一直被地圖蓋滿，縮小時縮小的畫面整塊留在板子裡，拖不出邊界
+  // 這條規則在 1 倍時一步都不能動，所以另給一段餘裕：1 倍時可拖開半個板子，往 2 倍、0.5 倍漸漸收回，到兩端跟原規則一樣
+  const f = Math.max(0, 1 - Math.abs(Math.log2(s))), mx = W / 2 * f, my = (BD.b - BD.t) / 2 * f;
+  const cl = (v, a, b, m) => Math.min(Math.max(a, b) + m, Math.max(Math.min(a, b) - m, v));
+  Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
+}
+function holdCam(now) {   // 讀者開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格
+  lastInteract = now; zb = null; backAt = 0;   // 捏、拖就不自動回全台
+  if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
+  const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
+  const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
+  userEv = [[-1e9, curCard]]; mode = "user"; resumeTo = -1; drop = null;
+  userSeg = seg(atP ? P : b, atP ? P : b, 0, curCard, curCard, curLift.code === key ? now - 1e4 : now, key);   // 已經抬著就維持抬著，否則現在抬起
+}
+const moved = () => Z.s !== 1 || Z.x !== 0 || Z.y !== 0;   // 縮放過或拖開過（還沒彈回）
+const plane = (x, y) => { const r = frame.getBoundingClientRect(); return unproj(x - r.left, y - r.top, curBase.t * TILT); };
+const mid = ts => plane((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
+const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+const grab = t => ({ p: plane(t.clientX, t.clientY), x: Z.x, y: Z.y });
+let pinch = null, drag = null, aim = null;   // pinch＝雙指捏 { d:兩指距離, m:中點, s, x, y }；drag＝單指拖 { p:起點, x, y }；aim＝1 倍時單指的起點，還沒判方向
+const AIM = 8;   // 1 倍時手指走超過 8px 才判方向：橫向起手就拖地圖，直向起手交給瀏覽器捲文章
+const springBack = () => { lastInteract = performance.now(); zb = { ...Z, t0: performance.now() + ZWAIT }; };
+for (const el of [mapwin, isles]) {   // 小地圖淡出前也收得到，手指壓在它上面一樣能捏
+  // 只有捏、縮放或拖開中的拖、1 倍時橫向起手的拖才擋瀏覽器預設；CSS 的 touch-action:pan-y 讓直向捲動一直歸瀏覽器
+  el.addEventListener("touchstart", e => {
+    aim = null;
+    if (e.touches.length === 2) { holdCam(performance.now()); drag = null; pinch = { d: gap(e.touches), m: mid(e.touches), s: Z.s, x: Z.x, y: Z.y }; }
+    else if (e.touches.length === 1 && moved()) { holdCam(performance.now()); drag = grab(e.touches[0]); }
+    else if (e.touches.length === 1) aim = [e.touches[0].clientX, e.touches[0].clientY];
+  }, { passive: true });
+  el.addEventListener("touchmove", e => {
+    if (aim && e.touches.length === 1) {
+      const t = e.touches[0], dx = t.clientX - aim[0], dy = t.clientY - aim[1];
+      if (Math.hypot(dx, dy) < AIM) return;
+      if (Math.abs(dx) > Math.abs(dy)) { holdCam(performance.now()); drag = { p: plane(...aim), x: Z.x, y: Z.y }; }   // 從起點算，先走的那幾 px 也補上
+      aim = null;   // 直向起手：這一筆都不攔，讓頁面捲
+    }
+    if (pinch && e.touches.length === 2) {
+      e.preventDefault();
+      // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間
+      const s = Math.min(ZMAX, Math.max(ZMIN, pinch.s * gap(e.touches) / pinch.d)), m = mid(e.touches), k = s / pinch.s;
+      setZ(s, m[0] - (pinch.m[0] - pinch.x) * k, m[1] - (pinch.m[1] - pinch.y) * k);
+    } else if (drag && e.touches.length === 1) {
+      e.preventDefault();
+      const q = plane(e.touches[0].clientX, e.touches[0].clientY);
+      setZ(Z.s, drag.x + q[0] - drag.p[0], drag.y + q[1] - drag.p[1]);
+    }
+  }, { passive: false });
+  const untouch = e => {
+    if (pinch && e.touches.length < 2) {   // 放開一指就接著用剩下那指拖
+      pinch = null;
+      if (e.touches.length === 1 && moved()) drag = grab(e.touches[0]); else springBack();
+    } else if (drag && !e.touches.length) { drag = null; springBack(); }
+    if (!e.touches.length) aim = null;
+  };
+  el.addEventListener("touchend", untouch); el.addEventListener("touchcancel", untouch);
+}
+new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) started = true; }, { threshold: 0.25 }).observe(frame);
+new ResizeObserver(() => layout()).observe(frame);
+RM.addEventListener("change", () => { layout(); liftKey = ""; });   // 減少動態一切換，傾斜與取景跟著重算
+document.fonts && document.fonts.ready.then(layout);
+
+let last = performance.now();
+function loop() {
+  const now = performance.now(), dt = Math.min(100, now - last); last = now;
+  if (!frozen) {
+    if (mode === "tour") { if (started && !paused()) tourT = (tourT + dt) % tour.cycle; }
+    else maybeResume(now);
+  }
+  draw(now);
+  requestAnimationFrame(loop);
+}
+layout(); draw(performance.now()); requestAnimationFrame(loop);
+
+if (DEV) {   // 開發用：?dev 才有，逐幀錄影與截圖用
+  window.__tour = {
+    get cycle() { return tour.cycle; }, get segs() { return tour.S.map(s => ({ t0: s.t0, dur: s.dur, dip: s.dip, card: s.ev.length ? s.ev.at(-1)[1] : s.cardFrom })); },
+    seek(ms) { frozen = true; mode = "tour"; tourT = ((ms % tour.cycle) + tour.cycle) % tour.cycle; draw(performance.now()); },
+  };
+  window.__dev = { select(code) { frozen = true; go(code, true); draw(performance.now()); }, cams: () => cams };
+}
+</script>
+</body>
+</html>

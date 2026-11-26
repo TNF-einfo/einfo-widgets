@@ -1,0 +1,70 @@
+# einfo-widgets
+
+〈環境資訊中心〉可嵌進文章的互動內容，透過 GitHub Pages 提供。
+
+首頁：<https://tnf-einfo.github.io/einfo-widgets/>
+
+## 內容
+
+- **`interactive-maps/`** — 可內嵌互動地圖。單一自足 HTML，Leaflet ＋ 內嵌行政區 GeoJSON；
+  無圖磚（沒有道路），只留行政界線與水域。互動全部關閉，嵌在文章裡不會攔走讀者的捲動。
+  - **`tokyo-map-stable/` — 東京・防災・生態 另類旅遊地圖（目前的交付版，發稿用這個）**。
+    標籤手動排好、不會重疊，也是文章 node/243698 實際採用的那一版。**無法重生**（標籤寫在產出的
+    HTML 上、不在 `spots.py` 裡）。
+  - `tokyo-autolayout-test/` — 同一份內容、標籤改由 `gen_map.py` 自動排。**測試中，先不要發稿**：
+    排出來的位置與手調版不一樣（2026-08-25 起發稿仍用手調版）。這個資料夾才是產生器的
+    實例（`spots.py` 是輸入）。首頁不列（2026-09-30 收掉），檔案留著測產生器用。
+  - `tuvalu/` — 吐瓦魯，富納富提。直版（長型、固定 1080 高）與橫版（`wide/`）兩版，嵌入碼的外框跟東京那張不同，
+    細節看該夾 `README.md`。2026-09-30 兩版定稿，首頁拿掉「測試中」、加了複製嵌入碼。
+  - `tuvalu/coast/` — 吐瓦魯，富納富提 海岸線變化：2022 到 2026 年五張 Sentinel-2 影像配字卡，看填海造陸怎麼改寫主島海岸。
+    2026-10-02 第一版，已用在 node/243890（2026-10-06 確認）。文章 iframe 直接指這個檔，改了已刊出的文章會跟著變。
+    不是產生器產的，獨立一頁；外框比例依欄寬換，見該夾 `README.md`。
+
+首頁每張地圖下面列出用了它的文章（「使用的文章」），發稿後要回來補上。
+  - `template/` — 產生器（可吃任意城市）。開一座新城市的地圖看 `interactive-maps/README.md`。
+  - `video/` — 地圖→直式短影音（puppeteer 驅動地圖逐幀）。**刻意留在這裡不搬去 `data-shorts`**：
+    它依賴 `gen_map.py` 產出的內部介面（`layoutPinNames`／`placeLabels` 等已明文定為不可動的固定
+    介面就是為了它），而且規則會雙向回流（2026-08-04 就把影片版的標籤避讓規則寫回產生器）。
+
+## 嵌進文章
+
+用 `src=` 指到這裡，**不要把地圖的 HTML 貼進文章內文**。首頁每張地圖旁邊有「複製嵌入碼」，
+產出的就是下面這一段：
+
+```html
+<div style="max-width:720px;margin:32px auto">
+  <div style="position:relative;aspect-ratio:720/476">
+    <iframe src="https://tnf-einfo.github.io/einfo-widgets/interactive-maps/tokyo-map-stable/tokyo-bousai-map.html"
+            title="東京・防災・生態 另類旅遊地圖" loading="lazy" allowfullscreen
+            style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:16px">
+    </iframe>
+  </div>
+</div>
+```
+
+**尺寸與比例不要自己改**：`max-width` 720、`aspect-ratio` 720/476，外層 `position:relative`
+＋ iframe 絕對定位填滿。地圖內部的響應式斷點吃的是 **iframe 自身寬度**，且已對齊 e-info 的
+三檔嵌入寬度（桌機 **720**／平板 **528**／手機 **352.8**）並實測過三個檔位；把 iframe 鎖成
+別的寬度，內層會挑錯檔位。圖說請自己另外加一行 `<p>` 在這段下面。
+
+吐瓦魯兩版的外框不一樣（2026-09-30 首頁加了按鈕）：直版用固定高度 `height:1080px`，橫版用 `aspect-ratio:720/480`，
+而且橫版的嵌入碼兩版都寫進去、畫面 700px 以下改顯示直版（手機排不下橫版）；兩者最外層都不留上下 margin。
+完整的碼與理由見 `interactive-maps/tuvalu/README.md`「嵌入」，首頁按鈕複製出來的就是那兩段。
+海岸線變化（2026-10-02）的外框用 container query 看欄寬換比例：600px 以上正方形、以下 2:3，見 `interactive-maps/tuvalu/coast/README.md`「嵌入」。
+
+各資料夾裡的 `*.embed.html` 是舊做法（把整份地圖包成 `srcdoc` 供整段複製），保留供對照，
+**新文章請用上面那一行**。
+
+## 收錄規則
+
+這個 repo 是公開的，所以收東西要嚴：
+
+1. 自足靜態：無金鑰、無後端。
+2. 資料來源可公開（政府開放資料、OSM 等）。
+3. 不得含 e-info 文章內容鏡像。
+4. 每個子資料夾要有自己的 `README.md`，標明資料來源與授權。
+
+## 沿革
+
+`interactive-maps/` 由 `einfo-scratch` 的 `tokyo-bousai-map/` 以 `git filter-repo` 搬入，
+逐檔歷史保留（28 個 commit），並改為現名（它是通用地圖產生器，不只東京一張）。

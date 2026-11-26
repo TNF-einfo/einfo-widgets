@@ -1,0 +1,1134 @@
+{
+ "meta": {
+  "source": "中央選舉委員會選舉及公投資料庫 https://db.cec.gov.tw/",
+  "downloaded": "2026-11-17",
+  "license": "政府資料開放授權條款－第1版",
+  "note": "break-ui 最壞資料（只在本機切換、不上線）。花蓮、宜蘭、連江、苗栗、新北是 2022 真實資料本身就有的極端值；新竹市、金門、臺北、屏東的候選人是合成的假資料（名字都是「測試」開頭），不是任何人的真實得票。"
+ },
+ "counties": [
+  {
+   "code": "09007",
+   "name": "連江縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 11810,
+   "votes_cast": 8620,
+   "valid": 8505,
+   "invalid": 115,
+   "turnout": 72.99,
+   "candidates": [
+    {
+     "no": 3,
+     "name": "王忠銘",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 4337,
+     "pct": 50.99,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "曹爾元",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 3582,
+     "pct": 42.12,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "李問",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 586,
+     "pct": 6.89,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "09020",
+   "name": "金門縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 122294,
+   "votes_cast": 48089,
+   "valid": 47114,
+   "invalid": 975,
+   "turnout": 39.32,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "測試丁",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 30112,
+     "pct": 100.0,
+     "elected": true,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final",
+   "note": "同額競選（得票須達選舉人總數 20%）"
+  },
+  {
+   "code": "10002",
+   "name": "宜蘭縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 374779,
+   "votes_cast": 240916,
+   "valid": 235281,
+   "invalid": 5635,
+   "turnout": 64.28,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "林姿妙",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 119421,
+     "pct": 50.76,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 5,
+     "name": "江@2F97F@淵",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 96779,
+     "pct": 41.13,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 6,
+     "name": "陳琬惠",
+     "party": "台灣民眾黨",
+     "party_code": 350,
+     "group": "tpp",
+     "votes": 16412,
+     "pct": 6.98,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "許鋐哲",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 1036,
+     "pct": 0.44,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "朱振東",
+     "party": "天一黨",
+     "party_code": 343,
+     "group": "other",
+     "votes": 919,
+     "pct": 0.39,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 4,
+     "name": "陳秋境",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 714,
+     "pct": 0.3,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10004",
+   "name": "新竹縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 452720,
+   "votes_cast": 267013,
+   "valid": 258305,
+   "invalid": 8708,
+   "turnout": 58.98,
+   "candidates": [
+    {
+     "no": 4,
+     "name": "楊文科",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 163662,
+     "pct": 63.36,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 3,
+     "name": "周江杰",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 83683,
+     "pct": 32.4,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "范振揆",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 4874,
+     "pct": 1.89,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "黃秀龍",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 3403,
+     "pct": 1.32,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 5,
+     "name": "劉復嵐",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 2683,
+     "pct": 1.04,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10005",
+   "name": "苗栗縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 443908,
+   "votes_cast": 298319,
+   "valid": 292100,
+   "invalid": 6219,
+   "turnout": 67.2,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "鍾東錦",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 124603,
+     "pct": 42.66,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 4,
+     "name": "徐定禎",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 91260,
+     "pct": 31.24,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 5,
+     "name": "宋國鼎",
+     "party": "時代力量",
+     "party_code": 267,
+     "group": "other",
+     "votes": 39347,
+     "pct": 13.47,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "謝福弘",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 32026,
+     "pct": 10.96,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "吳盛聖",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 4864,
+     "pct": 1.67,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "other",
+   "status": "final"
+  },
+  {
+   "code": "10007",
+   "name": "彰化縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 1028606,
+   "votes_cast": 667519,
+   "valid": 650424,
+   "invalid": 17095,
+   "turnout": 64.9,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "王惠美",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 369133,
+     "pct": 56.75,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 2,
+     "name": "黃秀芳",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 272817,
+     "pct": 41.94,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "蕭仁正",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 8474,
+     "pct": 1.3,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10008",
+   "name": "南投縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 406195,
+   "votes_cast": 280596,
+   "valid": 275499,
+   "invalid": 5097,
+   "turnout": 69.08,
+   "candidates": [
+    {
+     "no": 2,
+     "name": "許淑華",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 154256,
+     "pct": 55.99,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "蔡培慧",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 117993,
+     "pct": 42.83,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "王永慶",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 3250,
+     "pct": 1.18,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10009",
+   "name": "雲林縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 559273,
+   "votes_cast": 376649,
+   "valid": 366833,
+   "invalid": 9816,
+   "turnout": 67.35,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "張麗善",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 207519,
+     "pct": 56.57,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 2,
+     "name": "劉建國",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 152620,
+     "pct": 41.6,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "林佳瑜",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 6694,
+     "pct": 1.82,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10010",
+   "name": "嘉義縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 422568,
+   "votes_cast": 284490,
+   "valid": 273294,
+   "invalid": 11196,
+   "turnout": 67.32,
+   "candidates": [
+    {
+     "no": 2,
+     "name": "翁章梁",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 171777,
+     "pct": 62.85,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 1,
+     "name": "王育敏",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 101517,
+     "pct": 37.15,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "dpp",
+   "status": "final"
+  },
+  {
+   "code": "10013",
+   "name": "屏東縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 679330,
+   "votes_cast": 456382,
+   "valid": 443153,
+   "invalid": 13229,
+   "turnout": 67.18,
+   "candidates": [
+    {
+     "no": 2,
+     "name": "測試辛",
+     "party": "中國國民黨、台灣民眾黨",
+     "party_code": null,
+     "group": null,
+     "votes": 221004,
+     "pct": 50.12,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "測試壬",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 219920,
+     "pct": 49.88,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": null,
+   "status": "final",
+   "note": "未知政黨代碼：build 要報錯、不能默默塗灰"
+  },
+  {
+   "code": "10014",
+   "name": "臺東縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 177853,
+   "votes_cast": 115226,
+   "valid": 112148,
+   "invalid": 3078,
+   "turnout": 64.79,
+   "candidates": [
+    {
+     "no": 2,
+     "name": "饒慶鈴",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 68661,
+     "pct": 61.22,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 3,
+     "name": "劉櫂豪",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 41104,
+     "pct": 36.65,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "陳長宏",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 2383,
+     "pct": 2.12,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10015",
+   "name": "花蓮縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 266058,
+   "votes_cast": 153138,
+   "valid": 149307,
+   "invalid": 3831,
+   "turnout": 57.56,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "徐榛蔚",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 96645,
+     "pct": 64.73,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 3,
+     "name": "谷辣斯．尤達卡 Kolas Yotaka",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 47845,
+     "pct": 32.04,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "黄師鵬",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 4817,
+     "pct": 3.23,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10016",
+   "name": "澎湖縣",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 90360,
+   "votes_cast": 52870,
+   "valid": 51242,
+   "invalid": 1628,
+   "turnout": 58.51,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "陳光復",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 18777,
+     "pct": 36.64,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "賴峰偉",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 17081,
+     "pct": 33.33,
+     "elected": false,
+     "incumbent": true
+    },
+    {
+     "no": 3,
+     "name": "葉竹林",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 15384,
+     "pct": 30.02,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "dpp",
+   "status": "final"
+  },
+  {
+   "code": "10017",
+   "name": "基隆市",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 307913,
+   "votes_cast": 185241,
+   "valid": 182893,
+   "invalid": 2348,
+   "turnout": 60.16,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "謝國樑",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 96784,
+     "pct": 52.92,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "蔡適應",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 71354,
+     "pct": 39.01,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "陳薇仲",
+     "party": "時代力量",
+     "party_code": 267,
+     "group": "other",
+     "votes": 12000,
+     "pct": 6.56,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 5,
+     "name": "黃希賢",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 2136,
+     "pct": 1.17,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 4,
+     "name": "曾國民",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 619,
+     "pct": 0.34,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "10018",
+   "name": "新竹市",
+   "six": false,
+   "vote_date": "2022-11-26",
+   "electorate": 350758,
+   "votes_cast": 220783,
+   "valid": 217941,
+   "invalid": 2842,
+   "turnout": 62.94,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "測試甲",
+     "party": "台灣民眾黨",
+     "party_code": 350,
+     "group": "tpp",
+     "votes": 88342,
+     "pct": 41.27,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "測試乙",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 88342,
+     "pct": 41.27,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "測試丙",
+     "party": "台灣動物保護黨",
+     "party_code": 306,
+     "group": "other",
+     "votes": 37365,
+     "pct": 17.46,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "tpp",
+   "status": "final",
+   "note": "同票，抽籤決定"
+  },
+  {
+   "code": "10020",
+   "name": "嘉義市",
+   "six": false,
+   "vote_date": "2022-12-18",
+   "electorate": 214130,
+   "votes_cast": 94188,
+   "valid": 93813,
+   "invalid": 375,
+   "turnout": 43.99,
+   "candidates": [],
+   "winner_group": null,
+   "status": "postponed",
+   "note": "候選人死亡，停止選舉，12/18 重新投票"
+  },
+  {
+   "code": "63000",
+   "name": "臺北市",
+   "six": true,
+   "vote_date": "2022-11-26",
+   "electorate": 2026769,
+   "votes_cast": 1372179,
+   "valid": 1360951,
+   "invalid": 11228,
+   "turnout": 67.7,
+   "candidates": [
+    {
+     "no": 5,
+     "name": "測試戊",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 301245,
+     "pct": 43.02,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "測試己",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 298870,
+     "pct": 42.68,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "測試庚",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 100112,
+     "pct": 14.3,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": null,
+   "status": "counting",
+   "updated": "2026-11-28T19:42:00+08:00",
+   "stations": {
+    "reported": 812,
+    "total": 1563
+   }
+  },
+  {
+   "code": "64000",
+   "name": "高雄市",
+   "six": true,
+   "vote_date": "2022-11-26",
+   "electorate": 2282623,
+   "votes_cast": 1337819,
+   "valid": 1318733,
+   "invalid": 19086,
+   "turnout": 58.61,
+   "candidates": [
+    {
+     "no": 4,
+     "name": "陳其邁",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 766147,
+     "pct": 58.1,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 3,
+     "name": "柯志恩",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 529607,
+     "pct": 40.16,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "曾尹儷",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 14585,
+     "pct": 1.11,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "鄭宇翔",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 8394,
+     "pct": 0.64,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "dpp",
+   "status": "final"
+  },
+  {
+   "code": "65000",
+   "name": "新北市",
+   "six": true,
+   "vote_date": "2022-11-26",
+   "electorate": 3316517,
+   "votes_cast": 1877186,
+   "valid": 1846531,
+   "invalid": 30655,
+   "turnout": 56.6,
+   "candidates": [
+    {
+     "no": 2,
+     "name": "侯友宜",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 1152555,
+     "pct": 62.42,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 1,
+     "name": "林佳龍",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 693976,
+     "pct": 37.58,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "66000",
+   "name": "臺中市",
+   "six": true,
+   "vote_date": "2022-11-26",
+   "electorate": 2274107,
+   "votes_cast": 1364629,
+   "valid": 1346471,
+   "invalid": 18158,
+   "turnout": 60.01,
+   "candidates": [
+    {
+     "no": 3,
+     "name": "盧秀燕",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 799107,
+     "pct": 59.35,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 2,
+     "name": "蔡其昌",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 524224,
+     "pct": 38.93,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "陳美妃",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 23140,
+     "pct": 1.72,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  },
+  {
+   "code": "67000",
+   "name": "臺南市",
+   "six": true,
+   "vote_date": "2022-11-26",
+   "electorate": 1548203,
+   "votes_cast": 908533,
+   "valid": 888674,
+   "invalid": 19859,
+   "turnout": 58.68,
+   "candidates": [
+    {
+     "no": 5,
+     "name": "黃偉哲",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 433684,
+     "pct": 48.8,
+     "elected": true,
+     "incumbent": true
+    },
+    {
+     "no": 3,
+     "name": "謝龍介",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 387731,
+     "pct": 43.63,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 1,
+     "name": "許忠信",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 38697,
+     "pct": 4.35,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "林義豐",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 24606,
+     "pct": 2.77,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 4,
+     "name": "吳炳輝",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 3956,
+     "pct": 0.45,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "dpp",
+   "status": "called",
+   "updated": "2026-11-28T21:05:00+08:00",
+   "stations": {
+    "reported": 1201,
+    "total": 1480
+   }
+  },
+  {
+   "code": "68000",
+   "name": "桃園市",
+   "six": true,
+   "vote_date": "2022-11-26",
+   "electorate": 1825127,
+   "votes_cast": 1085225,
+   "valid": 1071763,
+   "invalid": 13462,
+   "turnout": 59.46,
+   "candidates": [
+    {
+     "no": 1,
+     "name": "張善政",
+     "party": "中國國民黨",
+     "party_code": 1,
+     "group": "kmt",
+     "votes": 557572,
+     "pct": 52.02,
+     "elected": true,
+     "incumbent": false
+    },
+    {
+     "no": 3,
+     "name": "鄭運鵬",
+     "party": "民主進步黨",
+     "party_code": 16,
+     "group": "dpp",
+     "votes": 428983,
+     "pct": 40.03,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 2,
+     "name": "賴香伶",
+     "party": "台灣民眾黨",
+     "party_code": 350,
+     "group": "tpp",
+     "votes": 54926,
+     "pct": 5.12,
+     "elected": false,
+     "incumbent": false
+    },
+    {
+     "no": 4,
+     "name": "鄭寶清",
+     "party": "無黨籍及未經政黨推薦",
+     "party_code": 999,
+     "group": "other",
+     "votes": 30282,
+     "pct": 2.83,
+     "elected": false,
+     "incumbent": false
+    }
+   ],
+   "winner_group": "kmt",
+   "status": "final"
+  }
+ ]
+}

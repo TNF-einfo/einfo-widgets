@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+# 影片專用底圖（tuvalu/build_video_basemap.py 產的，約 2.5 MB，要用再產）
+interactive-maps/tuvalu/basemap/video/
+# 海岸線影片的縮時用圖（tuvalu/coast/build_timelapse.py 產的，要用再產）；挑片清單 list.json 進 repo，重抓照它來
+interactive-maps/tuvalu/coast/img/timelapse/*
+!interactive-maps/tuvalu/coast/img/timelapse/list.json
+# 選舉地圖的縣市界原始壓縮檔（3.7 MB，國土測繪中心可重新下載，網址在 election-2026/data/README.md）
+interactive-maps/election-2026/data/raw/nlsc_county_1140318/*.zip
+# 選舉地圖的預覽截圖與影片只給內部看
+interactive-maps/election-2026/preview/
+# Internal working notes (status, todos, change log) stay on disk, out of the public repo
+HANDOFF.md
+CHANGELOG.md
