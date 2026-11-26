@@ -40,7 +40,7 @@ BADGE = {"台灣民眾黨": "眾"}
 
 
 def badge(party):
-    return BADGE.get(party) or SHORT.get(party, party)[0]
+    return BADGE.get(party) or SHORT.get(party, party)[:1]   # 政黨空白時給空徽章，不掛掉（fetch_live 轉 JSON 時也會擋）
 STATUSES = {"pending", "counting", "called", "final", "postponed"}
 DEFAULT_OUT = HERE / "election-2026.html"
 HOME_OUT = HERE / "election-2026-home.html"   # 首頁「關鍵圖表」的 16:9 版（--home，SPEC「首頁版」）
@@ -117,22 +117,23 @@ def load_results(path, party_table, codes, errors):
             if pc is None or str(pc) not in party_table:
                 errors.append(f"{c['name']} {p['name']}：政黨代碼 {pc}（{p['party']}）不在中選會政黨代碼表，不能默默塗灰")
                 bad = True
-        winners = [p for p in cands if p.get("elected")]
-        if status in ("called", "final") and len(winners) != 1:
-            errors.append(f"{c['name']}：狀態 {status} 但當選人數是 {len(winners)}")
-            bad = True
         if len(cands) >= 2 and cands[0]["votes"] == cands[1]["votes"] and status in ("called", "final") and not c.get("note"):
             c["note"] = "同票，抽籤決定"
+        winners = [p for p in cands if p.get("elected")]
+        # 開完卻沒有當選人（同票待抽籤、未達最低當選票數）要有說明，照樣畫斜線
+        if status in ("called", "final") and len(winners) != 1 and not (status == "final" and not winners and c.get("note")):
+            errors.append(f"{c['name']}：狀態 {status} 但當選人數是 {len(winners)}")
+            bad = True
         if len(cands) == 1 and not c.get("note"):
             c["note"] = "同額競選"
         if status in ("counting", "called") and not (c.get("stations") and c.get("updated")):
             errors.append(f"{c['name']}：開票中要有 stations 與 updated")
         group = "pend"
-        if status in ("called", "final") and not bad:
+        if status in ("called", "final") and winners and not bad:
             group = GROUP.get(winners[0]["party_code"], "oth")
         out[code] = {
             "code": code, "name": c["name"], "six": code in SIX, "status": "error" if bad else status, "group": group,
-            "stations": c.get("stations"), "updated": (c.get("updated") or "")[11:16],
+            "stations": c.get("stations"), "updated": c.get("updated") or "",   # 先留完整時間給出處列比，main() 再裁成 HH:MM
             "note": html.escape(c.get("note") or ("政黨代碼不認得，產生器已報錯" if bad else "")),
             "vote_date": c.get("vote_date", ""),
             "cands": [{
@@ -207,7 +208,7 @@ def aria(c):
     win = next((p for p in c["cands"] if p["elected"]), None)
     if win:
         return f"{c['name']}，{win['name']}當選"
-    return c["name"] + {"postponed": "，選舉延後", "pending": "，尚未開票"}.get(c["status"], "，開票中")
+    return c["name"] + {"postponed": "，選舉延後", "pending": "，尚未開票", "final": f"，{c['note'] or '尚無當選人'}"}.get(c["status"], "，開票中")
 
 
 def main():
@@ -298,15 +299,18 @@ def main():
     groups = [c["group"] for c in res.values()]
     title = f"{year} 縣市長選舉結果"
     live = any(c["status"] in ("counting", "called", "pending") for c in res.values())
+    # 跨午夜要比完整的日期時間，最後才取 HH:MM（11-29 00:15 比 11-28 23:50 新）
     times = sorted(c["updated"] for c in res.values() if c["updated"])
+    for c in res.values():
+        c["updated"] = c["updated"][11:16]
     # 每個詞包一個不換行的 <i>：只在詞與詞之間換行，不會斷成「重行選／舉）」（平板 528 直式看到的，11-18）；
     # 整段包起來的話手機會多一行
-    src_date = f"<i>{date}</i> <i>開票中</i>，<i>資料時間 {times[-1]}</i>" if live and times else f"<i>{date}</i> <i>開票結果</i>"
+    src_date = f"<i>{date}</i> <i>開票中</i>，<i>資料時間 {times[-1][11:16]}</i>" if live and times else f"<i>{date}</i> <i>開票結果</i>"
     src_date += "".join(f"<i>（{c['name']}</i> <i>{c['vote_date']}</i> <i>重行選舉）</i>" for c in res.values() if c["vote_date"] not in ("", date))
     legend = [("kmt", "國民黨"), ("dpp", "民進黨"), ("tpp", "民眾黨"), ("oth", "其他")]
     if "pend" in groups:   # 斜線圖例照實際出現的狀態寫，延後的嘉義市不會被寫成「開票中」
         st = {c["status"] for c in res.values() if c["group"] == "pend"}
-        legend.append(("pend", "、".join(dict.fromkeys(n for s, n in (("pending", "未開票"), ("counting", "開票中"), ("error", "開票中"), ("postponed", "延後")) if s in st))))
+        legend.append(("pend", "、".join(dict.fromkeys(n for s, n in (("pending", "未開票"), ("counting", "開票中"), ("error", "開票中"), ("final", "尚無當選人"), ("postponed", "延後")) if s in st))))
     n = Counter(groups)   # 首頁版的圖例在名稱後寫縣市數（22 縣市，含金門、連江）
     table = "".join(f"<tr><th scope=\"row\">{c['name']}</th><td>{summary(c)}</td></tr>" for c in (res[k] for k in order))
     data = {"counties": list(res.values()), "pano": pano, "six": SIX, "isles": sorted(ISLES), "date": date}
