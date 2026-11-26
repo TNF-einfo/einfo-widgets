@@ -9,12 +9,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap&text={{FONT_TEXT}}">
 <style>
-  /* 只有選舉地圖的 paper 淺底一套。五階：不同意多兩階紫、同意多三階黃褐（SPEC「公投地圖」，兩邊各自用 --ordinal 驗過）；
-     -hi 是浮起時打亮的板面（OKLCH 亮度 +0.06） */
+  /* 只有選舉地圖的 paper 淺底一套。縣市顏色是連續漸層（11-26 改，原本五階）：0 是白色，往不同意多漸變成紫、往同意多漸變成黃到黃褐，
+     每個縣市的色與浮起時打亮的色（OKLab 亮度 +0.06）由 build_referendum.py 算好寫進去（SPEC「公投地圖」）。
+     --n2、--y2 只剩資訊卡同意對不同意的長條在用 */
   :root{
     --frame:#ffffff; --mast:#ffffff; --mast-ink:#232333; --sea:#f2f3f1; --inset:#e6e8e5; --line:#ffffff; --sel:#ffffff;
-    --n2:#8a4fd8; --n1:#b48fe6; --y1:#d2b030; --y2:#a88600; --y3:#7a5f00;
-    --n2-hi:#9c62ed; --n1-hi:#c7a2fa; --y1-hi:#e6c349; --y2-hi:#bb9928; --y3-hi:#8c701f;
+    --n2:#8a4fd8; --y2:#a88600;
     --shade-a:rgba(26,35,50,.18); --shade-b:rgba(26,35,50,.10); --shade-c:rgba(26,35,50,.05); --frame-rgb:255,255,255;
     --card:#ffffff; --card-shadow:0 6px 20px rgba(26,35,50,.14), 0 1px 3px rgba(26,35,50,.12);
     --ink:#232333; --body:#373740; --mute:#6e6e71; --rule:rgba(26,35,50,.12); --btn:#eef0f2; --btn-2:#e4e7eb; --btn-3:#d9dde2; --win:#dd8346; --win-ink:#1a2332;
@@ -28,11 +28,10 @@
   .mapwin, .isles{ touch-action:pan-y }
   #map{ position:absolute; width:100%; height:100%; display:block }
   #map path, .isle path{ fill-rule:evenodd; vector-effect:non-scaling-stroke }
-  .g-n2{ fill:var(--n2); background:var(--n2) } .g-n1{ fill:var(--n1); background:var(--n1) }
-  .g-y1{ fill:var(--y1); background:var(--y1) } .g-y2{ fill:var(--y2); background:var(--y2) } .g-y3{ fill:var(--y3); background:var(--y3) }
+  .isle path.fc{ fill:var(--c) }
   /* 點到的離島小地圖：打亮並抬高 3px（長度由 layout() 換算成小地圖單位，放在 --lf-t），不畫白邊；
      影子是原位一塊半透明的島（.sd，JS 複製 d），不用 CSS 濾鏡（WebKit 不畫 SVG 元素上的 drop-shadow） */
-  .isle.on .g-n2{ fill:var(--n2-hi) } .isle.on .g-n1{ fill:var(--n1-hi) } .isle.on .g-y1{ fill:var(--y1-hi) } .isle.on .g-y2{ fill:var(--y2-hi) } .isle.on .g-y3{ fill:var(--y3-hi) }
+  .isle.on path.fc{ fill:var(--hi) }
   .isle .lf{ transition:transform .25s var(--ease-out) }
   .isle.on .lf{ transform:var(--lf-t) }
   .isle .sd{ display:none } .isle.on .sd{ display:inline; fill:rgba(26,35,50,.28) }
@@ -58,8 +57,8 @@
   h1{ margin:0; font-weight:900; font-size:clamp(20px, 6vw, 28px); line-height:1.25 }
   /* 圖例：五段色條，刻度寫在段與段的交界下方 */
   .legend{ display:flex; align-items:flex-start; gap:6px; margin:0; padding:7px 12px 18px; font-size:12px; line-height:12px }
-  .ramp{ position:relative; display:flex; width:150px; height:10px; flex:none; margin-top:1px }
-  .ramp i{ flex:1 } .ramp i:first-child{ border-radius:2px 0 0 2px } .ramp i:last-child{ border-radius:0 2px 2px 0 }
+  /* 色條中間是白色，跟白色表頭分不開，外圍描一圈淡線 */
+  .ramp{ position:relative; width:150px; height:10px; flex:none; margin-top:1px; border-radius:2px; box-shadow:0 0 0 1px var(--rule) }
   .ramp b{ position:absolute; top:13px; transform:translateX(-50%); font-weight:400; font-size:10px; color:var(--mute); white-space:nowrap; font-variant-numeric:tabular-nums }
   .ramp b::before{ content:""; position:absolute; left:50%; top:-4px; width:1px; height:3px; background:var(--mute) }
 
@@ -131,10 +130,10 @@
   <header>
     <div class="ttl"><h1>{{TITLE}}</h1><img src="{{LOGO}}" alt="環境資訊中心"></div>
     <p class="sub">{{SUB}}</p>
-    <div class="legend" role="img" aria-label="圖例：縣市顏色依同意票減不同意票占投票數的比例分五階，刻度 -10%、0、30%、60%">
+    <div class="legend" role="img" aria-label="圖例：縣市顏色依同意票減不同意票占投票數的比例漸變，0 是白色，不同意越多越紫、同意越多越接近黃褐，正負 60% 以上最深">
       <span>不同意多</span>
-      <div class="ramp"><i class="g-n2"></i><i class="g-n1"></i><i class="g-y1"></i><i class="g-y2"></i><i class="g-y3"></i>
-        <b style="left:20%">-10%</b><b style="left:40%">0</b><b style="left:60%">30%</b><b style="left:80%">60%</b></div>
+      <div class="ramp" style="background:{{RAMP}}">
+        <b style="left:0">-60%</b><b style="left:25%">-30%</b><b style="left:50%">0</b><b style="left:75%">30%</b><b style="left:100%">60%</b></div>
       <span>同意多</span>
     </div>
   </header>
@@ -351,10 +350,10 @@ function renderLift(L, k) {
   liftG.classList.toggle("isl", isl);
   if (L.code !== liftCode) {
     liftCode = L.code;
-    const d = dOf(L.code), g = on ? C[L.code].tier : "";
+    const d = dOf(L.code), g = on ? C[L.code] : null;
     for (const el of [lc, sk, sh, cv]) el.setAttribute("d", d);
-    lc.style.fill = g ? `var(--${g}-hi)` : "";
-    cv.style.fill = cv.style.stroke = g ? `var(--${g})` : "";
+    lc.style.fill = g ? g.hi : "";
+    cv.style.fill = cv.style.stroke = g ? g.fill : "";
   }
   lc.style.opacity = on ? L.v : 0;
   fo.style.visibility = on && foCode === L.code ? "hidden" : "";

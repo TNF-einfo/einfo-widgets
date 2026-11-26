@@ -23,13 +23,64 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))   # python -I 不把腳
 from build_map import FRAME_SOUTH_OF, HERE, ISLES, SIX, bbox, font_text, geom_d, polys, proj  # noqa: E402
 
 DEFAULT_OUT = HERE / "referendum-2026.html"
-# 五階：（同意－不同意）／投票數（含無效票）×100，刻度 -10、0、30、60（SPEC「公投地圖」）
-TIERS = [("n2", "不同意多 10% 以上"), ("n1", "不同意多 10% 以內"), ("y1", "同意多 30% 以內"), ("y2", "同意多 30% 到 60%"), ("y3", "同意多 60% 以上")]
+# 色階（11-26 改成連續漸層，原本是五階）：（同意－不同意）／投票數（含無效票）×100，0 是白色，往兩邊在 OKLab 裡線性漸變，
+# ±60 以上最深。-60 的深紫照 #8a4fd8 的色相與彩度、亮度壓到跟深黃褐 #7a5f00 一樣（OKLab L 0.499），兩頭一樣深（SPEC「公投地圖」）
+STOPS = [(-60, "#7739c2"), (-30, "#b48fe6"), (0, "#ffffff"), (30, "#d2b030"), (60, "#7a5f00")]
 
 
-def tier(m):
-    # 剛好 0（同意等於不同意）歸到 y1；真的遇到再說
-    return "n2" if m <= -10 else "n1" if m < 0 else "y1" if m < 30 else "y2" if m < 60 else "y3"
+def _lin(c):
+    c /= 255
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _gam(c):
+    c = c * 12.92 if c <= 0.0031308 else 1.055 * max(c, 0) ** (1 / 2.4) - 0.055
+    return round(min(1, max(0, c)) * 255)
+
+
+def oklab(h):
+    r, g, b = (_lin(int(h[i:i + 2], 16)) for i in (1, 3, 5))
+    l, m, s = ((x * r + y * g + z * b) ** (1 / 3) for x, y, z in (
+        (0.4122214708, 0.5363325363, 0.0514459929), (0.2119034982, 0.6806995451, 0.1073969566), (0.0883024619, 0.2817188376, 0.6299787005)))
+    return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+
+
+def hexc(L, a, b):
+    l, m, s = ((L + x * a + y * b) ** 3 for x, y in ((0.3963377774, 0.2158037573), (-0.1055613458, -0.0638541728), (-0.0894841775, -1.2914855480)))
+    rgb = (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+           -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+    return "#" + "".join(f"{_gam(x):02x}" for x in rgb)
+
+
+def ramp(m):
+    """margin → 填色"""
+    m = max(STOPS[0][0], min(STOPS[-1][0], m))
+    for (m0, c0), (m1, c1) in zip(STOPS, STOPS[1:]):
+        if m <= m1:
+            t = (m - m0) / (m1 - m0)
+            return hexc(*(p + (q - p) * t for p, q in zip(oklab(c0), oklab(c1))))
+
+
+def lighter(h):
+    """浮起時打亮的板面：OKLab 亮度 +0.06（白色就還是白色）"""
+    L, a, b = oklab(h)
+    return hexc(min(1, L + 0.06), a, b)
+
+
+def check_ramp():
+    """色階自我檢查（每次產生都跑）：錨點照原色、±60 之外不再變深、兩邊各自離 0 越遠越暗"""
+    assert [ramp(m) for m, _ in STOPS] == [c for _, c in STOPS], [ramp(m) for m, _ in STOPS]
+    assert ramp(-90) == ramp(-60) and ramp(90) == ramp(60)
+    for side in (range(0, 61, 5), range(0, -61, -5)):
+        Ls = [oklab(ramp(m))[0] for m in side]
+        assert all(a > b for a, b in zip(Ls, Ls[1:])), side
+
+
+def ramp_css():
+    """圖例色條：每 10 個百分點取一個色，瀏覽器在相鄰兩色之間的 sRGB 漸變就很接近 OKLab"""
+    lo, hi = STOPS[0][0], STOPS[-1][0]
+    return "linear-gradient(to right," + ",".join(f"{ramp(m)} {(m - lo) / (hi - lo) * 100:g}%" for m in range(lo, hi + 1, 10)) + ")"
 
 
 def f(n):
@@ -99,7 +150,8 @@ def load(path, codes):
         if "margin" in c and abs(c["margin"] - m) > 0.005:
             errors.append(f"{c['name']}：資料的 margin {c['margin']} 跟算出來的 {m} 不同")
         res[code] = {"code": code, "name": c["name"], "agree": c["agree"], "disagree": c["disagree"], "margin": m,
-                     "turnout": c.get("turnout") or round(c["votes_cast"] / c["electorate"] * 100, 2), "tier": tier(m)}
+                     "turnout": c.get("turnout") or round(c["votes_cast"] / c["electorate"] * 100, 2), "fill": ramp(m)}
+        res[code]["hi"] = lighter(res[code]["fill"])
     s = lambda k: sum(c[k] for c in raw["counties"])
     elec = case.get("electorate") or s("electorate")   # 投票權人總額：中選會公告了就填在 case，沒填用 22 縣市加總
     n = {"agree": s("agree"), "disagree": s("disagree"), "threshold": math.ceil(elec / 4), "turnout": s("votes_cast") / elec * 100}
@@ -115,6 +167,7 @@ def main():
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
+    check_ramp()
     out = Path(a.out).resolve()
 
     gj = json.loads(Path(a.counties).read_text(encoding="utf-8"))
@@ -145,7 +198,7 @@ def main():
             body = f'<path id="p{code}" {nss} d="{geom_d(main_)}"/><path id="i{code}" class="isl" {nss} d="{geom_d(shapely.MultiPolygon(isl))}"/>'
         else:
             body = f'<path id="p{code}" {nss} d="{d}"/>'
-        paths.append(f'<g class="cty g-{c["tier"]}" {attrs}>{body}</g>')
+        paths.append(f'<g class="cty" style="fill:{c["fill"]}" {attrs}>{body}</g>')
         if any(p.interiors for p in polys(g)):
             defs.append(f'<path id="o{code}" {nss} d="{geom_d(g, holes=False)}"/>')
         c["bbox"] = bbox(g)
@@ -168,7 +221,7 @@ def main():
     isles = "".join(
         f'<div class="isle" data-code="{k}" tabindex="0" role="button" aria-label="{aria(res[k])}">'
         f'<svg viewBox="{inset_vb(res[k]["bbox"])}" preserveAspectRatio="xMidYMid meet">'
-        f'<g class="lf"><path class="g-{res[k]["tier"]}" d="{geom_d(geoms[k])}"/></g></svg><span>{res[k]["name"]}</span></div>'
+        f'<g class="lf"><path class="fc" style="--c:{res[k]["fill"]};--hi:{res[k]["hi"]}" d="{geom_d(geoms[k])}"/></g></svg><span>{res[k]["name"]}</span></div>'
         for k in ("09007", "09020"))
 
     date = case["vote_date"]
@@ -180,13 +233,13 @@ def main():
     cards = {"TW": overview_card(nat, case), **{k: county_card(c) for k, c in res.items()}}
     table = "".join(f'<tr><th scope="row">{c["name"]}</th><td>同意 {f(c["agree"])} 票，不同意 {f(c["disagree"])} 票，{gap_text(c)}，投票率 {p2(c["turnout"])}</td></tr>'
                     for c in (res[k] for k in order))
-    data = {"counties": [{"code": c["code"], "tier": c["tier"], "bbox": c["bbox"]} for c in res.values()],
+    data = {"counties": [{"code": c["code"], "fill": c["fill"], "hi": c["hi"], "bbox": c["bbox"]} for c in res.values()],
             "cards": cards, "pano": pano, "six": SIX, "isles": sorted(ISLES)}
     page = (HERE / "referendum_template.html").read_text(encoding="utf-8")
     for k, v in {
         "TITLE_FULL": full, "TITLE": title, "SUB": sub,
         "LOGO": Path(os.path.relpath(HERE.parent / "assets" / "eic-logo-green.svg", out.parent)).as_posix(),
-        "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits),
+        "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits), "RAMP": ramp_css(),
         "SRC": f"{source} <i>{date} 投票</i>", "TABLE": table,
         "DATA": json.dumps(data, ensure_ascii=False, separators=(",", ":")),
     }.items():
@@ -195,8 +248,7 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
     for k in order:
-        print(f"{k} {res[k]['name']} {res[k]['margin']:.2f} {res[k]['tier']}")
-    print("五階縣市數：" + "、".join(f"{n} {sum(c['tier'] == t for c in res.values())}" for t, n in TIERS))
+        print(f"{k} {res[k]['name']} {res[k]['margin']:.2f} {res[k]['fill']}")
     print(f"全國 同意 {f(nat['agree'])} 不同意 {f(nat['disagree'])} 門檻 {f(nat['threshold'])} 投票率 {nat['turnout']:.2f}% {'通過' if nat['passed'] else '未通過'}")
     print(f"wrote {out}（{len(page.encode()) / 1024:.0f} KB）")
 
