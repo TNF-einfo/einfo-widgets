@@ -115,8 +115,8 @@
   .live{ display:inline-flex; align-items:center; gap:5px; margin-left:8px; padding:1px 8px 1px 7px; border-radius:999px; background:var(--chip); color:var(--body);
     font-size:12px; font-weight:500; line-height:1.5; vertical-align:2px; white-space:nowrap }
   .live i{ width:6px; height:6px; border-radius:50%; background:currentColor; flex:none }
-  /* 當選人的標籤：藥丸、不加框線，靠姓名對齊（第二欄起），放不下就換行 */
-  .card .tg{ grid-column:2 / -1; display:flex; flex-wrap:wrap; gap:4px; margin-top:5px }
+  /* 當選人的標籤：藥丸、不加框線，「環境政見：」靠黨徽對齊（第一欄起，11-26 改），放不下就換行 */
+  .card .tg{ grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:4px; margin-top:5px }
   .tag{ font-size:12px; line-height:1.35; padding:2px 9px; border-radius:999px; color:var(--body); overflow-wrap:anywhere }
   /* 標籤前的「環境政見：」：跟標籤同字級與上下內距，文字基線才對齊；用次要文字色（paper 對白卡 5.1:1） */
   .tgl{ font-size:12px; line-height:1.35; padding:2px 0; color:var(--mute); white-space:nowrap }
