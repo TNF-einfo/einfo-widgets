@@ -105,8 +105,10 @@
   .b-kmt{ background:var(--kmt-badge) } .b-dpp{ background:var(--dpp-badge) } .b-tpp{ background:var(--tpp-badge) } .b-oth{ background:var(--oth-badge) }
   .card .nm b{ font-weight:500 } .card li.win .nm b{ font-weight:700 }
   /* 當選：圈選章（圓圈裡一個「卜」），用官網的橘，不用綠（綠是民進黨）；大小跟姓名字高相近，報讀器照念「當選」 */
-  .stamp{ display:inline-block; width:1.3em; height:1.3em; margin-left:5px; vertical-align:-.3em; color:var(--accent) }
-  .stamp *{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round }
+  /* 圈選章：印泥紅，「卜」的兩筆都碰到圓圈，照投票用的章（11-26） */
+  .stamp{ display:inline-block; width:1.3em; height:1.3em; margin-left:5px; vertical-align:-.3em; color:#d4332b }
+  [data-theme="night"] .stamp{ color:#ff6b5e }
+  .stamp *{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:butt }
   .card .v, .card .pc{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--body) }
   .card .note{ margin:7px 0 0; font-size:12px; color:var(--mute) }
   /* 開票中標示：中性色小藥丸加一顆不動的圓點 */
@@ -210,7 +212,7 @@ function statusLine(c) {
   return { counting: s, called: s, postponed: "選舉延後", pending: D.date.slice(5).replace("-", "/") + " 開票後更新" }[c.status] || "";
 }
 // 投票印章：圓圈裡一個「卜」字形；螢幕報讀照念「當選」
-const STAMP = '<svg class="stamp" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M10.5 5.8V18.2M10.5 10.6L16.6 13.4"/></svg><span class="sr">當選</span>';
+const STAMP = '<svg class="stamp" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M10.5 2.11V21.89M10.5 10.6L21.34 15.58"/></svg><span class="sr">當選</span>';
 function cardHTML(c) {
   const st = statusLine(c), live = c.status === "counting" || c.status === "called";
   let h = `<h2>${c.name}${live ? '<span class="live"><i aria-hidden="true"></i>開票中</span>' : ""}</h2>` + (st ? `<p class="st">${st}</p>` : "");
