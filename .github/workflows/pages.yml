@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read   # deploy-pages lists this run's artifacts; without it the list came back empty (11-26)
   pages: write
   id-token: write
 concurrency:
