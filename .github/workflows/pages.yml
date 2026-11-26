@@ -1,0 +1,32 @@
+# Deploy GitHub Pages through Actions (2026-11-26), replacing the branch build.
+# Why: the branch build has a soft limit of 10 builds per hour; election night pushes every few minutes.
+# Jekyll still runs, so the served site is the same as the branch build (folder READMEs keep rendering).
+# Roll back: set the Pages source back to "Deploy from a branch" (main, /) in the repo settings, then delete this file.
+name: Deploy Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4
