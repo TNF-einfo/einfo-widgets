@@ -482,6 +482,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 4. 對過就登記排程（上一段），看第一次 push 的 git 結果與 Pages 上的 `live.json` 多久換掉。
 5. 看：`status.html`（各狀態縣數、最近發佈、git、等 declared.csv 的縣、最近警告），`alerts.log` 由 Claude 在 Discord 轉述。「開完前就打 ◎」「宣布的人不是最高票」的警告要人決定，寫 `declared.csv` 或 `overrides.csv`。
 6. 減量：排程改成帶 `-Extra '--article --poll-s 300'` 重新登記；之後打開的與收到新版的頁面都改成 5 分鐘抓一次。
+   要恢復就重新登記帶 `--poll-s 60`：不帶 `--poll-s` 的版本（`poll_s: null`）只讓新打開的頁面回到 60 秒，已經收到 300 的頁面照樣 5 分鐘抓一次（11-27 彩排實測）。
 7. 停止開關：先 `Disable-ScheduledTask`，再跑一次 `python -I scripts/live_loop.py --prefix <網址前綴> --once --poll-s 0`。開著的頁面收到後就不再抓，之後打開的頁面也不抓；排程沒停的話下一輪會發回 `poll_s: null`，新打開的頁面又會抓。全部開完、對過數字後也用這個收尾。
 8. 退回：資料錯了就改 `declared.csv` 或 `overrides.csv`，下一輪發新的一版。要整份退回某一輪：停排程，拿 `<state>/history/publish_<seq>.json` 跑 `python -I build_map.py --home --data <那份> --live-json live.json --epoch 2026-11-28`（`seq` 取現在，比線上大），只 commit 這兩個檔、push。不要用 `git revert`：退回去的 `live.json` 序號比較小，開著的頁面不收。
 9. 頁面程式本身出錯：停止開關，或推一版首頁版不帶輪詢（`--poll-s 0`），讀者重新整理就是靜態版。迴圈壞了就停排程，照「開票夜步驟」的人工流程，`build_map.py` 加 `--live-json` 一起出。
