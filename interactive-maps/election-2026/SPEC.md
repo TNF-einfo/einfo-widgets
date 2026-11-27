@@ -398,7 +398,7 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 
 ### 首頁版即時更新（11-27）
 
-只有首頁版 `election-2026-home.html` 會自己更新：每 60 秒抓同資料夾的 `live.json`，收到新的就原地換，不重新載入、不打斷輪播。文章版照舊，要不要也由迴圈重產另由 `--article` 決定（預設不做）。
+只有首頁版 `election-2026-home.html` 會自己更新：每 60 秒抓同資料夾的 `live.json`，收到新的就原地換，不重新載入、不打斷輪播。文章版不輪詢，由迴圈一起重產、一起推（11-27 定，排程登記帶 `--article`；旗標本身預設關），讀者打開或重新整理時拿到當下的數字。
 這台電腦跑 `scripts/live_loop.py`，每 2 分鐘抓中選會、一縣一縣合併檢查、產生首頁版與 `live.json`，資料有變才 commit、push，GitHub Actions 部署。讀者只碰 Pages，不連中選會也不連這台電腦。
 方案、延遲預算與實測依據在 `preview/realtime/即時更新方案_2026-11-26.md`（v3，不進 repo）；下面是 11-26 定案的版本，跟方案不同的地方：輪詢只在首頁版；push 被拒會自動 `pull --rebase` 再推一次；排程器每 2 分鐘叫一次 `--once`。
 
@@ -472,7 +472,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
   - `force`：`candidate` 寫的人照當選發（還在開是 `called`、開完是 `final`），落後也發，由人決定；名字不在得票前兩名就不套用、寫警告。
 
 工作排程器：`scripts/live_loop_task.ps1` 登記每 2 分鐘叫一次 `live_loop.py --once`（`pythonw`、跑 12 小時、上一輪沒跑完就不另開、一輪超過 10 分鐘砍掉、只在登入時跑）。這支只在人跑的時候登記，程式不會自己登記。
-- 登記：`powershell -ExecutionPolicy Bypass -File scripts\live_loop_task.ps1 -Prefix <網址前綴>`（彩排另加 `-Epoch rehearsal -Extra '--out-dir rehearsal --home-name index.html --date 2026-11-27 --test-banner'`）。
+- 登記：`powershell -ExecutionPolicy Bypass -File scripts\live_loop_task.ps1 -Prefix <網址前綴> -Extra '--article'`（文章版一起推；彩排改成 `-Epoch rehearsal3 -Extra '--out-dir rehearsal --home-name index.html --date 2026-11-27 --test-banner --article'`）。`-Extra` 每次重新登記都要寫全，漏了 `--article` 文章版就停在上一版。
 - 暫停與恢復：`Disable-ScheduledTask -TaskName einfo-election-live-loop`、`Enable-ScheduledTask …`；刪掉：同一支加 `-Uninstall`。
 
 開票夜操作：
@@ -481,7 +481,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 3. 14:00 起找開票頁的片段前綴（「開票夜步驟」第 2 點）；開放後先乾跑一輪 `--once --dry-run`，看 `preview/realtime/state/2026-11-28-dryrun/` 的 `status.html` 與 `out/` 裡的首頁版，對 3 個縣市的姓名、政黨、所數、時間。格式不同就改 `parse_mayor()`，改不及走手動 CSV。
 4. 對過就登記排程（上一段），看第一次 push 的 git 結果與 Pages 上的 `live.json` 多久換掉。
 5. 看：`status.html`（各狀態縣數、最近發佈、git、等 declared.csv 的縣、最近警告），`alerts.log` 由 Claude 在 Discord 轉述。「開完前就打 ◎」「宣布的人不是最高票」的警告要人決定，寫 `declared.csv` 或 `overrides.csv`。
-6. 減量：排程改成帶 `-Extra '--poll-s 300'` 重新登記；之後打開的與收到新版的頁面都改成 5 分鐘抓一次。
+6. 減量：排程改成帶 `-Extra '--article --poll-s 300'` 重新登記；之後打開的與收到新版的頁面都改成 5 分鐘抓一次。
 7. 停止開關：先 `Disable-ScheduledTask`，再跑一次 `python -I scripts/live_loop.py --prefix <網址前綴> --once --poll-s 0`。開著的頁面收到後就不再抓，之後打開的頁面也不抓；排程沒停的話下一輪會發回 `poll_s: null`，新打開的頁面又會抓。全部開完、對過數字後也用這個收尾。
 8. 退回：資料錯了就改 `declared.csv` 或 `overrides.csv`，下一輪發新的一版。要整份退回某一輪：停排程，拿 `<state>/history/publish_<seq>.json` 跑 `python -I build_map.py --home --data <那份> --live-json live.json --epoch 2026-11-28`（`seq` 取現在，比線上大），只 commit 這兩個檔、push。不要用 `git revert`：退回去的 `live.json` 序號比較小，開著的頁面不收。
 9. 頁面程式本身出錯：停止開關，或推一版首頁版不帶輪詢（`--poll-s 0`），讀者重新整理就是靜態版。迴圈壞了就停排程，照「開票夜步驟」的人工流程，`build_map.py` 加 `--live-json` 一起出。
