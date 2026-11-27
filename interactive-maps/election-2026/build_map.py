@@ -331,7 +331,8 @@ def main():
         st = {c["status"] for c in res.values() if c["group"] == "pend"}
         legend.append(("pend", "、".join(dict.fromkeys(n for s, n in (("pending", "未開票"), ("counting", "開票中"), ("error", "開票中"), ("final", "尚無當選人"), ("postponed", "延後")) if s in st))))
     n = Counter(groups)   # 首頁版的圖例在名稱後寫縣市數（22 縣市，含金門、連江）
-    legend_of = lambda home: "".join(f'<li><i class="sw g-{g}"></i>{name}' + (f'<b class="n">{n[g]}</b>' if home else "") + "</li>" for g, name in legend)
+    legend_of = lambda home: "".join(f'<li><i class="sw g-{g}"></i>{name}' + (f'<b class="n">{n[g]}</b>' if home else "") + "</li>" for g, name in legend) + \
+        ('<li class="lgn">各黨數字是已當選的縣市數</li>' if home else "")   # 11-27：開票中的縣市不算進領先的那一黨，讀者會以為是領先數
     table = "".join(f"<tr><th scope=\"row\">{c['name']}</th><td>{summary(c)}</td></tr>" for c in (res[k] for k in order))
     src = f"資料來源：中央選舉委員會 {src_date}；"
     data = {"counties": list(res.values()), "pano": pano, "six": SIX, "isles": sorted(ISLES), "date": date}
