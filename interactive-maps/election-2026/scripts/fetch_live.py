@@ -700,7 +700,7 @@ def selftest():
     page = (prev / "selftest_2026_fake.html").read_text(encoding="utf-8")
     want = len({e["code"].strip() for e in tg if e["tags"].strip()})   # 當選人是每縣市的第一位（winner=1），標籤表每縣市第一列就是他
     got_t = page.count('"tags":[')
-    assert "2026 縣市長選舉結果" in page and got_t == want, (got_t, want)
+    assert "2026九合一縣市長政黨版圖" in page and got_t == want, (got_t, want)   # 11-27 大標改成編輯定的字
     print(f"6 2026 年的路：標題換成 2026、改讀 tags.csv，假結果的 22 位當選人裡有標籤的 {want} 位都掛上了（假資料只在 preview/）")
     print("自我測試通過，產出都在 preview/selftest_*")
 
