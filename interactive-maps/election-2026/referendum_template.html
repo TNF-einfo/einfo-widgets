@@ -13,7 +13,7 @@
      每個縣市的色與浮起時打亮的色（OKLab 亮度 +0.06）由 build_referendum.py 算好寫進去（SPEC「公投地圖」）。
      --n2、--y2 只剩資訊卡同意對不同意的長條在用，取色階 ±45 的錨點，跟地圖同一個色系 */
   :root{
-    --frame:#ffffff; --mast:#ffffff; --mast-ink:#232333; --sea:#f2f3f1; --inset:#e6e8e5; --line:#ffffff; --sel:#ffffff;
+    --frame:#ffffff; --mast:#ffffff; --mast-ink:#232333; --sea:#f2f3f1; --inset:#e6e8e5; --line:#ffffff; --sel:#232333;
     --n2:#885ed0; --y2:#ac7805;
     --shade-a:rgba(26,35,50,.18); --shade-b:rgba(26,35,50,.10); --shade-c:rgba(26,35,50,.05); --frame-rgb:255,255,255;
     --card:#ffffff; --card-shadow:0 6px 20px rgba(26,35,50,.14), 0 1px 3px rgba(26,35,50,.12);
@@ -422,12 +422,13 @@ function pickAt(e) {
   const x = e.clientX, y = e.clientY, r = lastPointer === "mouse" ? 2 : 8;
   const ring = [[0, 0], ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => [r * Math.cos(i * Math.PI / 4), r * Math.sin(i * Math.PI / 4)])];
   const near = smallHits.filter(({ el }) => +el.getAttribute("r") > 0).map(({ el }) => $id("p" + el.dataset.code)).filter(p => {
-    if (!p) return false; const inv = p.getScreenCTM().inverse();
+    const m = p && p.getScreenCTM(); if (!m) return false; const inv = m.inverse();
     return ring.some(([dx, dy]) => p.isPointInFill(new DOMPoint(x + dx, y + dy).matrixTransform(inv))); });
   if (near.length === 1) return near[0].id.slice(1);
   if (near.length) return nearestDot(e);
   const under = document.elementsFromPoint(x, y).find(el => !el.classList.contains("hit") && el.closest(".cty"));
-  return under ? under.closest("[data-code]").dataset.code : nearestDot(e);
+  if (under) return under.closest("[data-code]").dataset.code;
+  return lastPointer === "mouse" ? null : nearestDot(e);   // 滑鼠點在海上就回全國，手指照舊選最近的圓心
 }
 svg.addEventListener("click", e => { const c = e.target.classList.contains("dot") ? pickAt(e) : codeOf(e); go(c || null); });
 isles.addEventListener("click", e => { const c = codeOf(e); if (c) go(c); });

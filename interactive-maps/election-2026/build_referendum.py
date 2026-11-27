@@ -243,7 +243,10 @@ def main():
     full = f"{date[:4]} 公投第 {case['no']} 案" + (f"（{case['short']}）" if case.get("short") else "") + "結果"
     source = meta["source"].split()[0].replace("中央選舉委員會", "中央選舉委員會<wbr>")   # 網址不印；字太長時在機關名後換行
     cards = {"TW": overview_card(nat, case), **{k: county_card(c) for k, c in res.items()}}
-    table = "".join(f'<tr><th scope="row">{c["name"]}</th><td>同意 {f(c["agree"])} 票，不同意 {f(c["disagree"])} 票，{gap_text(c)}，投票率 {p2(c["turnout"])}</td></tr>'
+    verdict = "通過" if nat["passed"] else "未通過"
+    table = (f'<tr><th scope="row">全國</th><td>{verdict}，同意 {f(nat["agree"])} 票，不同意 {f(nat["disagree"])} 票，'
+             f'投票率 {p2(nat["turnout"])}，門檻 {f(nat["threshold"])} 票</td></tr>')
+    table += "".join(f'<tr><th scope="row">{c["name"]}</th><td>同意 {f(c["agree"])} 票，不同意 {f(c["disagree"])} 票，{gap_text(c)}，投票率 {p2(c["turnout"])}</td></tr>'
                     for c in (res[k] for k in order))
     data = {"counties": [{"code": c["code"], "fill": c["fill"], "hi": c["hi"], "bbox": c["bbox"]} for c in res.values()],
             "cards": cards, "pano": pano, "six": SIX, "isles": sorted(ISLES)}
