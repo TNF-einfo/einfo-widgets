@@ -615,8 +615,9 @@ function go(code, instant) {   // code＝縣市代碼，null＝回全台
   if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
   mode = "user";
   const to = code == null || ISLE.has(code) ? "pano" : code;
-  // 再點一次已經浮起的那個縣：直接到位，板子不要掉下來再抬（11-27）
-  userSeg = seg(curCam, to, 1500, curCard, code, instant || curLift.code === to ? now - 1e4 : now + putDown(now, to, instant), to);
+  // 再點一次已經浮起的那個縣：直接到位，板子不要掉下來再抬（11-27）。putDown 每次都叫：它會先清掉上一次點別縣時還在放下的板子
+  const wait = putDown(now, to, instant);
+  userSeg = seg(curCam, to, 1500, curCard, code, instant || curLift.code === to ? now - 1e4 : now + wait, to);
   userEv.push(...userSeg.ev);
   // 點六都：輪播直接跳到那一站，飛到後照原本順序接著輪（11-17：原本停住等 5 秒）
   if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
@@ -679,7 +680,8 @@ frame.addEventListener("keydown", e => {
 // 焦點外緣只給鍵盤用：手指點縣市也會聚焦，原位多畫一圈白邊、跟抬起的外緣錯開 5px，iPhone 上看就是兩圈破掉的邊（11-17）
 // 只有鍵盤聚焦才算暫停：手指、滑鼠點縣市也會聚焦，算進去的話點過就再也不接著輪（11-17 發現）
 frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
-  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
+  let kb = false; try { kb = e.target.matches && e.target.matches(":focus-visible"); } catch (err) {}   // iOS 15.3 以前不認 :focus-visible，會丟錯
+  focusIn = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
   fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });   // 手指點小地圖不畫白邊（11-18）
@@ -688,7 +690,7 @@ frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hov
 frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
 frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); lastPointer = e.pointerType; });
 addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
-frame.addEventListener("contextmenu", () => held = false);   // Mac 的右鍵選單按下就跳出、收不到 pointerup，輪播會一直停著（11-27）
+frame.addEventListener("contextmenu", () => { if (lastPointer === "mouse") held = false; });   // Mac 的右鍵選單按下就跳出、收不到 pointerup，輪播會一直停著（11-27）；Android 長按也會觸發，手指還按著，不放
 homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
 pauseBtn.addEventListener("click", () => {
   userPaused = !userPaused; const t = userPaused ? "繼續輪播" : "暫停輪播";
@@ -722,7 +724,7 @@ function setZ(s, x, y) {   // 夾住平移：放大時板子一直被地圖蓋�
   Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
 }
 function holdCam(now) {   // 讀者開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格
-  lastInteract = now; zb = null; backAt = 0;   // 捏、拖就不自動回全台
+  lastInteract = now; zb = null; backAt = 0; resumeTo = -1;   // 捏、拖就不自動回全台；點六都後捏、拖，放手照一般規則等 2.5 秒才接輪播
   if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
   const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
   const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
@@ -784,8 +786,8 @@ function loop() {
     if (mode === "tour") { if (started && !paused()) tourT = (tourT + dt) % tour.cycle; }
     else maybeResume(now);
   }
+  requestAnimationFrame(loop);   // 先排下一幀：這一幀丟錯，畫面也不會整個停住
   draw(now);
-  requestAnimationFrame(loop);
 }
 layout(); draw(performance.now()); requestAnimationFrame(loop);
 
@@ -853,7 +855,8 @@ async function poll() {
   LIVE.busy = false;
   stale();
   clearTimeout(LIVE.timer);
-  if (!LIVE.stopped) LIVE.timer = setTimeout(poll, LIVE.every * Math.min(5, 1 + LIVE.fails) * (0.9 + Math.random() * 0.2));   // 失敗就拉長，最多 5 倍
+  // 失敗就拉長，最多 5 倍、但不超過 2 分鐘或一般間隔：減量的 5 分鐘輪詢失敗一次，不會拖到 10 分鐘以上（11-27）
+  if (!LIVE.stopped) LIVE.timer = setTimeout(poll, Math.min(LIVE.every * Math.min(5, 1 + LIVE.fails), Math.max(LIVE.every, 120000)) * (0.9 + Math.random() * 0.2));
 }
 function applyLive(n) {   // 原地換掉每縣的資料物件（輪播、點擊、小地圖拿的是同一批物件），再換顏色、報讀文字、圖例、出處、表格
   const from = {}, pct = c => (c.status === "counting" || c.status === "called") && c.stations ? opened(c) : null;
@@ -875,6 +878,7 @@ function applyLive(n) {   // 原地換掉每縣的資料物件（輪播、點擊
   const set = (sel, h) => { const el = $(sel); if (el) el.innerHTML = h; };
   set(".legend", n.legend_home); set(".src span", n.src); set("table.sr tbody", n.table);
   D.dtime = n.dtime; LIVE.pub = (n.published_at || 0) * 1000; LIVE.applied++;
+  fullBtn.href = fullBtn.getAttribute("href").split("?")[0] + "?v=" + n.seq;   // 手機另開的文章版是靜態檔：每版換網址，不吃 10 分鐘的快取（11-27）
   if (Object.keys(from).length) ANIM = { t0: performance.now(), from };
   shown = undefined; liftCode = null; liftKey = "";   // 資訊卡與浮起的板子照新資料重畫（板面顏色在 liftCode 換時才設）
 }
@@ -891,17 +895,19 @@ function countUp(now) {
   }
   if (u >= 1) ANIM = null;
 }
-function stale() {   // 開票開始後、還沒全部開完，迴圈超過 20 分鐘沒發新版：資料時間那行變紅、加「更新中斷」（手機框只放得下這麼短）
+function stale(first) {   // 開票開始後、還沒全部開完，迴圈超過 20 分鐘沒發新版：資料時間那行變紅、加「更新中斷」（手機框只放得下這麼短）
   const all = D.counties.every(c => c.status === "final" || c.status === "postponed"), begun = D.counties.some(c => c.status !== "pending" && c.status !== "postponed");
-  const late = !LIVE.stopped && begun && !all && LIVE.pub > 0 && Date.now() - LIVE.pub > (window.__STALE_MS || 20 * 60000);
+  const late = !first && !LIVE.stopped && begun && !all && LIVE.pub > 0 && Date.now() - LIVE.pub > (window.__STALE_MS || 20 * 60000);
   document.documentElement.classList.toggle("stale", late);
   const t = late ? (D.dtime || "") + "（更新中斷）" : D.dtime;
   if (dtimeEl.textContent !== t) dtimeEl.textContent = t;
   dtimeEl.hidden = !t;
 }
 if (HOME) {
-  stale();
-  if (LIVE.epoch && !LIVE.stopped && !/[?&]nolive\b/.test(location.search)) {
+  const polling = LIVE.epoch && !LIVE.stopped && !/[?&]nolive\b/.test(location.search);
+  // 會輪詢就等第一次抓完再判過期：頁面可能是 CDN 快取了 10 分鐘的舊版，一打開就判會先閃一下「更新中斷」（11-27）
+  stale(polling);
+  if (polling) {
     if (window.__POLL_MS) LIVE.every = window.__POLL_MS;   // 測試用：縮短輪詢
     LIVE.timer = setTimeout(poll, 1000 + Math.random() * 2000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden && !LIVE.stopped) poll(); });
