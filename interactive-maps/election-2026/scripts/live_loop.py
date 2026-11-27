@@ -117,7 +117,7 @@ def run_round(a, state, s, say):
     for code, r in rows.items():
         p = ov.get(code, {}).get("postponed")
         if p is not None:
-            rows[code] = {**r, "status": "postponed", "winner": "", "note": p["note"] or "選舉延後"}
+            rows[code] = {**r, "status": "postponed", "winner": "", "note": p["note"]}   # 沒寫 note 就留空：卡片的狀態列已經寫「選舉延後」，不要印兩行（11-27）
         elif r.get("status") == "postponed":
             rows[code] = blank(code, names[code])
             say(f"{names[code]}：overrides.csv 已沒有 postponed，改回未開票、重新抓")
@@ -277,6 +277,13 @@ def publish(a, msg, s, say):
     """只 add、commit 這幾個檔；push 被拒（遠端比較新）就 pull --rebase 再推一次；沒推成功下一輪再推"""
     g = lambda *x, **k: git(*x, cwd=a.out_dir, **k)
     gd = Path(g("rev-parse", "--absolute-git-dir")[1])
+    lock = gd / "index.lock"   # git 逾時被砍會留下鎖檔，之後每輪都 add 不了；迴圈有 loop.lock、不會兩輪同時跑，放超過一分鐘的就是遺留的（11-27）
+    try:
+        if lock.exists() and time.time() - lock.stat().st_mtime > 60:
+            lock.unlink()
+            say("git：清掉上一輪留下的 index.lock")
+    except OSError as e:
+        say(f"git：index.lock 清不掉（{e}）")
     if (gd / "rebase-merge").exists() or (gd / "rebase-apply").exists():   # 上一輪 rebase 到一半被砍：先退回去，不然一直卡在不是 main
         say("git：上一輪的 rebase 沒做完，先 rebase --abort")
         g("rebase", "--abort")
@@ -575,9 +582,13 @@ def selftest(keep=None):
     (gt / "work/live").mkdir()
     b = parse([x for x in argv if x != "--dry-run"] + ["--out-dir", str(gt / "work/live"), "--state-dir", str(gt / "state")])   # 後寫的蓋過前面的
     b.cmd = None
+    stale = gt / "work/.git/index.lock"   # 上一輪的 git 被砍、留下兩分鐘前的鎖檔：這輪要清掉照推
+    stale.write_text("", encoding="utf-8")
+    os.utime(stale, (time.time() - 120,) * 2)
     r = one(b)
     files = sh("show", "--name-only", "--format=%s", "HEAD", cwd=gt / "remote.git").splitlines()
     assert r["git"] == "pushed" and files[0].startswith("chore(election-2026): update live results to"), (r.get("git"), r["msgs"], files)
+    assert "git：清掉上一輪留下的 index.lock" in r["msgs"] and not stale.exists(), r["msgs"]
     assert sorted(files[2:]) == ["live/election-2026-home.html", "live/live.json"], files   # 只有這兩個檔，stray.txt 沒被帶進去
     assert (gt / "work/other.txt").exists() and "stray.txt" in sh("status", "--porcelain", cwd=gt / "work")
     assert json.loads(sh("show", "HEAD:live/live.json", cwd=gt / "remote.git"))["epoch"] == "selftest"   # 衝突時這台產生的那版勝出
