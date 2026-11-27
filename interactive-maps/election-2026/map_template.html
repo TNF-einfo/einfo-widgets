@@ -125,7 +125,7 @@
   footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
     padding:4px 10px 6px 12px; font-size:11px; color:var(--mute); background:none }
   @media (max-width:620px){ footer{ font-size:9px } }   /* 出處字：電腦版 11px、手機與平板 9px（11-27） */
-  .src{ margin:0; line-height:1.3; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src .disc{ display:block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
+  .src{ margin:0; line-height:1.3; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
   .btns{ display:flex; gap:4px; flex:none }
   button{ font:inherit; font-size:12px; color:var(--ink); background:var(--btn); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
     touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
@@ -282,7 +282,8 @@
   </div>
   <p class="hsrc"><span>資料來源：中央選舉委員會；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
   <footer>
-    <p class="src"><span>{{SRC}}</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a>；</span><span>製圖：賴晁翔</span><span class="disc">正確選舉結果以中央選舉委員會公告為準。</span></p>
+    <!-- 出處、縣市界（授權）、製圖與免責聲明寫在文章嵌入區塊的說明欄（11-27），這裡只留開票狀態與資料時間 -->
+    <p class="src"><span>{{SRC}}</span></p>
     <!-- 圖示只在首頁版顯示（首頁版的字藏起來，名稱靠 aria-label）；放大鈕連到文章版，JS 在能全螢幕的橫螢幕上改成全螢幕 -->
     <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1" aria-label="回全台" title="回全台"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 7.5L8 2.5l5.5 5M4 6.5V13.5h3v-3.5h2v3.5h3V6.5"/></svg><span class="bt">回全台</span></button><button id="pause" type="button" aria-label="暫停輪播" title="暫停輪播"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="bars"><path d="M5.5 3.5v9M10.5 3.5v9"/></g><g class="play"><path d="M5 3l8 5-8 5z"/></g></svg><span class="bt">暫停輪播</span></button><a id="full" href="{{FULL}}" target="_blank" rel="noopener" aria-label="放大看完整版" title="放大看完整版"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="open"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></g><g class="shut"><path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/></g></svg></a></div>
   </footer>

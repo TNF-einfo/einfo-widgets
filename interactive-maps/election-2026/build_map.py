@@ -335,7 +335,7 @@ def main():
     legend_of = lambda home: ('<li class="lgh">各陣營領先狀況</li>' if home else "") + \
         "".join(f'<li><i class="sw g-{g}"></i>{name}' + (f'<b class="n">{n[g]}</b>' if home else "") + "</li>" for g, name in legend)
     table = "".join(f"<tr><th scope=\"row\">{c['name']}</th><td>{summary(c)}</td></tr>" for c in (res[k] for k in order))
-    src = f"資料來源：中央選舉委員會 {src_date}；"
+    src = src_date   # 11-27：出處、縣市界、製圖與免責聲明改寫在文章嵌入區塊的說明欄，圖裡只留開票狀態與資料時間
     data = {"counties": list(res.values()), "pano": pano, "six": SIX, "isles": sorted(ISLES), "date": date}
     extra = ""
     if a.home:   # 首頁版會輪詢：頁面與 live.json 烤同一組 epoch、seq、published_at（SPEC「首頁版即時更新」）
