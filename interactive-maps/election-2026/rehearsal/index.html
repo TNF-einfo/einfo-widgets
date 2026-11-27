@@ -78,7 +78,7 @@
   .ttl{ display:flex; align-items:center; gap:8px; margin:0; padding:9px 12px; background:var(--mast); color:var(--mast-ink) }
   .ttl img{ height:18px; width:auto; flex:none; margin-left:auto }   /* logo 靠右 */
   /* 標題照官網段落標題 h2：黑體、字重 900，字級跟著框寬縮放；352.8 寬時約 21px，加上靠右的 logo 剛好一行 */
-  h1{ margin:0; font-weight:900; font-size:clamp(20px, 6vw, 28px); line-height:1.25 }
+  h1{ margin:0; font-weight:900; font-size:clamp(20px, 6vw, 28px); line-height:1.25 } h1 span{ display:inline-block }
   .legend{ display:flex; flex-wrap:wrap; gap:4px 12px; list-style:none; margin:0; padding:7px 12px 8px; font-size:13px }
   .legend li{ display:flex; align-items:center; gap:5px }
   .sw{ display:inline-block; width:10px; height:10px; flex:none; border-radius:2px }
@@ -123,8 +123,8 @@
   .t-y{ background:var(--tag-y) } .t-g{ background:var(--tag-g) } .t-p{ background:var(--tag-p) } .t-b{ background:var(--tag-b) }
 
   footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
-    padding:7px 10px 8px 12px; font-size:10px; color:var(--mute); background:none }
-  .src{ margin:0; line-height:1.45; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src .disc{ display:block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
+    padding:4px 10px 6px 12px; font-size:9px; color:var(--mute); background:none }
+  .src{ margin:0; line-height:1.3; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src .disc{ display:block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
   .btns{ display:flex; gap:4px; flex:none }
   button{ font:inherit; font-size:12px; color:var(--ink); background:var(--btn); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
     touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
@@ -240,7 +240,7 @@
 <body><div style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99;background:#c0392b;color:#fff;font:700 13px/1.2 'Noto Sans TC',sans-serif;padding:5px 12px;border-radius:0 0 6px 6px;pointer-events:none">測試資料，非真實結果</div>
 <div class="frame">
   <header>
-    <div class="ttl"><h1>2026九合一縣市長政黨版圖</h1><img src="../../assets/eic-logo-green.svg" alt="環境資訊中心"></div>
+    <div class="ttl"><h1><span>2026九合一</span><span>縣市長政黨版圖</span></h1><img src="../../assets/eic-logo-green.svg" alt="環境資訊中心"></div>
     <ul class="legend" aria-label="圖例"><li class="lgh">各陣營領先狀況</li><li><i class="sw g-kmt"></i>國民黨<b class="n">4</b></li><li><i class="sw g-dpp"></i>民進黨<b class="n">1</b></li><li><i class="sw g-tpp"></i>民眾黨<b class="n">3</b></li><li><i class="sw g-oth"></i>其他<b class="n">1</b></li><li><i class="sw g-pend"></i>開票中<b class="n">13</b></li></ul>
   </header>
   <div class="mapwin">
@@ -263,7 +263,7 @@
     <section class="card" id="card" tabindex="0" aria-label="縣市結果" hidden><div class="in"></div></section>
     <div class="card measure" aria-hidden="true"><div class="in"></div></div>
   </div>
-  <p class="hsrc"><span>資料來源：中央選舉委員會；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a>；</span><span>製圖：賴晁翔</span></p>
+  <p class="hsrc"><span>資料來源：中央選舉委員會；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
   <footer>
     <p class="src"><span>資料來源：中央選舉委員會 <i>2026-11-27</i> <i>開票中</i>，<i>資料時間 10:11</i>；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a>；</span><span>製圖：賴晁翔</span><span class="disc">正確選舉結果以中央選舉委員會公告為準。</span></p>
     <!-- 圖示只在首頁版顯示（首頁版的字藏起來，名稱靠 aria-label）；放大鈕連到文章版，JS 在能全螢幕的橫螢幕上改成全螢幕 -->
@@ -365,7 +365,8 @@ function layout() {
   const hdrB = $("header").getBoundingClientRect().bottom, ftrH = HOME ? 0 : H - $("footer").getBoundingClientRect().top;
   // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom），地圖才會從標題底下淡出；取景照樣從 hdrB 算
   const FADE = 40, mwT = Math.max(0, hdrB - FADE);
-  mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px"; BD = { t: mwT, b: H - ftrH };
+  // 板子往下伸到框底，出處小字疊在地圖左下角、不留白帶（11-27）；取景與平移照樣停在出處上緣
+  mapwin.style.top = mwT + "px"; mapwin.style.bottom = "0px"; BD = { t: mwT, b: H - ftrH };
   const pos = $(".cardpos");
   // 橫式卡片從圖例下面就開始（蓋在漸層上）：漸層那 40px 只是地圖淡出，平板 528×352 少了它金句會放不下（11-18）
   if (!HOME) { pos.style.top = land ? hdrB - FADE + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px"; }
