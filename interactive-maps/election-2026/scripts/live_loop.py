@@ -2,8 +2,8 @@
 
 用法（在 election-2026 資料夾跑；工作排程器的設定在 scripts/live_loop_task.ps1）：
   python -I scripts/live_loop.py --prefix <網址前綴> --once --dry-run    # 乾跑一輪：抓、合併、產生，不碰 git；狀態與產出在 preview/realtime/state/<epoch>-dryrun/
-  python -I scripts/live_loop.py --prefix <網址前綴> --once              # 跑一輪，有變就推（排程器每 2 分鐘叫一次）
-  python -I scripts/live_loop.py --prefix <網址前綴>                     # 自己每 120 秒跑一輪（終端機開著跑）
+  python -I scripts/live_loop.py --prefix <網址前綴> --once              # 跑一輪，有變就推（排程器每 1 分鐘叫一次）
+  python -I scripts/live_loop.py --prefix <網址前綴>                     # 自己每 60 秒跑一輪（終端機開著跑）
   python -I scripts/live_loop.py selftest [--keep 資料夾]                # 假中選會＋乾跑十幾輪，檢查防呆；--keep 留下每輪的頁面給瀏覽器測試
 選項：--epoch（頁面只收同一個 epoch，預設 2026-11-28，彩排用 rehearsal）、--date（投票日）、--out-dir（產出放哪，預設 election-2026 資料夾；
 repo 外面只准 --dry-run）、--home-name（彩排用 index.html）、--article（文章版也一起重產、一起推，預設不做）、--poll-s（讀者多久抓一次，0＝停止開關）、
@@ -35,7 +35,7 @@ import fetch_live as fl   # noqa: E402
 
 FUTURE = timedelta(minutes=5)   # 資料時間比這台電腦的時鐘晚 5 分鐘以上就不收
 ARTICLE = "election-2026.html"
-# 排程器用 pythonw 跑（沒有主控台）：子程序改用 python.exe、不開視窗，不然每 2 分鐘閃好幾個黑視窗
+# 排程器用 pythonw 跑（沒有主控台）：子程序改用 python.exe、不開視窗，不然每分鐘閃好幾個黑視窗
 PY = sys.executable.replace("pythonw.exe", "python.exe")
 NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -352,7 +352,7 @@ def parse(argv=None):
     ap.add_argument("cmd", nargs="?", choices=["selftest"])
     ap.add_argument("--prefix")
     ap.add_argument("--once", action="store_true")
-    ap.add_argument("--every", type=int, default=120)
+    ap.add_argument("--every", type=int, default=60)   # 11-27 從 120 秒縮成 60 秒（每頁 1 秒，一輪約 30 秒）
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--out-dir", type=Path)
     ap.add_argument("--state-dir", type=Path)
