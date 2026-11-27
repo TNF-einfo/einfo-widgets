@@ -535,12 +535,27 @@ function fitCard() {
   more.textContent = `另有 ${lis.length - n} 位候選人`;
   if (over()) more.style.display = "none";
 }
+// 首頁版即時更新換了名次（或當選、標籤讓版面變了）：每一列從舊位置滑到新位置，跟票數一樣 1.5 秒；減少動態時直接換（11-27）
+let cardCode = null;   // 卡片裡現在畫的是哪一縣
+const visibleRows = () => [...cardIn.querySelectorAll("li")].filter(li => li.offsetParent).map(li => [li.querySelector(".nm b").textContent, li]);
+const rowTops = () => Object.fromEntries(visibleRows().map(([n, li]) => [n, li.offsetTop]));
+function slideRows(old) {
+  for (const [n, li] of visibleRows()) {
+    const dy = old[n] - li.offsetTop;   // 舊的這輪沒顯示（手機框放不下）就是 NaN，不滑
+    if (dy) li.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 1500, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+  }
+}
 function renderCard(cur, prev, el) {
   let show = cur, op = 1, ty = 0, inOp = 1;
   if (cur == null) { if (prev != null && el < 150) { show = prev; op = 1 - easeOut(el / 150); } else show = null; }
   else if (prev == null) { const p = easeOut(clamp(el / 200)); op = p; ty = RM.matches ? 0 : 8 * (1 - p); }
   else if (prev !== cur) inOp = easeOut(clamp(el / 180));
-  if (show !== shown) { shown = show; card.hidden = show == null; if (show) { cardIn.innerHTML = HTML[show]; card.scrollTop = 0; fitCard(); } }
+  if (show !== shown) {
+    shown = show; card.hidden = show == null;
+    const old = show && show === cardCode && ANIM && ANIM.from[show] && !RM.matches ? rowTops() : null;   // 同一縣因新資料重畫：先記舊位置
+    if (show) { cardIn.innerHTML = HTML[show]; card.scrollTop = 0; fitCard(); if (old) slideRows(old); }
+    cardCode = show;
+  }
   card.style.opacity = op; card.style.transform = ty ? `translateY(${ty.toFixed(2)}px)` : ""; cardIn.style.opacity = inOp;
   if (curCard !== cur) {   // 外緣跟資訊卡同一刻換
     curCard = cur;
