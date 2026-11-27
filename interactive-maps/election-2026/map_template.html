@@ -34,7 +34,7 @@
   html{ -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100% }
   html,body{ margin:0; height:100%; background:var(--frame); overflow:hidden }
   body{ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color:var(--ink) }
-  .frame{ position:relative; width:100vw; height:100vh; overflow:hidden; background:var(--frame) }
+  .frame{ position:relative; width:100%; height:100%; overflow:hidden; background:var(--frame) }   /* 100vh 在 iPhone Safari 是工具列收起的高度，另開文章版時底部會被蓋住（11-27） */
   /* 地圖只畫在標題與出處之間這塊板子裡，上下是直切的邊、不做漸層（top／bottom 由 layout() 量）；
      傾斜時地圖頂端往後倒，SVG 比框大一圈（大小與 transform-origin 也由 layout() 量），邊角才不會露底 */
   .mapwin{ position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; background:var(--sea) }
@@ -123,7 +123,8 @@
   .t-y{ background:var(--tag-y) } .t-g{ background:var(--tag-g) } .t-p{ background:var(--tag-p) } .t-b{ background:var(--tag-b) }
 
   footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
-    padding:4px 10px 6px 12px; font-size:11px; color:var(--mute); background:none }
+    padding:4px 10px 6px 12px; font-size:11px; color:var(--mute); background:none; pointer-events:none }   /* 疊在地圖上：點擊穿過去給地圖（11-27：拉近臺中時點不到彰化、南投） */
+  footer button, footer a{ pointer-events:auto }   /* 只有按鈕與連結接點擊，按鈕之間的空隙也穿過去 */
   @media (max-width:620px){ footer{ font-size:9px } }   /* 出處字：電腦版 11px、手機與平板 9px（11-27） */
   .src{ margin:0; line-height:1.3; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
   .btns{ display:flex; gap:4px; flex:none }
@@ -136,6 +137,7 @@
   #home[aria-hidden="true"]{ visibility:hidden }
   .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
   :focus-visible{ outline:2px solid var(--sel); outline-offset:2px }
+  button:focus-visible, a:focus-visible, #card:focus-visible{ outline-color:var(--ink) }   /* 白底的卡片、按鈕外框落在淺灰海面上，白框看不到（11-27） */
   .cty:focus-visible, .isle:focus-visible{ outline:none }
   @media (hover:hover) and (pointer:fine){
     .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) } button:hover, html:not(.home) footer button:hover{ background:var(--btn-2) }
@@ -294,6 +296,7 @@
 </div>
 <script>
 "use strict";
+if (!Array.prototype.at) Array.prototype.at = function (i) { i = Math.trunc(i) || 0; return this[i < 0 ? this.length + i : i]; };   // iOS 15.3 以前沒有 .at()，第一幀就丟錯、整張圖不動（11-27）
 const D = {{DATA}};
 const $ = s => document.querySelector(s);
 const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
@@ -593,7 +596,8 @@ function renderCard(cur, prev, el) {
   if (show !== shown) {
     shown = show; card.hidden = show == null;
     const old = show && show === cardCode && ANIM && ANIM.from[show] && !RM.matches ? rowTops() : null;   // 同一縣因新資料重畫：先記舊位置
-    if (show) { cardIn.innerHTML = HTML[show]; card.scrollTop = 0; fitCard(); if (old) slideRows(old); }
+    if (show) { const keep = show === cardCode ? card.scrollTop : 0;   // 同一縣因新資料重畫：留在讀者捲到的地方（11-27）
+      cardIn.innerHTML = HTML[show]; card.scrollTop = keep; fitCard(); if (old) slideRows(old); }
     cardCode = show;
   }
   card.style.opacity = op; card.style.transform = ty ? `translateY(${ty.toFixed(2)}px)` : ""; cardIn.style.opacity = inOp;
@@ -611,12 +615,13 @@ function go(code, instant) {   // code＝縣市代碼，null＝回全台
   if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
   mode = "user";
   const to = code == null || ISLE.has(code) ? "pano" : code;
-  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
+  // 再點一次已經浮起的那個縣：直接到位，板子不要掉下來再抬（11-27）
+  userSeg = seg(curCam, to, 1500, curCard, code, instant || curLift.code === to ? now - 1e4 : now + putDown(now, to, instant), to);
   userEv.push(...userSeg.ev);
   // 點六都：輪播直接跳到那一站，飛到後照原本順序接著輪（11-17：原本停住等 5 秒）
   if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
   // 六都以外：抵達後停 3.5 秒自動回全台（金門、連江鏡頭不動，從現在算）；讀者中途再點、捏、拖、Esc、回全台都會蓋掉
-  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
+  backAt = code != null && !SIX.includes(code) ? Math.max(userSeg.t0 + userSeg.dur, now) + 3500 : 0;   // 直接到位時 t0 在過去，照樣從現在算 3.5 秒
 }
 function putDown(now, to, instant) {   // 板子還抬著就先放下再飛（放下的時間照抬了幾成）；回傳要等多久
   drop = null;
@@ -683,6 +688,7 @@ frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hov
 frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
 frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); lastPointer = e.pointerType; });
 addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
+frame.addEventListener("contextmenu", () => held = false);   // Mac 的右鍵選單按下就跳出、收不到 pointerup，輪播會一直停著（11-27）
 homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
 pauseBtn.addEventListener("click", () => {
   userPaused = !userPaused; const t = userPaused ? "繼續輪播" : "暫停輪播";
