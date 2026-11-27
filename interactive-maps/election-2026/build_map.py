@@ -349,6 +349,8 @@ def main():
     logo = {"paper": "eic-logo-green.svg", "night": "eic-logo.png"}[a.theme]   # 淺底用官網表頭的綠色 logo，深底用白色那張
     for k, v in {
         "THEME": a.theme, "TITLE": title, "VARIANT": "home" if a.home else "",
+        # 標題太長時只在「九合一」後面換行，手機直式才不會剩一個「圖」掉到第二行
+        "TITLE_H1": f"<span>{year}九合一</span><span>縣市長政黨版圖</span>",
         "LOGO": Path(os.path.relpath(HERE.parent / "assets" / logo, out.parent)).as_posix(),
         # 首頁版的放大鈕連到文章版（同一份資料夾的正式檔）
         "FULL": Path(os.path.relpath(DEFAULT_OUT, out.parent)).as_posix(),
