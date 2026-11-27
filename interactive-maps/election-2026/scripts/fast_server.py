@@ -9,7 +9,9 @@
 用法（在 election-2026 資料夾）：
   python -I scripts/fast_server.py <資料夾> [--port 18799] [--log]
   python -I scripts/fast_server.py selftest
-對外：`tailscale funnel --bg 18799`；關掉：`tailscale funnel --https=443 off`。
+對外（只開 /live.json 這個路徑，其他路徑 tailscaled 直接回 404）：
+  tailscale funnel --bg --https=443 --set-path=/live.json http://127.0.0.1:18799/live.json
+目標網址要寫到 /live.json：掛在路徑上時 tailscaled 會先去掉這段再轉。關掉：`tailscale funnel reset`。
 """
 import argparse
 import email.utils
@@ -174,7 +176,7 @@ def main():
     ap.add_argument("--log", action="store_true")
     a = ap.parse_args()
     srv = serve(a.folder, a.port, a.log)
-    print(f"快車道：http://127.0.0.1:{a.port}{PATH} ← {Path(a.folder) / 'live.json'}（對外用 tailscale funnel --bg {a.port}）", flush=True)
+    print(f"快車道：http://127.0.0.1:{a.port}{PATH} ← {Path(a.folder) / 'live.json'}（對外用 tailscale funnel --bg --https=443 --set-path=/live.json http://127.0.0.1:{a.port}/live.json）", flush=True)
     srv.serve_forever()
 
 

@@ -514,7 +514,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 
 開著的首頁版先跟這台電腦拿 `live.json`，省掉 push 與 Pages 部署（每次約 35 秒到 1 分鐘）；抓不到就照舊抓 Pages。Pages 那條完全照舊，快車道只加在前面，壞了讀者就回到原本的速度。
 
-- 對外：`python -I scripts/fast_server.py <資料夾> --port 18799` 只在 127.0.0.1 給那個資料夾的 `live.json`；`tailscale funnel --bg 18799` 對外成 `https://node.taile10df2.ts.net/live.json`，TLS 由 tailscaled 處理。tailnet 的 Funnel 權限 11-27 已開。
+- 對外：`python -I scripts/fast_server.py <資料夾> --port 18799` 只在 127.0.0.1 給那個資料夾的 `live.json`；`tailscale funnel --bg --https=443 --set-path=/live.json http://127.0.0.1:18799/live.json` 只把 `https://node.taile10df2.ts.net/live.json` 這一個路徑對外，其他路徑 tailscaled 直接回 404、進不到伺服器（11-27 經公開入口實測）。目標網址要寫到 `/live.json`：掛在路徑上時 tailscaled 會先去掉這段再轉。TLS 由 tailscaled 處理（以 SYSTEM 執行）。tailnet 的 Funnel 權限 11-27 已開。
 - 伺服器：只回 `GET`、`HEAD /live.json`，其他路徑 404、其他方法 501。檔案放記憶體，mtime 或大小變了才重讀（Windows 上檔案開著就換不了名），換檔瞬間讀不到就給上一版。讀者收 gzip 就給壓過的（20 KB 壓成 4 KB）；`If-Modified-Since` 跟上次給的 `Last-Modified` 一字不差才回 304；帶 body 的請求回完就關連線；連線 10 秒沒動靜就斷；`Server` 標頭不露 Python 版本；優先權「低於標準」。`python -I scripts/fast_server.py selftest` 測這些。
 - 迴圈：`--fast-dir` 在 push 之前把 `live.json` 換進去（先寫暫存檔再換名，被擋就 50 毫秒後重試，最多 1 秒），沒發佈的輪也比一次、不一樣就補；乾跑改放 `<state>/fast/`，不碰給讀者的那個資料夾。`--fast-url` 烤進首頁版與 `live.json`，不給就是空字串，讀者收到空字串就不再打快車道（開關）。
 - 頁面：有 `fast_url` 就先抓它（4 秒逾時）；抓不到、壞檔、別的 `epoch`、序號比手上的舊，都算失敗，這輪改抓 Pages。Pages 抓得到的那輪才記快車道失敗一次（讀者自己斷網不算），連三次就 5 分鐘只抓 Pages。每 3 輪兩邊同時抓，取比較新、而且收得下的那份；Pages 那份壞了不會蓋掉快車道的好資料。`window.__live.from` 是這份從哪來（`fast` 或 `pages`）。
@@ -526,14 +526,15 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
   - 入口對每個來源位址一次只放 20 條新連線：60 條全從 IPv4 或全從 IPv6 開，第一次都只連上 20 條；IPv4、IPv6 各開 30 條，兩邊各連上 20 條。讀者各自從自己的位址來、一人一條連線，碰不到這個；同一個位址後面人很多（行動網路共用 IPv4、公司網路）才會有人被擋，被擋的 4 秒內改抓 Pages。全體的上限測不到。
 - 中選會更新到讀者看到（估計）：平均約 35 秒（只走 Pages 約 1 分 10 秒），最慢約 1 分 15 秒（約 2 分 20 秒）。算法：等迴圈下一輪最多 30 秒、抓完 22 頁約 15 秒、換檔不到 1 秒、讀者輪詢最多 22 秒、傳輸 1 到 2 秒。
 - 風險：Funnel 有頻寬上限，官方沒公開數字；被擋或變慢的讀者最多回到只走 Pages 的速度。這台電腦多一個對外入口，只給一個公開的檔，開票夜才開、隔天就關。電腦當機時快車道跟迴圈一起停，讀者回到 Pages。
+- 資安（11-27 反重力唯讀審查、逐條對官方資料核過）：公開的 TLS 與 HTTP 都由 tailscaled（SYSTEM）處理，Funnel 只轉設定的主機、埠、路徑，碰不到 peerapi、Taildrop 與 tailnet 上的其他服務。這台是 1.104.5：TS-2026-014 到 017（SSH 與 Serve）在 1.104.4 修掉；TS-2026-018 在 1.104.7 修、只影響 Kubernetes operator；1.104.6、1.104.7 另修 Windows 待命喚醒斷線與控制平面的 TLS 相容。被灌流量時最壞是塞住這台的上傳、拖到迴圈的 push，照下面第 4 點關掉。伺服器用一般權限跑（11-27 這台的 shell 是 Medium，不是系統管理員）。
 
 開票夜加開快車道（在「開票夜操作」第 4 點登記排程時一起做）：
-1. 開伺服器：另一個終端機 `python -I scripts/fast_server.py preview/realtime/fast --port 18799`；`tailscale funnel --bg 18799`（設定會留著，重開機不用再下），`tailscale funnel status` 要看到 `/ proxy http://127.0.0.1:18799`。
+1. 開伺服器：另一個終端機（一般權限，不要用系統管理員）`python -I scripts/fast_server.py preview/realtime/fast --port 18799`；`tailscale funnel --bg --https=443 --set-path=/live.json http://127.0.0.1:18799/live.json`（設定會留著，重開機不用再下），`tailscale funnel status` 要看到 `|-- /live.json proxy http://127.0.0.1:18799/live.json`。
 2. 登記排程的 `-Extra` 加上 `--fast-dir preview/realtime/fast --fast-url https://node.taile10df2.ts.net/live.json`（跟 `--article` 寫在一起，每次重新登記都要寫全）。
 3. 確認：第一輪發佈後，手機用行動網路開 `https://node.taile10df2.ts.net/live.json`，`seq` 跟 `status.html` 的最近發佈一樣；電腦開 Pages 上的首頁版，Console 打 `__live.from` 是 `fast`。
-4. 關快車道：重新登記排程，`-Extra` 拿掉 `--fast-url`（`--fast-dir` 留著），下一輪發出 `fast_url` 空字串，開著的頁面在一輪內停用；過兩三分鐘再 `tailscale funnel --https=443 off`、停伺服器。急的時候直接關 Funnel 也行：關掉後公開網址連不上、要等 4 秒逾時，讀者每輪多等這 4 秒，連三次後 5 分鐘只抓 Pages（11-27 關掉後實測是逾時）。
+4. 關快車道：重新登記排程，`-Extra` 拿掉 `--fast-url`（`--fast-dir` 留著），下一輪發出 `fast_url` 空字串，開著的頁面在一輪內停用；過兩三分鐘再 `tailscale funnel reset`、停伺服器。急的時候直接 `tailscale funnel reset` 也行：關掉後公開網址連不上、要等 4 秒逾時，讀者每輪多等這 4 秒，連三次後 5 分鐘只抓 Pages（11-27 關掉後實測是逾時）。這台的網路被塞住、指令下不進去時，到 Tailscale 後台 Access controls 把 `funnel` 那段 nodeAttrs 拿掉存檔，入口就不再轉過來。
 5. 電腦重開機後：伺服器要自己再開（排程不管它），Funnel 設定還在；沒開的這段讀者照樣有 Pages。
-6. 收尾：全部開完、發過 `--poll-s 0` 之後，`tailscale funnel --https=443 off`，停伺服器。
+6. 收尾：全部開完、發過 `--poll-s 0` 之後，`tailscale funnel reset`（`tailscale funnel status` 回 `No serve config`），停伺服器；後台的 `funnel` nodeAttrs 之後不用就收回。
 
 ### 鏡頭輪播
 
