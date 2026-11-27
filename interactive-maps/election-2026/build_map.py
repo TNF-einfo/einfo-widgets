@@ -173,6 +173,7 @@ def load_tags(path, res, errors):
     clash = sum(col[a] == col[b] for ts in lists for a, b in zip(ts, ts[1:]))
     if clash:
         print(f"注意：標籤有 {clash} 組相鄰同色（同一項政策同一色，配不開）", file=sys.stderr)
+    fake = {}   # 公開測試頁的假名字（候選人甲…）對不到真名：改放同樣個數、同樣顏色的「測試標籤」，真的政見一看就認得出是誰
     for row, ts in zip(rows, lists):
         code, cand = row["code"].strip(), fix_name(row["candidate"].strip())
         c = res.get(code)
@@ -182,12 +183,20 @@ def load_tags(path, res, errors):
         names = [html.unescape(p["name"]) for p in c["cands"]]
         if not names:   # 還沒有候選人名單（開票夜手動輸入、還沒抄的縣市）：沒得對，也不報
             continue
+        if all(n.startswith("候選人") for n in names):   # 縣內兩人的標籤取比較多的那份，版面照最擠的測
+            if len(ts) > len(fake.get(code, [])):
+                fake[code] = ts
+            continue
         if cand not in names:   # 表裡列全部候選人，只有姓名打錯才報；沒當選的照樣不顯示
             print(f"警告：{c['name']} 的「{cand}」對不到候選人名單（{'、'.join(names)}），這列標籤不顯示", file=sys.stderr)
             continue
         win = next((p for p in c["cands"] if p["elected"]), None)
         if win and html.unescape(win["name"]) == cand and ts:
             c["tags"] = [{"t": html.escape(t), "k": col[t]} for t in ts]
+    for code, ts in fake.items():
+        c = res[code]
+        if any(p["elected"] for p in c["cands"]):
+            c["tags"] = [{"t": f"測試標籤{'一二三四五六七八'[i]}", "k": col[t]} for i, t in enumerate(ts)]
 
 
 def font_text(page):
