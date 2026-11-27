@@ -625,8 +625,11 @@ function putDown(now, to, instant) {   // 板子還抬著就先放下再飛（�
   return drop.end - now;
 }
 function maybeResume(now) {
+  // 點六都：飛到後接回輪播那一站。讀者還在畫面上（滑鼠停著、按了暫停）就先留在點選的狀態，板子照樣抬起，離開才接回去；
+  // 接回時輪播從同樣的抬起高度往下走，不會掉下去再抬一次（11-27：原本一飛到就交給暫停中的輪播，時間不走、板子抬不起來）
   if (resumeTo >= 0) {
-    if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
+    const end = userSeg.t0 + userSeg.dur;
+    if (now >= end && !paused()) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]] + Math.min(now - end, UP); lastSix = resumeTo; resumeTo = -1; }
     return;
   }
   const end = userSeg.t0 + userSeg.dur;
@@ -647,7 +650,22 @@ const nearestDot = e => { let best = null, bd = Infinity;
     const b = el.getBoundingClientRect(), d = Math.hypot(e.clientX - b.left - b.width / 2, e.clientY - b.top - b.height / 2);
     if (d < bd) { bd = d; best = el.dataset.code; } }
   return best; };
-svg.addEventListener("click", e => { const c = e.target.classList.contains("dot") ? nearestDot(e) : codeOf(e); go(c || null); });
+// 點擊圓半徑 22px，小框裡會蓋掉旁邊大縣市一大片（11-27 量：390×219 點雲林九成選到嘉義市，1080×608 新北近三成選到臺北、基隆）。
+// 點到圓時看小縣市本身的形狀：點在某個小縣市裡面或 r px 以內就選它（手指 8px、滑鼠 2px；好幾個都近就選最近的圓心）；
+// 都不近、底下又有別的縣市，就選底下那個；點在海上才照舊選最近的圓心
+let lastPointer = "";   // 最近一次按下的是滑鼠還是手指（有的瀏覽器 click 事件沒有 pointerType，看 pointerdown）
+function pickAt(e) {
+  const x = e.clientX, y = e.clientY, r = lastPointer === "mouse" ? 2 : 8;
+  const ring = [[0, 0], ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => [r * Math.cos(i * Math.PI / 4), r * Math.sin(i * Math.PI / 4)])];
+  const near = smallHits.filter(({ el }) => +el.getAttribute("r") > 0).map(({ el }) => $id("p" + el.dataset.code)).filter(p => {
+    if (!p) return false; const inv = p.getScreenCTM().inverse();
+    return ring.some(([dx, dy]) => p.isPointInFill(new DOMPoint(x + dx, y + dy).matrixTransform(inv))); });
+  if (near.length === 1) return near[0].id.slice(1);
+  if (near.length) return nearestDot(e);
+  const under = document.elementsFromPoint(x, y).find(el => !el.classList.contains("hit") && el.closest(".cty"));
+  return under ? under.closest("[data-code]").dataset.code : nearestDot(e);
+}
+svg.addEventListener("click", e => { const c = e.target.classList.contains("dot") ? pickAt(e) : codeOf(e); go(c || null); });
 isles.addEventListener("click", e => { const c = codeOf(e); if (c) go(c); });
 frame.addEventListener("keydown", e => {
   if (e.key === "Escape") { go(null); return; }
@@ -663,7 +681,7 @@ frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.
 frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
 frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
 frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
-frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); });
+frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); lastPointer = e.pointerType; });
 addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
 homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
 pauseBtn.addEventListener("click", () => {
