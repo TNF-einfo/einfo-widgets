@@ -13,6 +13,7 @@
 | `raw/cec_live_2022/` | 2022 年中選會開票網頁的兩段 HTML（Wayback 存檔）：屏東縣長候選人得票數（`TC_`）、臺北市長選舉概況（`SC_`），寫開票夜解析程式時拿來測 | Wayback Machine |
 | `worst_case.json` | 最壞資料（break-ui 用，只在本機切換），格式同 `mayor_2022.json`，另加 `status`、`stations`、`updated`、`note` 欄位，說明見檔內 `meta.note` | 一次性產生 |
 | `tags.csv` | 六都兩位候選人的環境政見標籤（`code,county,candidate,tags`，標籤用「、」分隔）；地圖只顯示當選人那一列，只用在 2026 年的結果；`county` 欄只給人看，對應用 `code` | 編輯提供 |
+| `party_codes_2026.json` | 2026 才出現、2022 中選會政黨代碼表沒有的 5 個小黨（`party_code,party_name,color_code`，代碼 90001 起自訂，地圖塗灰）；`fetch_live.py` 與 `build_map.py` 都把它併進代碼表，「台」「臺」兩種寫法都認。開票夜若中選會頁面的黨名跟這裡不同，在這裡補 | 從 `candidates_2026.csv` 對代碼表找出（11-27） |
 | `candidates_2026.csv` | 2026 年 22 縣市的候選人與推薦政黨（`code,county,name,party`，照 115 年選舉公報，前兩位的順序是測試用的、不是號次）；首頁版字型預先收這些字（開票夜名字才從 `live.json` 進來），假中選會 `scripts/fake_cec.py` 也讀它 | 從 `preview/make_test_2026.py` 的名單抄出 |
 | `results_2026_template.csv`、`referendum22_2026_template.csv` | 開票夜手動輸入的空白範本（22 縣市的代碼與名稱已填），欄位見 SPEC「開票夜步驟」 | 手寫 |
 | `results_2026.csv`／`.json`、`referendum22_2026.csv`／`.json` | 開票夜才有：抓下來或手動抄的結果，與轉給產生器的 JSON | `scripts/fetch_live.py` |

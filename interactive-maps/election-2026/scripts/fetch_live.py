@@ -55,6 +55,10 @@ def counties():
 
 def party_codes():
     t = {p["party_name"]: int(p["party_code"]) for p in json.loads((DATA / "raw/cec_db/webs_configs_party_colors.json").read_text(encoding="utf-8"))}
+    # 2026 才出現、2022 代碼表沒有的小黨（data/party_codes_2026.json，代碼自訂、地圖塗灰）；開票頁可能寫「台」或「臺」，兩種都認
+    for p in json.loads((DATA / "party_codes_2026.json").read_text(encoding="utf-8")):
+        for n in {p["party_name"], p["party_name"].replace("臺", "台"), p["party_name"].replace("台", "臺")}:
+            t.setdefault(n, int(p["party_code"]))
     for alias in ("無黨籍及未經政黨推薦", "無黨籍", "無"):   # 開票頁與資料庫寫「及」，代碼表寫「與」
         t[alias] = t["無黨籍與未經政黨推薦"]
     return t
@@ -331,8 +335,9 @@ def backwards(o, n, date, declared_name=None):
     ost, nst = (o.get("status") or "").strip() or "pending", n["status"]
     nt, nrep, ntot, nv = n["updated"], n["stations_reported"], n["stations_total"], votes_of(n)
     ow, nw = winner_of(o) if ost in ("called", "final") else "", winner_of(n)
-    # 宣布當選的人一時落後：時間沒變舊、已送沒變少，就讓狀態 called 退回 counting、換當選人，免得卡死
-    soft = ost == "called" and ow and ow == declared_name and nt >= ot and nrep >= orep
+    # 上一輪是 called（中選會開完前打 ◎，或 declared.csv 標的）：時間沒變舊、已送沒變少，就讓它退回 counting、換當選人，免得卡死。
+    # ◎ 被拿掉、declared.csv 刪掉或改人都算（11-27：原本只放行 declared.csv 裡那個人，其他情況那縣會凍結到開完）。final 照舊不准退
+    soft = ost == "called" and nt >= ot and nrep >= orep
     why = []
     if nt < ot:
         why.append(f"資料時間 {nt or '（空白）'} 比上一輪 {ot} 舊")
@@ -626,10 +631,13 @@ def selftest():
         assert after[code] == before[code], (code, after[code])
     assert num(after["67000"]["c1_votes"]) == num(before["67000"]["c1_votes"]) - 1 and after["67000"]["updated"] == "2022-11-26 23:59:00"
     assert (after["10002"]["status"], after["10002"]["note"]) == ("postponed", "測試延後")
-    # 宣布當選的人暫時落後：上一輪是他當選的 called，這輪退回開票中照收，不卡住；沒宣布的 called 退回開票中就不收
+    # 上一輪 called、這輪退回開票中：宣布的人暫時落後、中選會拿掉 ◎、declared.csv 刪掉都照收，不卡住（11-27 起不看有沒有宣布）；
+    # 資料時間變舊或已送變少照樣不收；final 退回開票中不收
     o = dict(after["64000"])
     n = dict(o, status="counting", winner="", updated="2022-11-26 21:00:00", stations_reported=660, stations_total=700)
-    assert backwards(o, n, "2022-11-26", winner_of(o)) == [] and backwards(o, n, "2022-11-26")
+    assert backwards(o, n, "2022-11-26", winner_of(o)) == [] and backwards(o, n, "2022-11-26") == []
+    assert backwards(o, dict(n, updated="2022-11-26 19:00:00"), "2022-11-26") and backwards(dict(o, status="final"), n, "2022-11-26")
+    assert party_codes()["台灣聯盟黨"] == party_codes()["臺灣聯盟黨"] >= 90000 and party_codes()["台灣SoR無法黨"] >= 90000   # 2026 新小黨
     write_csv(csv_p, MAYOR_COLS, list(before.values()))
     print("3b 只進不退：舊頁、全 0 的頁不採用，票數變少但時間較新當成更正照收，延後不抓；宣布當選的人落後時照開票中更新")
 

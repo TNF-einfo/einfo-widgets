@@ -40,6 +40,8 @@ SHORT = {"中國國民黨": "國民黨", "民主進步黨": "民進黨", "台灣
          "時代力量": "時力", "台灣基進": "基進", "台灣團結聯盟": "台聯", "社會民主黨": "社民黨"}
 # 資訊卡的政黨徽章：簡稱的第一個字；民眾黨的「民」會跟民進黨撞，另寫「眾」。表裡沒有的政黨用中選會全名的第一個字
 BADGE = {"台灣民眾黨": "眾"}
+# 開票後才會出現的字（fetch_live 與這支寫的註記、出處、報讀文字）：首頁版 10:00 那版就要收進字型子集
+LATE_TEXT = "同票，抽籤決定未達最低當選票數同額競選尚無當選人選舉延後尚未開票開票中開票結果資料時間重行選舉政黨代碼不認得產生器已報錯（），、；：0123456789%"
 
 
 def badge(party):
@@ -250,7 +252,9 @@ def main():
 
     gj = json.loads(Path(a.counties).read_text(encoding="utf-8"))
     geoms = {f["properties"]["code"]: shape(f["geometry"]) for f in gj["features"]}
-    party_table = {p["party_code"] for p in json.loads((HERE / "data/raw/cec_db/webs_configs_party_colors.json").read_text(encoding="utf-8"))}
+    # 2022 的中選會代碼表，加上 2026 才出現的小黨（data/party_codes_2026.json，代碼自訂；不在 GROUP 裡就塗灰）
+    party_table = {p["party_code"] for f in ("data/raw/cec_db/webs_configs_party_colors.json", "data/party_codes_2026.json")
+                   for p in json.loads((HERE / f).read_text(encoding="utf-8"))}
     errors = []
     res = load_results(a.data, party_table, set(geoms), errors)
     # 標題、出處日期、標籤檔都跟著結果資料的投票日走（嘉義市 2022 年另有重行選舉日）
@@ -325,7 +329,14 @@ def main():
         c["updated"] = c["updated"][11:16]
     # 每個詞包一個不換行的 <i>：只在詞與詞之間換行，不會斷成「重行選／舉）」（平板 528 直式看到的，11-18）；
     # 整段包起來的話手機會多一行
-    src_date = f"<i>{date}</i> <i>開票中</i>，<i>資料時間 {times[-1][11:16]}</i>" if live and times else f"<i>{date}</i> <i>開票結果</i>"
+    # 還沒有縣市開票（10:00 換版後到開票前、延後的不算）寫「尚未開票」；有縣市開了、還沒全部開完寫「開票中」（11-27：原本全部未開票時寫成「開票結果」）
+    begun = any(c["status"] in ("counting", "called", "final") for c in res.values())
+    if not begun:
+        src_date = f"<i>{date}</i> <i>尚未開票</i>"
+    elif live:
+        src_date = f"<i>{date}</i> <i>開票中</i>" + (f"，<i>資料時間 {times[-1][11:16]}</i>" if times else "")
+    else:
+        src_date = f"<i>{date}</i> <i>開票結果</i>"
     src_date += "".join(f"<i>（{c['name']}</i> <i>{c['vote_date']}</i> <i>重行選舉）</i>" for c in res.values() if c["vote_date"] not in ("", date))
     legend = [("kmt", "國民黨"), ("dpp", "民進黨"), ("tpp", "民眾黨"), ("oth", "其他")]
     if "pend" in groups:   # 斜線圖例照實際出現的狀態寫，延後的嘉義市不會被寫成「開票中」
@@ -343,9 +354,11 @@ def main():
         seq = a.seq or int(time.time())
         data.update(epoch=a.epoch or date, seq=seq, published_at=seq, poll_s=a.poll_s, fast_url=a.fast_url or "")
         # 首頁版的資料時間：圖例下面那行小字；全部未開票時是空的
-        data["dtime"] = f"資料時間 {times[-1][11:16]}" if times else ""
-        # 字型另收 2026 全部候選人與標籤：10:00 發的全是未開票，名字晚上才從 live.json 進來
+        data["dtime"] = f"資料時間 {times[-1][11:16]}" if times and begun else ""
+        # 字型另收 2026 全部候選人與標籤：10:00 發的全是未開票，名字晚上才從 live.json 進來；
+        # 產生器自己寫的字（註記、出處、報讀）也只在開票後才出現，一起收，不然晚上那幾個字會換成系統字型（11-27）
         extra = "".join(p.read_text(encoding="utf-8-sig") for p in (HERE / "data/candidates_2026.csv", TAGS["2026"]) if p.exists())
+        extra += LATE_TEXT + "".join(SHORT.values()) + "".join(BADGE.values())
     page = (HERE / "map_template.html").read_text(encoding="utf-8")
     logo = {"paper": "eic-logo-green.svg", "night": "eic-logo.png"}[a.theme]   # 淺底用官網表頭的綠色 logo，深底用白色那張
     for k, v in {
