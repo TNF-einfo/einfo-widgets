@@ -46,6 +46,7 @@
   #sh{ fill:var(--shade-c); stroke:var(--shade-c); stroke-width:14px; stroke-linejoin:round }
   #lift.isl #sk{ fill:rgba(26,35,50,.28); stroke:none }   /* 澎湖：只留原位一條灰影（JS 也把 sh 關掉） */
   #ol,#fo{ fill:none; stroke:var(--sel); stroke-width:2; stroke-linejoin:round; pointer-events:none }
+  #olw,#fow{ fill:none; stroke:#ffffff; stroke-width:4; stroke-linejoin:round; pointer-events:none }   /* 深色外緣底下墊一條白邊：最深的紫、褐上也看得到（11-27） */
 
   /* 上緣漸層 40px（layout() 的 FADE 要一樣）；下緣不墊底 */
   header{ position:absolute; left:0; right:0; top:0; z-index:3; pointer-events:none; padding-bottom:40px;
@@ -140,8 +141,8 @@
   <svg id="map" viewBox="0 0 8000 10000" role="group" aria-label="22 縣市公投結果地圖，可用 Tab 選縣市、Enter 看結果、Esc 回全國">
     <defs>{{DEFS}}</defs>
     <g id="counties">{{PATHS}}</g>
-    <g id="lift"><path id="cv" d=""/><path id="sh" d=""/><path id="sk" d=""/><g id="lt"><path id="lc" d=""/><path id="ol" d=""/></g></g>
-    <path id="fo" d=""/>
+    <g id="lift"><path id="cv" d=""/><path id="sh" d=""/><path id="sk" d=""/><g id="lt"><path id="lc" d=""/><path id="olw" d=""/><path id="ol" d=""/></g></g>
+    <path id="fow" d=""/><path id="fo" d=""/>
     <g id="hits">{{HITS}}</g>
   </svg>
   </div>
@@ -157,10 +158,14 @@
 </div>
 <script>
 "use strict";
+if (!Array.prototype.at) Array.prototype.at = function (i) { i = Math.trunc(i) || 0; return this[i < 0 ? this.length + i : i]; };   // iOS 15.3 以前沒有 .at()，第一幀就丟錯、整張圖不動（11-27）
 const D = {{DATA}};
 const $ = s => document.querySelector(s);
 const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
 const ol = $("#ol"), fo = $("#fo"), isles = $(".isles");
+const olw = $("#olw"), fow = $("#fow");   // 外緣底下的白邊：跟外緣同一條路徑、同時顯示或藏起
+const setOl = d => { ol.setAttribute("d", d); olw.setAttribute("d", d); };
+const setFo = (d, vis) => { if (d != null) { fo.setAttribute("d", d); fow.setAttribute("d", d); } if (vis != null) fo.style.visibility = fow.style.visibility = vis; };
 const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), liftG = $("#lift"), mapwin = $(".mapwin");
 const $id = id => document.getElementById(id);
 const dOf = (code, outer) => !code ? "" : outer && $id("o" + code) ? $id("o" + code).getAttribute("d")
@@ -355,7 +360,7 @@ function renderLift(L, k) {
     cv.style.fill = cv.style.stroke = g ? g.fill : "";
   }
   lc.style.opacity = on ? L.v : 0;
-  fo.style.visibility = on && foCode === L.code ? "hidden" : "";
+  setFo(null, on && foCode === L.code ? "hidden" : "");
   lt.setAttribute("transform", motion ? `translate(0 ${(-LIFT * L.v / k).toFixed(2)})` : "");
   sk.style.display = cv.style.display = motion ? "" : "none"; sh.style.display = motion && !isl ? "" : "none";
   if (motion) { sk.style.opacity = sh.style.opacity = L.v; sh.setAttribute("transform", `translate(0 ${(SH_OFF * L.v / k).toFixed(2)})`); }
@@ -366,7 +371,7 @@ function renderCard(cur, prev, el) {   // cur＝null 是全國總覽；換卡只
   cardIn.style.opacity = prev !== cur ? easeOut(clamp(el / 180)) : 1;
   if (curCard !== cur) {
     curCard = cur;
-    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOl(cur) : "");
+    setOl(cur && !ISLE.has(cur) ? dOl(cur) : "");
     isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("on", i.dataset.code === cur));
   }
 }
@@ -440,13 +445,14 @@ frame.addEventListener("keydown", e => {
 frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
   const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
-  fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
+  setFo(foCode ? dOf(c, true) : "", foCode && foCode === curLift.code ? "hidden" : "");
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });
-frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
+frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; setFo(""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
 frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
 frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
 frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); lastPointer = e.pointerType; });
 addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
+frame.addEventListener("contextmenu", () => held = false);   // Mac 的右鍵選單按下就跳出、收不到 pointerup，輪播會一直停著（11-27）
 
 // ── 觸控縮放：照選舉地圖。雙指 0.5 到 2 倍、縮放中單指拖、1 倍時橫向起手的單指拖；放手 0.5 秒後 0.3 秒彈回 ──
 const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
