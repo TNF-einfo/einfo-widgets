@@ -401,7 +401,7 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 ### 首頁版即時更新（11-27）
 
 只有首頁版 `election-2026-home.html` 會自己更新：每 20 秒（11-27 從 60 秒縮）抓同資料夾的 `live.json`，收到新的就原地換，不重新載入、不打斷輪播。文章版不輪詢，由迴圈一起重產、一起推（11-27 定，排程登記帶 `--article`；旗標本身預設關），讀者打開或重新整理時拿到當下的數字。
-這台電腦跑 `scripts/live_loop.py`，每 30 秒抓中選會（11-27 從 2 分鐘縮）、一縣一縣合併檢查、產生首頁版與 `live.json`，資料有變才 commit、push，GitHub Actions 部署。讀者只碰 Pages，不連中選會也不連這台電腦。
+這台電腦跑 `scripts/live_loop.py`，每 30 秒抓中選會（11-27 從 2 分鐘縮）、一縣一縣合併檢查、產生首頁版與 `live.json`，資料有變才 commit、push，GitHub Actions 部署。讀者只碰 Pages，不連中選會；開了快車道（見下面〈快車道〉）才會經 Funnel 跟這台電腦拿 `live.json`。
 方案、延遲預算與實測依據在 `preview/realtime/即時更新方案_2026-11-26.md`（v3，不進 repo）；下面是 11-26 定案的版本，跟方案不同的地方：輪詢只在首頁版；push 被拒會自動 `pull --rebase` 再推一次；排程器每 30 秒叫一次 `--once`（兩個觸發各每分鐘一次、錯開 30 秒）。部署的 concurrency 只留一個排隊，推得比部署快時中間那版會被跳過（Actions 上顯示 cancelled），讀者拿到的永遠是最新那版。
 
 `live.json`（`build_map.py --home --live-json <路徑>` 在產生首頁版的同一步寫出，內容就是烤進頁面的那包，顏色分組、標籤、註記都在 Python 算好，頁面只換上去）：
@@ -419,6 +419,7 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 | `src` | 出處列的字（首頁版的出處列藏著，照樣換） |
 | `table` | 給螢幕閱讀器的結果表 |
 | `dtime` | 首頁版的「資料時間 HH:MM」（22 縣最新的那筆），全部未開票時是空字串 |
+| `fast_url` | 快車道網址（11-27），空字串是讀者不打快車道；頁面只認收下的檔 |
 
 首頁版也烤進同一組 `epoch`、`seq`、`published_at`、`poll_s`（`--epoch`、`--seq`、`--poll-s`，沒給就是投票日、現在、60 秒）。`--live-json` 只能配 `--home`。
 首頁版的字型另收 `data/candidates_2026.csv`（2026 全部候選人）與 `data/tags.csv` 的字：10:00 發的全是未開票，名字晚上才從 `live.json` 進來。`--test-banner` 在頁面頂端加紅色「測試資料，非真實結果」與 noindex，彩排用。
@@ -455,6 +456,8 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 | `--declared`、`--overrides` | `data/declared.csv`、`data/overrides.csv` | 人工介入的兩個檔 |
 | `--test-banner` | 關 | 頁面加「測試資料」紅條與 noindex |
 | `--every`、`--delay` | 30、1 | 一輪間隔、每頁間隔（11-27 從 3 秒改成 1 秒；被擋或回 429 就帶 `--delay 3` 退回） |
+| `--fast-dir` | 不給 | 快車道：每輪在 push 之前把 `live.json` 換進這個資料夾（乾跑改放 `<state>/fast/`） |
+| `--fast-url` | 不給（空字串） | 烤進首頁版與 `live.json` 的快車道網址；空字串讀者就不打快車道 |
 
 一輪：
 1. 系統檔案鎖 `<state>/loop.lock`（`msvcrt.locking`，程序結束或重開機就自己放掉，不看 PID）；鎖著就不跑。
@@ -463,7 +466,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 4. 資料時間比這台電腦晚 5 分鐘以上的縣不收，沿用上一輪。
 5. 要發佈的那份（`<state>/publish.csv`；`<state>/results.csv` 留中選會的原樣）：開完前的 ◎（`called`）要當選人列在 `declared.csv` 才發，不然照開票中發、寫警告；`final` 自動發；`force` 照人寫的發。
 6. 轉 JSON（整份檢查），跟上次發佈的資料比雜湊（不算 `seq` 與時間），有變或該推心跳才 `build_map.py` 產生首頁版與 `live.json`（`--article` 加文章版），資料另存 `<state>/history/publish_<seq>.json`。
-7. git：只 `add`、`commit` 那幾個檔（`git commit -- 路徑`，別人 stage 的不會帶進去），訊息 `chore(election-2026): update live results to HH:MM`（心跳加 `(heartbeat)`）；不在 `main` 不推；上一輪 rebase 做到一半被砍就先 `rebase --abort`；每個 git 指令 30 秒逾時；push 被拒就 `pull --rebase -X theirs --autostash` 再推一次（遠端也改了這幾個檔時，這台新產生的那版勝出），還是失敗就留著下一輪再推。人工推正式檔之前要先停排程。
+7. 有 `--fast-dir` 就先把 `live.json` 換進快車道資料夾（沒發佈的輪也比一次，不一樣就補）。git：只 `add`、`commit` 那幾個檔（`git commit -- 路徑`，別人 stage 的不會帶進去），訊息 `chore(election-2026): update live results to HH:MM`（心跳加 `(heartbeat)`）；不在 `main` 不推；上一輪 rebase 做到一半被砍就先 `rebase --abort`；每個 git 指令 30 秒逾時；push 被拒就 `pull --rebase -X theirs --autostash` 再推一次（遠端也改了這幾個檔時，這台新產生的那版勝出），還是失敗就留著下一輪再推。人工推正式檔之前要先停排程。
 8. 紀錄：`<state>/rounds.jsonl` 一輪一行（秒數、抓到幾縣、警告、有沒有發佈、git 結果）；`<state>/alerts.log` 只寫跟上一輪不同的警告；`<state>/status.html` 每 30 秒自己重新整理，手機經 Tailscale 開 `http://100.69.83.122:8792/election-2026/preview/realtime/state/2026-11-28/status.html`。
 
 人工介入的兩個檔（UTF-8 或 Excel 的 ANSI 都讀得了，代碼被吃掉的 0 會補回來），改了下一輪就生效：
@@ -506,6 +509,31 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 - `node preview/realtime/test_home_live.mjs <selftest --keep 的資料夾>`（一個 headless Chrome，本機伺服器不回 304）：首頁版開第 1 輪，逐輪換 `live.json`，每輪 1.2 到 1.9 秒內收下，22 縣顏色、小地圖、每張卡片、圖例、資料時間都跟直接用那輪資料產生的頁面相同；數字 1.46 秒走完、最後逐字相同，進度條與資料時間跟著換；過期變紅、新的一來恢復；舊序號、別的 `epoch`（帶停止開關）、壞 JSON、404 都不收；停止開關後不再發請求；減少動態時數字直接換、圓點不閃；390×219 出卡不出框；沒有 JS 錯誤。截圖在 `preview/realtime/shots/`。
 - 文章版改版前後在 720×480、528×352、352.8×627、390×693 逐像素相同（2022、2026 開票中、2026 全開三份，每份 12 個縣市，共 144 張，`preview/shoot_cards.mjs`）；首頁版 `preview/shoot_reg.mjs` 五種框、三份資料、全景加 11 個縣市沒有出框、沒有 JS 錯誤，只有 2022 臺北照舊要捲；`preview/test_home_ui.mjs` 照舊通過。
 - 沒做：push 後量 Pages 多久看得到的小程序（方案迴圈端第 7 步），彩排時用手機與 `curl` 記；22 縣都開完後自動停、自動發 `poll_s: 0`，改成人照第 7 點做。
+
+#### 快車道（11-27，Tailscale Funnel）
+
+開著的首頁版先跟這台電腦拿 `live.json`，省掉 push 與 Pages 部署（每次約 35 秒到 1 分鐘）；抓不到就照舊抓 Pages。Pages 那條完全照舊，快車道只加在前面，壞了讀者就回到原本的速度。
+
+- 對外：`python -I scripts/fast_server.py <資料夾> --port 18799` 只在 127.0.0.1 給那個資料夾的 `live.json`；`tailscale funnel --bg 18799` 對外成 `https://node.taile10df2.ts.net/live.json`，TLS 由 tailscaled 處理。tailnet 的 Funnel 權限 11-27 已開。
+- 伺服器：只回 `GET`、`HEAD /live.json`，其他路徑 404、其他方法 501。檔案放記憶體，mtime 或大小變了才重讀（Windows 上檔案開著就換不了名），換檔瞬間讀不到就給上一版。讀者收 gzip 就給壓過的（20 KB 壓成 4 KB）；`If-Modified-Since` 跟上次給的 `Last-Modified` 一字不差才回 304；帶 body 的請求回完就關連線；連線 10 秒沒動靜就斷；`Server` 標頭不露 Python 版本；優先權「低於標準」。`python -I scripts/fast_server.py selftest` 測這些。
+- 迴圈：`--fast-dir` 在 push 之前把 `live.json` 換進去（先寫暫存檔再換名，被擋就 50 毫秒後重試，最多 1 秒），沒發佈的輪也比一次、不一樣就補；乾跑改放 `<state>/fast/`，不碰給讀者的那個資料夾。`--fast-url` 烤進首頁版與 `live.json`，不給就是空字串，讀者收到空字串就不再打快車道（開關）。
+- 頁面：有 `fast_url` 就先抓它（4 秒逾時）；抓不到、壞檔、別的 `epoch`、序號比手上的舊，都算失敗，這輪改抓 Pages。Pages 抓得到的那輪才記快車道失敗一次（讀者自己斷網不算），連三次就 5 分鐘只抓 Pages。每 3 輪兩邊同時抓，取比較新、而且收得下的那份；Pages 那份壞了不會蓋掉快車道的好資料。`window.__live.from` 是這份從哪來（`fast` 或 `pages`）。
+- 測試：`node preview/realtime/test_fast_path.mjs <資料 JSON>`（headless Chrome、本機兩個伺服器）跑 11 個情境：快車道比較新、404、逾時、別的 `epoch`、連三次停用、卡在舊資料而 Pages 比較新、比手上舊也停用、開關、Pages 壞檔不蓋快車道、讀者斷網不算失敗、恢復後回到快車道。`live_loop.py selftest` 另測換進資料夾、沒發佈也補、乾跑不碰正式資料夾。
+- 實測（11-27，假中選會兩倍速、乾跑迴圈每 30 秒；都經公開入口，沒走 tailnet 捷徑）：
+  - 發佈到公開網址拿得到：中位數 0.3 秒、最慢 7.5 秒（12 次發佈；約 700 次請求有 4 次逾時）。
+  - 讀者端（headless Chrome 開 Pages 上的測試頁）：發佈到畫面換上，兩輪中位數 12.5、13.7 秒，最慢 20.6、22.6 秒；25 次全部從快車道來，沒有 JS 錯誤。時間幾乎都花在 20 秒的輪詢間隔。
+  - 同一個 IP 同時開 40 條新連線：中位數約 4 秒、p90 約 8 秒、最慢 16 到 19 秒，沒有失敗；伺服器 CPU 約 0，慢在入口與通道。已經連上的請求中位數 0.15 秒、p90 0.4 到 0.8 秒。
+  - 入口對每個來源位址一次只放 20 條新連線：60 條全從 IPv4 或全從 IPv6 開，第一次都只連上 20 條；IPv4、IPv6 各開 30 條，兩邊各連上 20 條。讀者各自從自己的位址來、一人一條連線，碰不到這個；同一個位址後面人很多（行動網路共用 IPv4、公司網路）才會有人被擋，被擋的 4 秒內改抓 Pages。全體的上限測不到。
+- 中選會更新到讀者看到（估計）：平均約 35 秒（只走 Pages 約 1 分 10 秒），最慢約 1 分 15 秒（約 2 分 20 秒）。算法：等迴圈下一輪最多 30 秒、抓完 22 頁約 15 秒、換檔不到 1 秒、讀者輪詢最多 22 秒、傳輸 1 到 2 秒。
+- 風險：Funnel 有頻寬上限，官方沒公開數字；被擋或變慢的讀者最多回到只走 Pages 的速度。這台電腦多一個對外入口，只給一個公開的檔，開票夜才開、隔天就關。電腦當機時快車道跟迴圈一起停，讀者回到 Pages。
+
+開票夜加開快車道（在「開票夜操作」第 4 點登記排程時一起做）：
+1. 開伺服器：另一個終端機 `python -I scripts/fast_server.py preview/realtime/fast --port 18799`；`tailscale funnel --bg 18799`（設定會留著，重開機不用再下），`tailscale funnel status` 要看到 `/ proxy http://127.0.0.1:18799`。
+2. 登記排程的 `-Extra` 加上 `--fast-dir preview/realtime/fast --fast-url https://node.taile10df2.ts.net/live.json`（跟 `--article` 寫在一起，每次重新登記都要寫全）。
+3. 確認：第一輪發佈後，手機用行動網路開 `https://node.taile10df2.ts.net/live.json`，`seq` 跟 `status.html` 的最近發佈一樣；電腦開 Pages 上的首頁版，Console 打 `__live.from` 是 `fast`。
+4. 關快車道：重新登記排程，`-Extra` 拿掉 `--fast-url`（`--fast-dir` 留著），下一輪發出 `fast_url` 空字串，開著的頁面在一輪內停用；過兩三分鐘再 `tailscale funnel --https=443 off`、停伺服器。急的時候直接關 Funnel 也行：關掉後公開網址連不上、要等 4 秒逾時，讀者每輪多等這 4 秒，連三次後 5 分鐘只抓 Pages（11-27 關掉後實測是逾時）。
+5. 電腦重開機後：伺服器要自己再開（排程不管它），Funnel 設定還在；沒開的這段讀者照樣有 Pages。
+6. 收尾：全部開完、發過 `--poll-s 0` 之後，`tailscale funnel --https=443 off`，停伺服器。
 
 ### 鏡頭輪播
 
