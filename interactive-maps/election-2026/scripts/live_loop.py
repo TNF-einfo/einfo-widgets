@@ -37,6 +37,7 @@ import fetch_live as fl   # noqa: E402
 
 FUTURE = timedelta(minutes=5)   # 資料時間比這台電腦的時鐘晚 5 分鐘以上就不收
 ARTICLE = "election-2026.html"
+SOURCES = ("map_template.html", "build_map.py", "data/tags.csv")   # 產出頁面的程式與標籤檔，算進發佈雜湊
 # 排程器用 pythonw 跑（沒有主控台）：子程序改用 python.exe、不開視窗，不然每分鐘閃好幾個黑視窗
 PY = sys.executable.replace("pythonw.exe", "python.exe")
 NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -83,6 +84,7 @@ def overrides(path):
     （11-27：原本當成沒有，延後的縣會被改回未開票發出去）"""
     out, msgs = {}, []
     if path.exists():
+        fl.settle(path)
         try:
             for r in fl.csv_rows(path):
                 act = (r.get("action") or "").strip().lower()
@@ -115,8 +117,15 @@ def run_round(a, state, s, say):
         ov = s.get("ov_last", {})
     else:
         s["ov_last"] = ov
+    msgs += [f"overrides.csv：代碼 {c} 不是 22 縣市之一，這列沒有作用" for c in ov if c not in names]
     for m in msgs:
         say(m)
+    try:   # 一輪只讀一次（抓取與發佈用同一份）；讀不了沿用上一輪，已宣布的縣不會整批退回開票中（11-27）
+        dec = fl.declared(a.declared, strict=True)
+        s["dec_last"] = dec
+    except Exception as e:
+        dec = s.get("dec_last", {})
+        say(f"declared.csv 讀不了（{e}），沿用上一輪讀到的")
 
     # 抓之前：延後照 overrides 設（拿掉那列就回未開票重抓）；reset 把上一輪換成空白，這輪抓到什麼就收什麼（只用一次）
     saved, armed = {}, {}
@@ -140,7 +149,7 @@ def run_round(a, state, s, say):
     t = time.time()
     raw = state / "raw" / datetime.now().strftime("%H%M%S")   # 原始頁照時間存，不互相蓋
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        failed = fl.web("mayor", a.prefix, csv_p, raw, a.date, a.delay, skip, a.declared)
+        failed = fl.web("mayor", a.prefix, csv_p, raw, a.date, a.delay, skip, dec)
     timing = {"fetch": round(time.time() - t, 1)}
     for line in err.getvalue().splitlines():
         if line.strip() and "這輪不抓" not in line:
@@ -163,14 +172,18 @@ def run_round(a, state, s, say):
     fl.write_csv(csv_p, fl.MAYOR_COLS, [rows[c] for c in sorted(rows)])
 
     # 要發佈的那份：開完前的 ◎ 要在 declared.csv 才發；force 由人決定照發（可以不是最高票）
-    dec, pc = fl.declared(a.declared), fl.party_codes()
+    pc = fl.party_codes()
     pub, trailing, held = {}, set(), []
     for code, r in rows.items():
         p, name = dict(r), names[code]
         f = ov.get(code, {}).get("force")
+        if f and p.get("status") == "final" and p.get("winner") and fl.winner_of(p) != f["candidate"]:
+            # 中選會開完、打了 ◎：照中選會。開票中用 force 先標的人最後落選，忘了刪那列也不會發成他當選（11-27）；同票待抽籤（沒有當選人）照樣可以用 force
+            say(f"{name}：中選會已開完、當選人是 {fl.winner_of(p)}，overrides.csv 的 force「{f['candidate']}」不套用，請刪掉那列")
+            f = None
         if f and p.get("status") != "postponed":
             slot = next((k for k in ("1", "2") if (p.get(f"c{k}_name") or "").strip() == f["candidate"]), "")
-            full = p.get("stations_total") and p.get("stations_reported") == p.get("stations_total")
+            full = fl.num(p.get("stations_total")) > 0 and fl.num(p.get("stations_reported")) == fl.num(p.get("stations_total"))   # "0" 也是真值，要比數字
             if slot:
                 p.update(winner=slot, status="final" if full else "called")
             errs = fl.mayor_county(code, p, names, pc, a.date, True)[1] if slot else []
@@ -200,11 +213,18 @@ def run_round(a, state, s, say):
         say(f"轉 JSON 失敗，這輪不發佈：{e}")
         return {"timing": timing, "failed": failed, "published": False, "held": held}
 
-    # 資料有變才發；沒變但上次發佈超過 heartbeat 分鐘、還沒全部開完，也發一次（頁面看 published_at 判斷迴圈還活著）
+    # 資料有變才發；沒變但上次發佈超過 heartbeat 分鐘、還沒全部開完，也發一次（頁面看 published_at 判斷迴圈還活著）。
+    # 雜湊也算模板、build_map.py、標籤檔：開完後改標籤或修模板，下一輪就發（11-27）
     data = json.loads(pub_json.read_text(encoding="utf-8"))["counties"]
-    h = hashlib.sha256(json.dumps([data, a.epoch, a.poll_s, a.article, a.test_banner, a.fast_url],ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    src = hashlib.sha256(b"".join((HERE / f).read_bytes() for f in SOURCES if (HERE / f).exists())).hexdigest()
+    h = hashlib.sha256(json.dumps([data, a.epoch, a.poll_s, a.article, a.test_banner, a.fast_url, src], ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     done = all(c["status"] in ("final", "postponed") for c in data)
+    # 這輪要抓的縣一個都沒抓到（中選會整個擋掉、斷網）就不發心跳：讓讀者頁照規格在 20 分鐘後顯示「更新中斷」（11-27）
+    tried = len(rows) - len(skip) - sum(r.get("status") == "postponed" for r in before.values())
     beat = h == s["hash"] and not done and time.time() - s["pub_ts"] >= a.heartbeat_min * 60
+    if beat and tried > 0 and failed >= tried:
+        say(f"這輪要抓的 {tried} 縣都沒抓到，不發心跳；一直抓不到的話讀者頁 20 分鐘後會顯示「更新中斷」")
+        beat = False
     res = {"timing": timing, "failed": failed, "skipped": len(skip), "held": held, "published": False,
            "status": dict(Counter(c["status"] for c in data))}
     if h != s["hash"] or beat:
@@ -215,6 +235,7 @@ def run_round(a, state, s, say):
             return res
         timing["build"] = round(time.time() - t, 1)
         s.update(seq=seq, hash=h, pub_ts=int(t), pub_at=now.strftime("%H:%M:%S"), unpushed=not a.dry_run)
+        save_state(state, s)   # 先存：git 卡住被排程器砍掉時，這輪的 seq、用掉的 reset、還沒推的旗標都還在（11-27）
         (state / "history").mkdir(exist_ok=True)
         shutil.copy(pub_json, state / "history" / f"publish_{seq}.json")   # 回滾用：拿舊的資料重出一版（新的 seq）
         res.update(published=True, heartbeat=beat, seq=seq, files=[str(f) for f in files])
@@ -225,8 +246,11 @@ def run_round(a, state, s, say):
             shutil.copy(a.out_dir / "live.json", a.keep / "rounds" / f"live_r{n}.json")
     if a.fast_dir and (a.out_dir / "live.json").exists():   # push 之前；每輪都對一次，上一輪換檔失敗或資料夾被清掉，這輪補上
         fast = a.fast_dir / "live.json"
-        if not fast.exists() or fast.read_bytes() != (a.out_dir / "live.json").read_bytes():
-            fast_copy(a.out_dir / "live.json", a.fast_dir, say)
+        try:   # 快車道出錯（防毒軟體鎖住暫存檔、資料夾權限）不擋 push，下一輪再換
+            if not fast.exists() or fast.read_bytes() != (a.out_dir / "live.json").read_bytes():
+                fast_copy(a.out_dir / "live.json", a.fast_dir, say)
+        except OSError as e:
+            say(f"快車道：換檔失敗（{e}），這輪只有 Pages 有新資料")
     if not a.dry_run and s["unpushed"]:
         t = time.time()
         latest = max((c.get("updated", "") for c in json.loads(pub_json.read_text(encoding="utf-8"))["counties"]), default="")
@@ -249,6 +273,9 @@ def build(a, data, seq, say):
     a.out_dir.mkdir(parents=True, exist_ok=True)
     for j in jobs:
         r = subprocess.run(j, cwd=HERE, capture_output=True, text=True, encoding="utf-8", timeout=120, creationflags=NOWIN)
+        for line in r.stderr.splitlines() if j is jobs[0] else ():   # 成功也要看：當選人姓名對不到 tags.csv 時標籤會靜靜消失（11-27）；文章版印的一樣，只看首頁版
+            if not r.returncode and line.startswith(("警告", "注意")):
+                say(f"build_map.py {line.strip()}")
         if r.returncode:
             say(f"build_map.py 失敗，這輪不發佈：{r.stderr.strip()[-800:]}")
             return None
@@ -486,6 +513,11 @@ def selftest(keep=None):
         a.declared.write_text(f"code,candidate\n{fc.EARLY},{win}\n", encoding="utf-8")
         _, c = at(hm)
         assert c[fc.EARLY]["status"] == "called" and [p["name"] for p in c[fc.EARLY]["cands"] if p["elected"]] == [win], c[fc.EARLY]
+        good = a.declared.read_bytes()   # declared.csv 這輪讀不了（編碼解不開）：沿用上一輪，屏東不會退回開票中（11-27）
+        a.declared.write_bytes(b"code,candidate\n\x81\x00\xff\n")
+        r2, c = at(hm)
+        assert c[fc.EARLY]["status"] == "called" and "declared.csv 讀不了" in alerts(r2), (c[fc.EARLY]["status"], alerts(r2))
+        a.declared.write_bytes(good)
     alerts = lambda r: " ".join(r["msgs"])
     a.reset_ok = set()
     r, c = at("16:00")
@@ -494,7 +526,10 @@ def selftest(keep=None):
     assert not r["published"], "資料沒變不該發佈"
     r, c = at("16:00", heartbeat_min=0)
     assert r["published"] and r["heartbeat"], "heartbeat 0 分鐘：沒變也要發"
-    a.heartbeat_min = 15
+    good = a.prefix   # 中選會整個擋掉（22 縣都 404）：不發心跳，讀者頁才會顯示更新中斷（11-27）
+    r, c = at("16:00", prefix=good.split("/zh-TW")[0] + "/blocked")
+    assert not r["published"] and "都沒抓到，不發心跳" in alerts(r), alerts(r)
+    a.prefix, a.heartbeat_min = good, 15
     r, c = at("17:30")
     assert r["published"] and any(x["status"] == "counting" for x in c.values())
     ilan = dict(c["10002"])
@@ -555,6 +590,13 @@ def selftest(keep=None):
     assert "測試資料，非真實結果" in (a.out_dir / "election-2026-home.html").read_text(encoding="utf-8")
     assert c["09007"]["note"] == "同票，抽籤決定" and not any(p["elected"] for p in c["09007"]["cands"])
     assert (a.out_dir / ARTICLE).exists() and (a.out_dir / "election-2026-home.html").exists()
+    # 中選會開完、打了 ◎：留著的 force 不再蓋過去（開票中先標的人最後落選，11-27）
+    k = next(k for k, x in sorted(c.items()) if x["status"] == "final" and any(p["elected"] for p in x["cands"]))
+    lose = next(p["name"] for p in c[k]["cands"][:2] if not p["elected"])
+    a.overrides.write_text(f"code,action,candidate,note\n10020,postponed,,選舉延後（測試）\n{k},force,{lose},\n", encoding="utf-8")
+    r, c = at("23:59")
+    assert lose not in [p["name"] for p in c[k]["cands"] if p["elected"]] and "不套用，請刪掉那列" in alerts(r), (c[k], alerts(r))
+    a.overrides.write_text("code,action,candidate,note\n10020,postponed,,選舉延後（測試）\n", encoding="utf-8")
     # 快車道：給了 --fast-url 就算資料沒變也重發一版；live.json 換進快車道資料夾、內容一樣，首頁版與 live.json 都帶那個網址
     r, c = at("23:59", fast_dir=tmp / "fast", fast_url="https://fast.example/live.json")
     fast = (tmp / "fast" / "live.json").read_text(encoding="utf-8")

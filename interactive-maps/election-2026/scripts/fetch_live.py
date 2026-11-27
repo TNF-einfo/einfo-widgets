@@ -200,17 +200,30 @@ def parse_mayor(page, date):
     return cands, stations, updated
 
 
-def declared(path=None):
-    """開票夜編輯說「已宣布當選」、中選會還沒打 ◎ 的人：data/declared.csv（code,candidate）→ {縣市代碼: 姓名}，沒有檔就是空的"""
+def settle(path, quiet=2.0):
+    """人工檔剛存檔就等到滿 quiet 秒再讀：記事本、VS Code 存檔是先清空再寫，剛好撞上會讀到空檔或半行（11-27）"""
+    try:
+        age = time.time() - path.stat().st_mtime
+    except OSError:
+        return
+    if 0 <= age < quiet:
+        time.sleep(quiet - age)
+
+
+def declared(path=None, strict=False):
+    """開票夜編輯說「已宣布當選」、中選會還沒打 ◎ 的人：data/declared.csv（code,candidate）→ {縣市代碼: 姓名}，沒有檔就是空的。
+    讀不了就印錯誤、當成空的；strict 時丟出去，live_loop 沿用上一輪讀到的（11-27：原本當成空的，已宣布的縣全部退回開票中）"""
     path = Path(path or DATA / "declared.csv")
     if not path.exists():
         return {}
+    settle(path)
     try:
-        rows = csv_rows(path)
-    except (ValueError, csv.Error) as e:   # 檔案壞了不擋整輪抓取
+        return {r["code"]: r["candidate"].strip() for r in csv_rows(path) if (r.get("candidate") or "").strip()}
+    except (ValueError, KeyError, csv.Error, OSError) as e:   # 檔案壞了、表頭打錯、被別的程式鎖住：不擋整輪抓取
+        if strict:
+            raise
         print(f"錯誤：data/declared.csv 讀不了（{e}），這輪先不看宣布當選", file=sys.stderr)
         return {}
-    return {r["code"]: r["candidate"].strip() for r in rows if (r.get("candidate") or "").strip()}
 
 
 def mayor_row(code, name, cands, stations, updated, declared_name=None):
@@ -227,8 +240,9 @@ def mayor_row(code, name, cands, stations, updated, declared_name=None):
         won = [k for k, c in enumerate(cands[:2]) if c["name"] == declared_name]
         if not won:
             print(f"注意：{name} 宣布當選的「{declared_name}」不在得票前兩名的姓名裡，沒有標", file=sys.stderr)
-        elif num(cands[won[0]]["votes"]) < top:   # 電視台常在只開兩三成時宣布，宣布的人可能暫時落後；照開票中更新，不會卡住
-            print(f"注意：{name} 宣布當選的「{declared_name}」目前不是最高票，先不標，照開票中", file=sys.stderr)
+        elif num(cands[won[0]]["votes"]) < top or not top or sum(num(c["votes"]) == top for c in cands) > 1:
+            # 電視台常在只開兩三成時宣布，宣布的人可能暫時落後；還沒有票、同票也不標（11-27：原本 0 票就蓋章）。照開票中更新，不會卡住
+            print(f"注意：{name} 宣布當選的「{declared_name}」目前不是唯一的最高票，先不標，照開票中", file=sys.stderr)
             won = []
     tie, low = any("？" in c["mark"] for c in cands), any("＜" in c["mark"] for c in cands)
     note = "同票，抽籤決定" if tie else "未達最低當選票數" if low else ""
@@ -373,7 +387,8 @@ def web(kind, prefix, csv_path, raw_dir, date, delay, skip=(), declared_path=Non
     """22 縣市各抓一頁、寫 CSV；沒抓到、解析失敗、檢查不過或比上一輪倒退的縣市沿用上一輪的那列（第一輪是未開票），其他縣市照常更新。
     skip 裡的縣市這輪不抓、整列照留（live_loop.py 給已開完的縣市用，每 5 輪才重抓一次）"""
     names, old, rows, fails = counties(), read_csv(csv_path), [], []
-    dec = declared(declared_path) if kind == "mayor" else {}
+    # declared_path 也可以直接給讀好的 {代碼: 姓名}（live_loop 一輪只讀一次，讀不了沿用上一輪）
+    dec = (declared_path if isinstance(declared_path, dict) else declared(declared_path)) if kind == "mayor" else {}
     pc = party_codes() if kind == "mayor" else {}
     if kind == "mayor":   # 第一輪還沒有 CSV：缺的縣市先放未開票的列（有範本用範本），抓不到也一定有 22 列
         tpl = read_csv(DATA / "results_2026_template.csv")
@@ -578,6 +593,10 @@ def selftest():
     second = real.replace(cell, '<td class="electmark">&nbsp;</td>').replace("<td>蘇清泉</td>", "<td>蘇清泉 ◎</td>")
     assert raises(second)   # ◎ 打在第二名：這頁不採用
     assert (r := mayor_row("10013", "屏東縣", half, (300, 711), up, declared_name=half[1]["name"]))["winner"] == "" and r["status"] == "counting", r
+    zero = [dict(c, votes=0) for c in half]   # 電視台宣布了、中選會還是 0 票：不蓋章，照未開票（11-27）
+    assert (r := mayor_row("10013", "屏東縣", zero, (0, 711), up, declared_name=zero[0]["name"]))["winner"] == "" and r["status"] == "pending", r
+    even = [dict(c, votes=5000 if i < 2 else 10) for i, c in enumerate(half)]   # 前兩名同票：宣布了也不標
+    assert (r := mayor_row("10013", "屏東縣", even, (300, 711), up, declared_name=even[0]["name"]))["winner"] == "" and r["status"] == "counting", r
     tie = [dict(c, mark="？") for c in cands]
     assert (r := mayor_row("10013", "屏東縣", tie, (711, 711), up))["status"] == "final" and r["winner"] == "" and r["note"] == "同票，抽籤決定", r
     print("1c 防呆：全形所數、民國年與下午的時間照讀，缺所數或時間就不採用；當選只認整格「◎」「當選」或圖片 alt、姓名格的 ◎ 拿掉；"
