@@ -130,12 +130,15 @@
   button{ font:inherit; font-size:12px; color:var(--ink); background:var(--btn); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
     touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
   button:active{ transform:scale(.97); background:var(--btn-3) }
+  /* 文章版的按鈕疊在地圖上（11-27 頁尾改成疊在地圖左下角）：淺灰按鈕跟海面幾乎同色，改白底加一圈淡影子 */
+  html:not(.home) footer button{ background:var(--card); box-shadow:0 1px 3px rgba(26,35,50,.18), 0 0 0 1px rgba(26,35,50,.06) }
+  html:not(.home) footer button:active{ background:var(--btn-2) }
   #home[aria-hidden="true"]{ visibility:hidden }
   .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
   :focus-visible{ outline:2px solid var(--sel); outline-offset:2px }
   .cty:focus-visible, .isle:focus-visible{ outline:none }
   @media (hover:hover) and (pointer:fine){
-    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) } button:hover{ background:var(--btn-2) }
+    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) } button:hover, html:not(.home) footer button:hover{ background:var(--btn-2) }
   }
 
   /* 橫式（框比 1:1 寬）：資訊卡在右側 */
