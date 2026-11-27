@@ -33,7 +33,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent.parent
 DATA = HERE / "data"
 UA = "einfo-election-map/0.1"   # 只寫用途、不放聯絡方式（.claude/rules/crawlers.md）
-DELAY = 3.0
+DELAY = 1.0   # 每頁間隔（秒）：11-27 從 3 秒改成 1 秒，一輪 22 頁約 22 秒，每 2 分鐘最多一輪，仍是節流
 DATE = "2026-11-28"
 SOURCE = "中央選舉委員會開票網站"   # 公投地圖的出處列取第一個詞，不寫網址與輸入方式
 STATUSES = ("pending", "counting", "called", "final", "postponed")

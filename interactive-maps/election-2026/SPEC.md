@@ -98,7 +98,7 @@
 主方案：程式抓中選會開票網頁。
 - 先照 2022 年的 `TC` 片段格式寫解析程式（用 `data/raw/cec_live_2022/` 測），開票頁上線後馬上確認 2026 年格式；格式變了就當晚改，改不及就走備案一。
   11-18 寫好 `scripts/fetch_live.py`，用法與自我測試見下面「開票夜步驟」。欄位照表頭的字找（姓名、得票數、得票率、推薦之政黨、註記），欄位換順序也讀得到。
-- 22 個縣市一輪，請求間隔 3 秒，一輪約 66 秒，每 2 分鐘最多一輪（官方每分鐘更新）；User-Agent 只寫用途；22 縣市都開完就停。
+- 22 個縣市一輪，請求間隔 1 秒（11-27 從 3 秒改），一輪約 22 秒，每 2 分鐘最多一輪（官方每分鐘更新）；User-Agent 只寫用途；22 縣市都開完就停。
 - 抓下來寫成 `data/results_2026.json`，跑產生器、看過再 push。
 
 備案一：手動輸入 22 筆。
@@ -454,7 +454,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 | `--state-dir` | `preview/realtime/state/<epoch>/`（乾跑另用 `<epoch>-dryrun/`，乾跑記下的雜湊不會擋掉之後真的那一輪） | 狀態、紀錄、原始頁 |
 | `--declared`、`--overrides` | `data/declared.csv`、`data/overrides.csv` | 人工介入的兩個檔 |
 | `--test-banner` | 關 | 頁面加「測試資料」紅條與 noindex |
-| `--every`、`--delay` | 120、3 | 一輪間隔、每頁間隔（對中選會不改） |
+| `--every`、`--delay` | 120、1 | 一輪間隔、每頁間隔（11-27 從 3 秒改成 1 秒；被擋或回 429 就帶 `--delay 3` 退回） |
 
 一輪：
 1. 系統檔案鎖 `<state>/loop.lock`（`msvcrt.locking`，程序結束或重開機就自己放掉，不看 PID）；鎖著就不跑。
