@@ -23,7 +23,7 @@
   html{ -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100% }
   html,body{ margin:0; height:100%; background:var(--frame); overflow:hidden }
   body{ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color:var(--ink) }
-  .frame{ position:relative; width:100vw; height:100vh; overflow:hidden; background:var(--frame) }
+  .frame{ position:relative; width:100%; height:100%; overflow:hidden; background:var(--frame) }   /* 100vh 在 iPhone Safari 是工具列收起的高度，另開時底部會被工具列蓋住（跟選舉地圖一樣，11-27） */
   .mapwin{ position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; background:var(--sea) }
   .mapwin, .isles{ touch-action:pan-y }
   #map{ position:absolute; width:100%; height:100%; display:block }
@@ -385,10 +385,12 @@ function go(code, instant) {   // code＝縣市代碼，null＝回全國總覽
   if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
   mode = "user";
   const to = code == null || ISLE.has(code) ? "pano" : code;
-  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
+  // 再點一次已經浮起的那個縣：直接到位，板子不要掉下來再抬（跟選舉地圖一樣，11-27）。putDown 每次都叫：它會先清掉還在放下的板子
+  const wait = putDown(now, to, instant);
+  userSeg = seg(curCam, to, 1500, curCard, code, instant || curLift.code === to ? now - 1e4 : now + wait, to);
   userEv.push(...userSeg.ev);
   if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
-  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
+  backAt = code != null && !SIX.includes(code) ? Math.max(userSeg.t0 + userSeg.dur, now) + 3500 : 0;   // 直接到位時 t0 在過去，照樣從現在算 3.5 秒
 }
 function putDown(now, to, instant) {
   drop = null;
@@ -443,7 +445,8 @@ frame.addEventListener("keydown", e => {
 });
 // 焦點外緣只給鍵盤用（手指點縣市也會聚焦，畫了會在 iPhone 上變成兩圈破邊）；也只有鍵盤聚焦才算暫停
 frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
-  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
+  let kb = false; try { kb = e.target.matches && e.target.matches(":focus-visible"); } catch (err) {}   // iOS 15.3 以前不認 :focus-visible，會丟錯
+  focusIn = !!kb;
   foCode = kb && c && !ISLE.has(c) ? c : null;
   setFo(foCode ? dOf(c, true) : "", foCode && foCode === curLift.code ? "hidden" : "");
   isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });
@@ -452,7 +455,7 @@ frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hov
 frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
 frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); lastPointer = e.pointerType; });
 addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
-frame.addEventListener("contextmenu", () => held = false);   // Mac 的右鍵選單按下就跳出、收不到 pointerup，輪播會一直停著（11-27）
+frame.addEventListener("contextmenu", () => { if (lastPointer === "mouse") held = false; });   // Mac 的右鍵選單按下就跳出、收不到 pointerup，輪播會一直停著（11-27）；Android 長按也會觸發，手指還按著，不放
 
 // ── 觸控縮放：照選舉地圖。雙指 0.5 到 2 倍、縮放中單指拖、1 倍時橫向起手的單指拖；放手 0.5 秒後 0.3 秒彈回 ──
 const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
@@ -466,7 +469,7 @@ function setZ(s, x, y) {
   Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
 }
 function holdCam(now) {   // 開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格；不再自動回全國總覽
-  lastInteract = now; zb = null; backAt = 0;
+  lastInteract = now; zb = null; backAt = 0; resumeTo = -1;   // 點六都後捏、拖，放手照一般規則等 2.5 秒才接輪播
   if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
   const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
   const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
@@ -526,7 +529,7 @@ function loop() {
     if (mode === "tour") { if (started && !paused()) tourT = (tourT + dt) % tour.cycle; }
     else maybeResume(now);
   }
-  draw(now); requestAnimationFrame(loop);
+  requestAnimationFrame(loop); draw(now);   // 先排下一幀：這一幀丟錯，畫面也不會整個停住
 }
 layout(); draw(performance.now()); requestAnimationFrame(loop);
 
