@@ -44,8 +44,12 @@ BADGE = {"台灣民眾黨": "眾"}
 LATE_TEXT = "同票，抽籤決定未達最低當選票數同額競選尚無當選人選舉延後尚未開票開票中開票結果資料時間重行選舉政黨代碼不認得產生器已報錯（），、；：0123456789%"
 
 
+def short(party):   # 開票頁可能寫「臺灣民眾黨」：簡稱與徽章用「台」的寫法查（11-27）
+    return SHORT.get(party) or SHORT.get(party.replace("臺", "台"), party)
+
+
 def badge(party):
-    return BADGE.get(party) or SHORT.get(party, party)[:1]   # 政黨空白時給空徽章，不掛掉（fetch_live 轉 JSON 時也會擋）
+    return BADGE.get(party) or BADGE.get(party.replace("臺", "台")) or short(party)[:1]   # 政黨空白時給空徽章，不掛掉（fetch_live 轉 JSON 時也會擋）
 STATUSES = {"pending", "counting", "called", "final", "postponed"}
 DEFAULT_OUT = HERE / "election-2026.html"
 HOME_OUT = HERE / "election-2026-home.html"   # 首頁「關鍵圖表」的 16:9 版（--home，SPEC「首頁版」）
@@ -143,7 +147,7 @@ def load_results(path, party_table, codes, errors):
             "vote_date": c.get("vote_date", ""),
             "cands": [{
                 "name": html.escape(fix_name(p["name"])),
-                "party": html.escape(SHORT.get(p["party"], p["party"])), "badge": html.escape(badge(p["party"])),
+                "party": html.escape(short(p["party"])), "badge": html.escape(badge(p["party"])),
                 "group": GROUP.get(p.get("party_code"), "oth"),
                 "votes": p["votes"], "pct": p["pct"], "elected": bool(p.get("elected")) and status in ("called", "final"),
             } for p in cands],

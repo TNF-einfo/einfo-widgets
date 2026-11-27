@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import unicodedata
 import time
 import urllib.request
 from html.parser import HTMLParser
@@ -55,13 +56,21 @@ def counties():
 
 def party_codes():
     t = {p["party_name"]: int(p["party_code"]) for p in json.loads((DATA / "raw/cec_db/webs_configs_party_colors.json").read_text(encoding="utf-8"))}
-    # 2026 才出現、2022 代碼表沒有的小黨（data/party_codes_2026.json，代碼自訂、地圖塗灰）；開票頁可能寫「台」或「臺」，兩種都認
+    # 2026 才出現、2022 代碼表沒有的小黨（data/party_codes_2026.json，代碼自訂、地圖塗灰）
     for p in json.loads((DATA / "party_codes_2026.json").read_text(encoding="utf-8")):
-        for n in {p["party_name"], p["party_name"].replace("臺", "台"), p["party_name"].replace("台", "臺")}:
-            t.setdefault(n, int(p["party_code"]))
+        t.setdefault(p["party_name"], int(p["party_code"]))
+    # 開票頁可能寫「台」或「臺」（台灣民眾黨、臺灣民眾黨）：每個黨名兩種都認，不蓋掉表裡原本的寫法（11-27）
+    for n, v in list(t.items()):
+        t.setdefault(n.replace("臺", "台"), v)
+        t.setdefault(n.replace("台", "臺"), v)
     for alias in ("無黨籍及未經政黨推薦", "無黨籍", "無"):   # 開票頁與資料庫寫「及」，代碼表寫「與」
         t[alias] = t["無黨籍與未經政黨推薦"]
     return t
+
+
+def fix_name(s):
+    """中選會把字型沒有的字寫成 @碼位@；轉回字元再 NFC（U+2F97F 相容字 → U+8070 聰），跟 build_map.py 同一套"""
+    return unicodedata.normalize("NFC", re.sub(r"@([0-9A-Fa-f]+)@", lambda m: chr(int(m.group(1), 16)), s))
 
 
 def finite(s):
@@ -176,6 +185,7 @@ def parse_mayor(page, date):
         if len(r) <= max(i.values()):
             continue
         c = {k: r[v] for k, v in i.items()}
+        c["name"] = fix_name(c["name"])   # 中選會寫成 @碼位@ 的罕用字在這裡就轉回來，declared.csv、overrides.csv 打的名字才對得上（11-27）
         if c["name"].endswith("◎") and c["name"][:-1].strip():   # 姓名格尾巴的 ◎（「周春米 ◎」）：從姓名拿掉，算當選註記
             c["name"], c["mark"] = c["name"][:-1].strip(), "◎"
         elif c["mark"] in ("◎", "當選"):   # 註記格整格就是 ◎ 或「當選」才算，不做部分比對，免得開票初期假當選
@@ -527,7 +537,7 @@ def selftest():
     assert party_codes()["無黨籍及未經政黨推薦"] == 999
 
     def same(a, b, n=2):   # 前 n 名的姓名、票數、得票率、當選；政黨代碼只比前兩名（代碼表缺幾個小黨，例如 2022 金門的龍黨）
-        key = lambda c, i: (c["name"], c["votes"], c["pct"], c["elected"], c["party_code"] if i < 2 else c["party"])
+        key = lambda c, i: (fix_name(c["name"]), c["votes"], c["pct"], c["elected"], c["party_code"] if i < 2 else c["party"])   # 資料庫存原樣的 @碼位@
         return [key(c, i) for i, c in enumerate(a[:n])] == [key(c, i) for i, c in enumerate(b[:n])]
 
     # 1. 真實的屏東縣頁：解析結果要跟資料庫一樣
@@ -600,7 +610,7 @@ def selftest():
     for code, c in got.items():
         s = states.get(code, "final")
         assert c["status"] == s, (code, c["status"], s)
-        assert [p["name"] for p in c["candidates"]] == [p["name"] for p in sorted(db[code]["candidates"], key=lambda p: -p["votes"])], code
+        assert [p["name"] for p in c["candidates"]] == [fix_name(p["name"]) for p in sorted(db[code]["candidates"], key=lambda p: -p["votes"])], code   # 資料庫存原樣的 @碼位@，開票頁那邊抓下來就轉好了
         if s == "final":
             assert same(c["candidates"], db[code]["candidates"], 99), (code, c["candidates"], db[code]["candidates"])
     assert got["63000"]["stations"] == {"reported": 300, "total": 700} and got["63000"]["updated"] == "2022-11-26 20:15:00"
@@ -638,6 +648,8 @@ def selftest():
     assert backwards(o, n, "2022-11-26", winner_of(o)) == [] and backwards(o, n, "2022-11-26") == []
     assert backwards(o, dict(n, updated="2022-11-26 19:00:00"), "2022-11-26") and backwards(dict(o, status="final"), n, "2022-11-26")
     assert party_codes()["台灣聯盟黨"] == party_codes()["臺灣聯盟黨"] >= 90000 and party_codes()["台灣SoR無法黨"] >= 90000   # 2026 新小黨
+    assert party_codes()["臺灣民眾黨"] == party_codes()["台灣民眾黨"] == 350 and party_codes()["臺灣工黨"] == party_codes()["台灣工黨"]   # 台、臺都認
+    assert fix_name("江@2F97F@淵") == "江聰淵"
     write_csv(csv_p, MAYOR_COLS, list(before.values()))
     print("3b 只進不退：舊頁、全 0 的頁不採用，票數變少但時間較新當成更正照收，延後不抓；宣布當選的人落後時照開票中更新")
 
