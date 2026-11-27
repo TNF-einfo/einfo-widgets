@@ -102,11 +102,11 @@ def p2(x):
 
 
 def bar(agree, disagree, scale, th=None):
-    """同意對不同意的長條；th＝門檻票數，畫一條刻度（長條的全長取兩者總和與門檻較大的那個，門檻才不會畫出框）"""
-    h = f'<div class="bar" aria-hidden="true"><i class="ya" style="width:{agree / scale * 100:.2f}%"></i><i class="na" style="width:{disagree / scale * 100:.2f}%"></i>'
+    """不同意對同意的長條（不同意在左）；th＝門檻票數，畫一條刻度（長條的全長取兩者總和與門檻較大的那個，門檻才不會畫出框）"""
+    h = f'<div class="bar" aria-hidden="true"><i class="na" style="width:{disagree / scale * 100:.2f}%"></i><i class="ya" style="width:{agree / scale * 100:.2f}%"></i>'
     if th is None:
         return h + "</div>"
-    x = th / scale * 100
+    x = max(0, agree + disagree - th) / scale * 100   # 不同意在左、同意在右（對齊圖例）：同意段從右端算起，刻度在右端往左數 th 的位置
     side = f"right:{100 - x:.2f}%" if x >= 50 else f"left:{x:.2f}%"   # 字寫在刻度靠內的那邊，不出框
     return h + f'<b style="left:{x:.2f}%"></b></div><p class="thl"><span style="{side}">門檻 {f(th)} 票</span></p>'
 
