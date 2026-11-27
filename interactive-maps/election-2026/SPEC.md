@@ -98,7 +98,7 @@
 主方案：程式抓中選會開票網頁。
 - 先照 2022 年的 `TC` 片段格式寫解析程式（用 `data/raw/cec_live_2022/` 測），開票頁上線後馬上確認 2026 年格式；格式變了就當晚改，改不及就走備案一。
   11-18 寫好 `scripts/fetch_live.py`，用法與自我測試見下面「開票夜步驟」。欄位照表頭的字找（姓名、得票數、得票率、推薦之政黨、註記），欄位換順序也讀得到。
-- 22 個縣市一輪，請求間隔 1 秒（11-27 從 3 秒改），一輪約 22 秒，每分鐘最多一輪（11-27 從 2 分鐘縮；官方每分鐘更新）；User-Agent 只寫用途；22 縣市都開完就停。
+- 22 個縣市一輪，請求間隔 1 秒（11-27 從 3 秒改），一輪約 22 秒，每 30 秒最多一輪（11-27 從 2 分鐘縮；官方每分鐘更新）；User-Agent 只寫用途；22 縣市都開完就停。
 - 抓下來寫成 `data/results_2026.json`，跑產生器、看過再 push。
 
 備案一：手動輸入 22 筆。
@@ -400,9 +400,9 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 
 ### 首頁版即時更新（11-27）
 
-只有首頁版 `election-2026-home.html` 會自己更新：每 60 秒抓同資料夾的 `live.json`，收到新的就原地換，不重新載入、不打斷輪播。文章版不輪詢，由迴圈一起重產、一起推（11-27 定，排程登記帶 `--article`；旗標本身預設關），讀者打開或重新整理時拿到當下的數字。
-這台電腦跑 `scripts/live_loop.py`，每分鐘抓中選會（11-27 從 2 分鐘縮）、一縣一縣合併檢查、產生首頁版與 `live.json`，資料有變才 commit、push，GitHub Actions 部署。讀者只碰 Pages，不連中選會也不連這台電腦。
-方案、延遲預算與實測依據在 `preview/realtime/即時更新方案_2026-11-26.md`（v3，不進 repo）；下面是 11-26 定案的版本，跟方案不同的地方：輪詢只在首頁版；push 被拒會自動 `pull --rebase` 再推一次；排程器每分鐘叫一次 `--once`。部署的 concurrency 只留一個排隊，推得比部署快時中間那版會被跳過（Actions 上顯示 cancelled），讀者拿到的永遠是最新那版。
+只有首頁版 `election-2026-home.html` 會自己更新：每 20 秒（11-27 從 60 秒縮）抓同資料夾的 `live.json`，收到新的就原地換，不重新載入、不打斷輪播。文章版不輪詢，由迴圈一起重產、一起推（11-27 定，排程登記帶 `--article`；旗標本身預設關），讀者打開或重新整理時拿到當下的數字。
+這台電腦跑 `scripts/live_loop.py`，每 30 秒抓中選會（11-27 從 2 分鐘縮）、一縣一縣合併檢查、產生首頁版與 `live.json`，資料有變才 commit、push，GitHub Actions 部署。讀者只碰 Pages，不連中選會也不連這台電腦。
+方案、延遲預算與實測依據在 `preview/realtime/即時更新方案_2026-11-26.md`（v3，不進 repo）；下面是 11-26 定案的版本，跟方案不同的地方：輪詢只在首頁版；push 被拒會自動 `pull --rebase` 再推一次；排程器每 30 秒叫一次 `--once`（兩個觸發各每分鐘一次、錯開 30 秒）。部署的 concurrency 只留一個排隊，推得比部署快時中間那版會被跳過（Actions 上顯示 cancelled），讀者拿到的永遠是最新那版。
 
 `live.json`（`build_map.py --home --live-json <路徑>` 在產生首頁版的同一步寫出，內容就是烤進頁面的那包，顏色分組、標籤、註記都在 Python 算好，頁面只換上去）：
 
@@ -412,7 +412,7 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 | `epoch` | 這一晚的名字，預設是投票日 `2026-11-28`，彩排用 `rehearsal`；頁面只收同一個 `epoch` |
 | `seq` | 發佈當下的 Unix 秒數（比上一版小就用上一版加 1），頁面只收更大的；換一台電腦接手也只會變大 |
 | `published_at` | 同 `seq`，頁面拿來判斷迴圈是不是停了 |
-| `poll_s` | 讀者多久抓一次，`null` 是 60 秒，`0` 是停止開關 |
+| `poll_s` | 讀者多久抓一次，`null` 是 20 秒（11-27 從 60 秒縮），`0` 是停止開關 |
 | `counties` | 22 縣的資料，跟頁面裡的 `D.counties` 同一格式（狀態、顏色分組、候選人、已送／應送、資料時間、註記、標籤） |
 | `aria` | 22 縣的報讀文字（代碼 → 字串） |
 | `legend`、`legend_home` | 文章版、首頁版的圖例 HTML（首頁版後面帶縣市數） |
@@ -424,7 +424,7 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 首頁版的字型另收 `data/candidates_2026.csv`（2026 全部候選人）與 `data/tags.csv` 的字：10:00 發的全是未開票，名字晚上才從 `live.json` 進來。`--test-banner` 在頁面頂端加紅色「測試資料，非真實結果」與 noindex，彩排用。
 
 頁面（`map_template.html`，只在 `HOME` 時跑）：
-- 輪詢：固定網址 `live.json`、`cache: "no-cache"`（沒變時 Pages 回 304），60 秒加減 10%；分頁藏起來不抓，切回來馬上抓一次；抓不到就拉長間隔，最多 5 倍，畫面留著烤在頁面裡的資料。
+- 輪詢：固定網址 `live.json`、`cache: "no-cache"`（沒變時 Pages 回 304），20 秒加減 10%；分頁藏起來不抓，切回來馬上抓一次；抓不到就拉長間隔，最多 5 倍，畫面留著烤在頁面裡的資料。
 - 收不收：`schema` 是 1、`epoch` 相同、`seq` 變大、22 個代碼不重複且都對得上、字串欄位都在。舊的、別的 `epoch` 的、壞的 JSON、404 都不收也不出錯。`poll_s` 只認收下的檔，別的 `epoch` 帶 `0` 停不掉頁面。
 - 套用：原地換每縣的資料物件（輪播、點擊、小地圖用的是同一批），換 22 縣與小地圖的顏色 class 與報讀文字、圖例、出處、結果表、資料時間；清掉 `layout()` 寫在小地圖上的行內斜線，資訊卡與浮起的板子照新資料重畫。套用失敗也記下這個 `seq`，不會每分鐘重試同一份。
 - 數字：正在顯示的資訊卡，票數、得票率、進度條從舊值走到新值，1.5 秒（`cubic-bezier(0.23, 1, 0.32, 1)`），最後停在真的數字，跟直接用新資料產生的卡片逐字相同；減少動態時直接換。兩次更新之間不內插、不外推。
@@ -437,8 +437,8 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 
 ```
 python -I scripts/live_loop.py --prefix <網址前綴> --once --dry-run   # 乾跑一輪：抓、合併、產生，不碰 git（狀態與產出在 preview/realtime/state/<epoch>-dryrun/）
-python -I scripts/live_loop.py --prefix <網址前綴> --once             # 跑一輪，有變就推（排程器每分鐘叫一次）
-python -I scripts/live_loop.py --prefix <網址前綴>                    # 自己每 60 秒跑一輪（終端機開著跑）
+python -I scripts/live_loop.py --prefix <網址前綴> --once             # 跑一輪，有變就推（排程器每 30 秒叫一次）
+python -I scripts/live_loop.py --prefix <網址前綴>                    # 自己每 30 秒跑一輪（終端機開著跑）
 python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假中選會＋乾跑 20 輪＋暫存 repo 的 push，見下面「測試」
 ```
 
@@ -454,7 +454,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 | `--state-dir` | `preview/realtime/state/<epoch>/`（乾跑另用 `<epoch>-dryrun/`，乾跑記下的雜湊不會擋掉之後真的那一輪） | 狀態、紀錄、原始頁 |
 | `--declared`、`--overrides` | `data/declared.csv`、`data/overrides.csv` | 人工介入的兩個檔 |
 | `--test-banner` | 關 | 頁面加「測試資料」紅條與 noindex |
-| `--every`、`--delay` | 60、1 | 一輪間隔、每頁間隔（11-27 從 3 秒改成 1 秒；被擋或回 429 就帶 `--delay 3` 退回） |
+| `--every`、`--delay` | 30、1 | 一輪間隔、每頁間隔（11-27 從 3 秒改成 1 秒；被擋或回 429 就帶 `--delay 3` 退回） |
 
 一輪：
 1. 系統檔案鎖 `<state>/loop.lock`（`msvcrt.locking`，程序結束或重開機就自己放掉，不看 PID）；鎖著就不跑。
@@ -473,7 +473,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
   - `reset`：合併判斷錯了、那縣卡住時用，下一輪抓到什麼就收什麼，同一列只用一次（要再用一次就把 `note` 改成別的字，例如現在時間）；這輪抓不到就留到下一輪。
   - `force`：`candidate` 寫的人照當選發（還在開是 `called`、開完是 `final`），落後也發，由人決定；名字不在得票前兩名就不套用、寫警告。
 
-工作排程器：`scripts/live_loop_task.ps1` 登記每分鐘叫一次 `live_loop.py --once`（11-27 從 2 分鐘縮）（`pythonw`、跑 12 小時、上一輪沒跑完就不另開、一輪超過 10 分鐘砍掉、只在登入時跑）。這支只在人跑的時候登記，程式不會自己登記。
+工作排程器：`scripts/live_loop_task.ps1` 登記每 30 秒叫一次 `live_loop.py --once`（兩個觸發各每分鐘、錯開 30 秒；11-27 從 2 分鐘縮）（`pythonw`、跑 12 小時、上一輪沒跑完就不另開、一輪超過 10 分鐘砍掉、只在登入時跑）。這支只在人跑的時候登記，程式不會自己登記。
 - 登記：`powershell -ExecutionPolicy Bypass -File scripts\live_loop_task.ps1 -Prefix <網址前綴> -Extra '--article'`（文章版一起推；彩排改成 `-Epoch rehearsal3 -Extra '--out-dir rehearsal --home-name index.html --date 2026-11-27 --test-banner --article'`）。`-Extra` 每次重新登記都要寫全，漏了 `--article` 文章版就停在上一版。
 - 暫停與恢復：`Disable-ScheduledTask -TaskName einfo-election-live-loop`、`Enable-ScheduledTask …`；刪掉：同一支加 `-Uninstall`。
 

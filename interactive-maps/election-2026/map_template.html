@@ -766,11 +766,11 @@ function loop() {
 }
 layout(); draw(performance.now()); requestAnimationFrame(loop);
 
-// ── 首頁版即時更新（SPEC「首頁版即時更新」）：每 60 秒抓同資料夾的 live.json，收到新的就原地換，不重新載入、不打斷輪播 ──
+// ── 首頁版即時更新（SPEC「首頁版即時更新」）：每 20 秒抓同資料夾的 live.json（11-27 從 60 秒縮），收到新的就原地換，不重新載入、不打斷輪播 ──
 // 固定網址加 cache:"no-cache"：瀏覽器帶 If-None-Match，沒變就是 304。抓不到或檔案壞掉就留著烤在頁面裡的資料。
 // 收不收：schema 1、同一個 epoch、seq 變大、22 個代碼不重複且對得上、字串欄位都在；poll_s 只認收下的檔（0 是停止開關）。
 // 過期看 published_at：迴圈停了 Pages 照樣回 200 或 304，看有沒有抓到檔判斷不出來
-const LIVE = { url: "live.json", every: ((D.poll_s > 0 ? D.poll_s : 60) * 1000), seq: D.seq || 0, epoch: D.epoch || "", pub: (D.published_at || 0) * 1000,
+const LIVE = { url: "live.json", every: ((D.poll_s > 0 ? D.poll_s : 20) * 1000), seq: D.seq || 0, epoch: D.epoch || "", pub: (D.published_at || 0) * 1000,
   fails: 0, stopped: D.poll_s === 0, timer: 0, applied: 0, rejected: [] };
 const dtimeEl = $(".dtime");
 function liveWhy(n) {
