@@ -340,8 +340,8 @@ def main():
         src_date = f"<i>{date}</i> <i>尚未開票</i>"
     elif live:
         src_date = f"<i>{date}</i> <i>開票中</i>" + (f"，<i>資料時間 {times[-1][11:16]}</i>" if times else "")
-    else:
-        src_date = f"<i>{date}</i> <i>開票結果</i>"
+    else:   # 全部開完：照 SPEC〈算開完〉寫最後一次更新的時間，跟首頁版的資料時間一致（11-27：原本只寫「開票結果」）
+        src_date = f"<i>{date}</i> <i>開票結果</i>" + (f"，<i>資料時間 {times[-1][11:16]}</i>" if times else "")
     src_date += "".join(f"<i>（{c['name']}</i> <i>{c['vote_date']}</i> <i>重行選舉）</i>" for c in res.values() if c["vote_date"] not in ("", date))
     legend = [("kmt", "國民黨"), ("dpp", "民進黨"), ("tpp", "民眾黨"), ("oth", "其他")]
     if "pend" in groups:   # 斜線圖例照實際出現的狀態寫，延後的嘉義市不會被寫成「開票中」
