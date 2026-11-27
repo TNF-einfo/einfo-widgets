@@ -485,19 +485,28 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 
 開票夜操作：
 1. 前一晚：照方案第九節（Windows Update 暫停一週、插電不睡眠、手機熱點備用）。
-2. 10:00 發正式版：`python -I scripts/live_loop.py --prefix https://vote.cec.gov.tw/zh-TW/TC --once --article`。開票頁還是 403，22 縣都抓不到就照範本發未開票，首頁版與文章版換掉浮水印測試版，之後打開的首頁版都帶這一晚的 `epoch`。開 Pages 上的兩頁各看一次，出處列是「2026-11-28 尚未開票」。
+2. 10:00 發正式版：`python -I scripts/live_loop.py --prefix http://127.0.0.1:9/zh-TW/TC --delay 0 --once --article`。故意指連不上的網址：中選會若已掛著開票前的測試數字，也不會收進來推上正式站（11-27 第二輪審查）；一縣約 2 秒，整輪約 45 秒。22 縣都抓不到就照範本發未開票，首頁版與文章版換掉浮水印測試版，之後打開的首頁版都帶這一晚的 `epoch`。開 Pages 上的兩頁各看一次，出處列是「2026-11-28 尚未開票」。
    線上的測試版設成不輪詢，10:00 前就開著的頁面要重新整理才會換：正式站新增關鍵圖表或嵌入時，網址加 `?v=1128`，讀者一定拿到新的那份（11-27 審查提出）。
 3. 14:00 起找開票頁的片段前綴（「開票夜步驟」第 2 點）；開放後先乾跑一輪 `--once --dry-run`，看 `preview/realtime/state/2026-11-28-dryrun/` 的 `status.html` 與 `out/` 裡的首頁版，對 3 個縣市的姓名、政黨、所數、時間。格式不同就改 `parse_mayor()`，改不及走手動 CSV。
+   每次乾跑前先刪 `preview/realtime/state/2026-11-28-dryrun/`：乾跑也會記住上一次，下午收過測試數字的話，歸零後再乾跑會被當倒退擋掉。0 票時卡片不列姓名，姓名、政黨看那個資料夾的 `results.csv`（用記事本或 `Import-Csv`）；標籤姓名對不上的警告迴圈不印，另跑 `python -I build_map.py --data preview/realtime/state/2026-11-28-dryrun/publish.json --out preview/realtime/state/2026-11-28-dryrun/check.html` 看（11-27 第二輪審查）。
 4. 對過就登記排程（上一段），看第一次 push 的 git 結果與 Pages 上的 `live.json` 多久換掉。
    16:00 投票結束、乾跑確認中選會頁面是 0 或真的開票數字之後才登記，不要提早：迴圈收進中選會開票前的測試數字，正式歸零時會被當成倒退、22 縣全擋。
-   真的收到了：`Disable-ScheduledTask`，刪掉 `preview/realtime/state/2026-11-28/` 整個資料夾，再重新登記（11-27 審查提出）。
+   真的收到了：`Disable-ScheduledTask`、等迴圈程序結束（見第 7 點那行），刪掉 `preview/realtime/state/2026-11-28/` 整個資料夾，再重新登記（11-27 審查提出）。
 5. 看：`status.html`（各狀態縣數、最近發佈、git、等 declared.csv 的縣、最近警告），`alerts.log` 由 Claude 在 Discord 轉述。「開完前就打 ◎」「宣布的人不是最高票」的警告要人決定，寫 `declared.csv` 或 `overrides.csv`。
-6. 減量：排程改成帶 `-Extra '--article --poll-s 300'` 重新登記；之後打開的與收到新版的頁面都改成 5 分鐘抓一次。
-   要恢復就重新登記帶 `--poll-s 20`：不帶 `--poll-s` 的版本（`poll_s: null`）只讓新打開的頁面回到 20 秒，已經收到 300 的頁面照樣 5 分鐘抓一次（11-27 彩排實測；預設 11-27 從 60 改成 20）。
-7. 停止開關：先 `Disable-ScheduledTask`，再跑一次 `python -I scripts/live_loop.py --prefix <網址前綴> --once --article --poll-s 0`，開著快車道再加 `--fast-dir preview/realtime/fast`（不帶 `--fast-url`，發出去的 `fast_url` 就是空字串）。
+6. 減量：排程改成帶 `-Extra '--article --fast-dir preview/realtime/fast --fast-url https://node.taile10df2.ts.net/live.json --poll-s 300 --heartbeat-min 10'` 重新登記（沒開快車道就拿掉那兩個參數）；之後打開的與收到新版的頁面都改成 5 分鐘抓一次。
+   `-Extra` 每次都寫全：漏了快車道參數，那一輪發出 `fast_url` 空字串，讀者就關掉快車道。心跳縮成 10 分鐘：讀者 5 分半才抓一次時，15 分鐘心跳會讓頁面誤報「更新中斷」（11-27 第二輪審查）。
+   要恢復就重新登記帶 `--poll-s 20`（拿掉 `--heartbeat-min`）：不帶 `--poll-s` 的版本（`poll_s: null`）只讓新打開的頁面回到 20 秒，已經收到 300 的頁面照樣 5 分鐘抓一次（11-27 彩排實測；預設 11-27 從 60 改成 20）。
+7. 停止開關：先 `Disable-ScheduledTask`，等正在跑的那輪結束（Disable 不會停掉它；不等的話下面這行被 `loop.lock` 擋下、只印「另一輪還在跑」就沒發；不要用 `Stop-ScheduledTask` 硬砍，砍在寫檔途中 `results.csv` 會截斷）：
+   `while (Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object CommandLine -like '*live_loop.py*') { Start-Sleep 2 }`（一輪約 26 秒，最多等半分鐘；11-27 第二輪審查）。
+   再跑一次 `python -I scripts/live_loop.py --prefix <網址前綴> --once --article --poll-s 0`，開著快車道再加 `--fast-dir preview/realtime/fast`（不帶 `--fast-url`，發出去的 `fast_url` 就是空字串）。
    少了 `--article` 文章版停在上一版，少了 `--fast-dir` 快車道上還是舊檔（11-27 審查提出）。開著的頁面收到後就不再抓，之後打開的頁面也不抓；排程沒停的話下一輪會發回 `poll_s: null`，新打開的頁面又會抓。全部開完、對過數字後也用這個收尾。
-8. 退回：資料錯了就改 `declared.csv` 或 `overrides.csv`，下一輪發新的一版。要整份退回某一輪：停排程，拿 `<state>/history/publish_<seq>.json` 跑 `python -I build_map.py --home --data <那份> --live-json live.json --epoch 2026-11-28`（`seq` 取現在，比線上大），只 commit 這兩個檔、push。不要用 `git revert`：退回去的 `live.json` 序號比較小，開著的頁面不收。
+8. 退回：資料錯了就改 `declared.csv` 或 `overrides.csv`，下一輪發新的一版。要整份退回某一輪：停排程並等程序結束（第 7 點那行），先用 `overrides.csv`（`reset`、`force`）或 `declared.csv` 把錯的源頭改掉；拿 `<state>/history/publish_<seq>.json` 跑 `python -I build_map.py --home --data <那份> --live-json live.json --epoch 2026-11-28 --poll-s 20`（`seq` 取現在，比線上大；開著快車道再加 `--fast-url https://node.taile10df2.ts.net/live.json`，並把 `live.json` 複製進 `preview/realtime/fast/`），另跑 `python -I build_map.py --data <那份>` 重產文章版，三個檔一起 commit、push，再 `Enable-ScheduledTask`。不改源頭的話，排程一恢復，下一輪又把錯的發出去（11-27 第二輪審查）。不要用 `git revert`：退回去的 `live.json` 序號比較小，開著的頁面不收。
 9. 頁面程式本身出錯：停止開關，或推一版首頁版不帶輪詢（`--poll-s 0`），讀者重新整理就是靜態版。迴圈壞了就停排程，照「開票夜步驟」的人工流程，`build_map.py` 加 `--live-json` 一起出。
+10. 值班規則（11-27 第二輪審查）：開票中別用 Excel 開 `preview/realtime/state/` 裡的 CSV（會鎖住寫入、整輪不發），用記事本或 `Import-Csv`；`data/declared.csv`、`data/overrides.csv` 前一晚先建好只有表頭的檔（少了表頭整份不生效、也不報錯）；開票夜這個 repo 別留沒 commit 的改動（push 被拒時 `--autostash` 可能讓那個檔留在衝突狀態，是模板或 `tags.csv` 的話下一輪產生就壞）。
+    照時間順序、參數寫全的值班指令清單在本機 `preview/review_2026-11-27/值班指令_2026-11-28.md`。
+
+11-27 第二輪審查一起改的程式（核實報告同一個資料夾的 `verify_round2.md`）：所有黨名都認「台」「臺」兩種寫法，簡稱與徽章也照認；抓網頁時就把 `@碼位@` 的罕用字轉回來；`overrides.csv` 這輪讀不了就沿用上一輪讀到的（延後、force 不會被拿掉）；`status.html` 的縣市表改顯示發出去的狀態；一輪出錯時 `alerts.log` 附最後三層的位置。
+頁面：文章版頁尾讓點擊穿過去給地圖（按鈕照常）；補 `Array.prototype.at`（iOS 15.3 以前）；`.frame` 改 100% 高（iPhone Safari 的 100vh 會被工具列蓋）；按鈕、連結、卡片的鍵盤焦點框改深色；同一縣因新資料重畫時卡片不捲回頂端；再點已經浮起的縣不會閃；Mac 右鍵不會讓輪播卡住。公投的深色外緣底下墊白邊，最深的紫、褐上也看得到。
 
 週五彩排（在 `rehearsal/`，`epoch` 是 `rehearsal`，正式頁不收；push 由人跑）：
 1. 終端機一：`python -I scripts/fake_cec.py --start 16:00 --speed 4`，印出網址前綴 `http://127.0.0.1:8799/zh-TW/TC`。選舉時鐘 4 倍速，16:00 到 23:40 走約 1 小時 55 分；`http://127.0.0.1:8799/_status` 看各縣狀態，`/_set?t=HH:MM` 跳時間。
