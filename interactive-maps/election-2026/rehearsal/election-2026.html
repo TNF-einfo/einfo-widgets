@@ -1,0 +1,798 @@
+<!doctype html>
+<!-- build_map.py 的模板：{{…}} 由產生器填入，不要直接改產出的 election-2026.html -->
+<html lang="zh-Hant-TW" data-theme="paper" class="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 縣市長選舉結果｜環境資訊中心</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 字體照環資官網：思源黑體 Noto Sans TC，text= 只載這頁用到的字（build_map.py 收集） -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap&text=%21%22%23%24%25%26%27%28%29%2A%2B%2C-.%2F0123456789%3A%3B%3C%3D%3E%3F%40ABCDEFGHIJKLMNOPQRSTUVWXYZ%5B%5C%5D%5E_%60abcdefghijklmnopqrstuvwxyz%7B%7C%7D~%E3%80%81%E4%B8%81%E4%B8%89%E4%B8%99%E4%B8%AD%E4%B9%99%E4%BA%BA%E4%BB%96%E4%BD%8D%E4%BE%86%E4%BE%8B%E4%BF%83%E5%80%99%E5%81%9C%E5%85%A7%E5%85%A8%E5%85%A9%E5%85%B6%E5%89%8D%E5%8B%A2%E5%8C%96%E5%8C%97%E5%8D%97%E5%8F%A6%E5%8F%AF%E5%8F%B0%E5%8F%B8%E5%90%84%E5%90%8D%E5%93%A1%E5%98%89%E5%9B%9E%E5%9C%8B%E5%9C%92%E5%9C%96%E5%9C%98%E5%9C%9F%E5%9C%B0%E5%9F%BA%E5%A2%83%E5%A4%A7%E5%A4%AE%E5%A7%94%E5%AE%8C%E5%AE%9C%E5%AF%A6%E5%B0%87%E5%B1%8F%E5%B7%A5%E5%B7%B1%E5%B7%B2%E5%B8%82%E5%B9%95%E5%BB%B6%E5%BD%B0%E5%BE%8C%E5%BF%83%E6%88%8A%E6%89%80%E6%8A%95%E6%92%AD%E6%94%B9%E6%94%BE%E6%94%BF%E6%95%B4%E6%96%99%E6%96%B0%E6%96%B7%E6%99%82%E6%9A%AB%E6%9B%B4%E6%9C%80%E6%9C%83%E6%9C%89%E6%9D%9F%E6%9D%B1%E6%9E%97%E6%9E%9C%E6%A0%97%E6%A1%83%E6%AD%A3%E6%B0%91%E6%B1%9F%E6%B3%95%E6%B8%AC%E6%B9%96%E6%BA%90%E6%BE%8E%E7%81%A3%E7%84%A1%E7%89%88%E7%92%B0%E7%94%A8%E7%94%B2%E7%95%8C%E7%95%B6%E7%9B%9F%E7%9C%8B%E7%9C%9F%E7%9C%BE%E7%A5%A8%E7%AB%B9%E7%B1%8D%E7%B5%90%E7%B8%A3%E7%B9%AA%E7%B9%BC%E7%BA%8C%E7%BE%A9%E8%81%AF%E8%87%BA%E8%88%89%E8%8A%B1%E8%8B%97%E8%93%AE%E8%98%AD%E8%9E%A2%E8%A6%8B%E8%A8%8A%E8%A9%A6%E8%B3%87%E8%BC%AA%E9%80%A3%E9%80%B2%E9%81%B8%E9%83%A8%E9%87%91%E9%95%B7%E9%96%80%E9%96%8B%E9%96%93%E9%9A%86%E9%9B%84%E9%9B%B2%E9%9D%9E%E9%9D%A9%E9%AB%98%E9%BA%BB%E9%BB%A8%EF%BC%88%EF%BC%89%EF%BC%8C%EF%BC%8F%EF%BC%9A%EF%BC%9B%EF%BD%9C">
+<style>
+  /* 兩套主題，build_map.py --theme 決定 <html data-theme>（SPEC「配色」）。政黨色都在各自的 --sea 上用 validate_palette.js 驗過；
+     -hi 是浮起時打亮的板面（OKLCH 亮度 +0.06／+0.07）；--shade-* 是板子底下的影子，三層半透明疊出柔邊（不用濾鏡） */
+  :root[data-theme="paper"]{
+    --frame:#ffffff; --mast:#ffffff; --mast-ink:#232333; --sea:#f2f3f1; --inset:#e6e8e5; --line:#ffffff; --sel:#ffffff;
+    --kmt:#4170e9; --dpp:#218b30; --tpp:#26c0cf; --oth:#7d838b; --pend:#e3e6e9; --pend-line:#b5bcc5;
+    --kmt-hi:#5283fe; --dpp-hi:#399e43; --tpp-hi:#45d4e3; --oth-hi:#8f959d; --pend-hi:#f7fafd; --pend-line-hi:#c8cfd8;
+    --shade-a:rgba(26,35,50,.18); --shade-b:rgba(26,35,50,.10); --shade-c:rgba(26,35,50,.05); --frame-rgb:255,255,255;
+    --card:#ffffff; --card-shadow:0 6px 20px rgba(26,35,50,.14), 0 1px 3px rgba(26,35,50,.12);
+    --ink:#232333; --body:#373740; --mute:#6e6e71; --rule:rgba(26,35,50,.12); --btn:#eef0f2; --btn-2:#e4e7eb; --btn-3:#d9dde2; --accent:#dd8346;
+    --chip:#eef0f2; --tag-y:#fbefc4; --tag-g:#dcefd8; --tag-p:#f9dde4; --tag-b:#dbe7f8;   /* 標籤淡底配 --body 字，對比 9.3 到 10.2:1 */
+  }
+  :root[data-theme="night"]{
+    --frame:#141b27; --mast:#141b27; --mast-ink:#f4f6f8; --sea:#1a2332; --inset:#222d3f; --line:#1a2332; --sel:#ffffff;
+    --kmt:#3567de; --dpp:#0b8932; --tpp:#12a5b1; --oth:#b8bdc4; --pend:#263041; --pend-line:#55637b;
+    --kmt-hi:#497df6; --dpp-hi:#309f47; --tpp-hi:#3abbc7; --oth-hi:#ced3db; --pend-hi:#384254; --pend-line-hi:#697790;
+    --shade-a:rgba(5,8,13,.42); --shade-b:rgba(5,8,13,.24); --shade-c:rgba(5,8,13,.12); --frame-rgb:20,27,39;
+    --card:#2d3748; --card-shadow:0 12px 32px rgba(5,8,13,.5), 0 1px 3px rgba(5,8,13,.35);
+    --ink:#f4f6f8; --body:#e2e6eb; --mute:#a9b4c2; --rule:rgba(255,255,255,.12); --btn:#2d3748; --btn-2:#364257; --btn-3:#3e4b61; --accent:#dd8346;
+    --chip:#3e4b61; --tag-y:#4a4122; --tag-g:#244336; --tag-p:#4f2c3a; --tag-b:#26405f;   /* 深底的標籤：深色底配 --body 淺字，對比 8.1 到 9.6:1 */
+  }
+  /* 徽章底色兩套主題共用：同色相壓深到白字 4.5:1 以上（國 5.47、民 5.10、眾 5.09、無 6.33） */
+  :root{ --ease-out:cubic-bezier(0.23,1,0.32,1); --kmt-badge:#2f62d6; --dpp-badge:#1a7f2b; --tpp-badge:#007a86; --oth-badge:#5b6068 }
+  html{ -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100% }
+  html,body{ margin:0; height:100%; background:var(--frame); overflow:hidden }
+  body{ font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color:var(--ink) }
+  .frame{ position:relative; width:100vw; height:100vh; overflow:hidden; background:var(--frame) }
+  /* 地圖只畫在標題與出處之間這塊板子裡，上下是直切的邊、不做漸層（top／bottom 由 layout() 量）；
+     傾斜時地圖頂端往後倒，SVG 比框大一圈（大小與 transform-origin 也由 layout() 量），邊角才不會露底 */
+  .mapwin{ position:absolute; left:0; right:0; top:0; bottom:0; overflow:hidden; background:var(--sea) }
+  /* 觸控：直向捲動交給瀏覽器，橫向與捏由 JS 處理（縣市、小地圖的 manipulation 跟這裡取交集，也只剩 pan-y） */
+  .mapwin, .isles{ touch-action:pan-y }
+  #map{ position:absolute; width:100%; height:100%; display:block }
+  /* 縣市的洞（新北包臺北、嘉義縣包嘉義市）靠 evenodd；線寬不跟著縮放 */
+  #map path, .isle path{ fill-rule:evenodd; vector-effect:non-scaling-stroke }
+  .g-kmt{ fill:var(--kmt); background:var(--kmt) } .g-dpp{ fill:var(--dpp); background:var(--dpp) }
+  .g-tpp{ fill:var(--tpp); background:var(--tpp) } .g-oth{ fill:var(--oth); background:var(--oth) }
+  .g-pend{ fill:url(#hatch); background:repeating-linear-gradient(-45deg,var(--pend-line) 0 1.2px,var(--pend) 1.2px 4px) }
+  .hp{ fill:var(--pend) } .hl{ fill:var(--pend-line) } #hatchH .hp{ fill:var(--pend-hi) } #hatchH .hl{ fill:var(--pend-line-hi) }
+  /* 點到的離島小地圖：打亮並浮起（11-18），不畫白邊（離島都不要白框；鍵盤焦點照樣畫）。
+     小地圖的 SVG 單位不是螢幕 px：抬高與影子的長度由 layout() 照小地圖的縮放算好，放在 --lf-t、--lf-f */
+  .isle.on .g-kmt{ fill:var(--kmt-hi) } .isle.on .g-dpp{ fill:var(--dpp-hi) } .isle.on .g-tpp{ fill:var(--tpp-hi) } .isle.on .g-oth{ fill:var(--oth-hi) }
+  .isle .lf{ transition:transform .25s var(--ease-out) }
+  .isle.on .lf{ transform:var(--lf-t) }
+  /* 影子只有一條灰：原位一塊半透明的島，板面抬高後在下緣露出來（11-18 定，澎湖也一樣）。
+     不用 CSS 濾鏡（WebKit 不畫 SVG 元素上的 drop-shadow），也不加寬描邊（小島會被撐成一顆顆灰點） */
+  .isle .sd{ display:none } .isle.on .sd{ display:inline; fill:rgba(26,35,50,.28) }
+  @media (prefers-reduced-motion:reduce){ .isle .lf{ transition:none } .isle.on .lf{ transform:none } .isle.on .sd{ display:none } }
+  .isle path{ stroke:none } .isle.focus path{ stroke:var(--sel); stroke-width:2; stroke-linejoin:round }
+  .cty{ cursor:pointer; outline:none; touch-action:manipulation }
+  .cty path{ stroke:var(--line); stroke-width:1; stroke-linejoin:round } .cty path.isl{ stroke:none }
+  .hit{ fill:none; pointer-events:all; cursor:pointer; touch-action:manipulation }
+  /* 浮起的板子是複製過來的 <path>（不用 <use>：WebKit 會把原路徑的 .cty path 樣式帶進 <use> 的複本，畫出深色雙邊）；
+     影子不用模糊濾鏡，只用兩層平的色塊：原位的側面、再往下錯開的半透明接觸影 */
+  #lift{ pointer-events:none } #lc{ stroke:none } #cv{ stroke-width:1.5px; stroke-linejoin:round }
+  #sk{ fill:var(--shade-a); stroke:var(--shade-b); stroke-width:6px; stroke-linejoin:round }
+  #sh{ fill:var(--shade-c); stroke:var(--shade-c); stroke-width:14px; stroke-linejoin:round }
+  #lift.isl #sk{ fill:rgba(26,35,50,.28); stroke:none }   /* 澎湖：只留原位一條灰影（JS 也把 sh 關掉） */
+  #ol,#fo{ fill:none; stroke:var(--sel); stroke-width:2; stroke-linejoin:round; pointer-events:none }
+
+  /* 上緣漸層：地圖從標題底下淡出（第二版的做法，11-17 加回來）。下緣不加漸層也不墊底色（11-17 定），
+     出處直接壓在地圖上，靠同海面色的字暈讀得到 */
+  /* 漸層 40px、兩端放慢（smoothstep 取樣），實心接漸層的地方才不會看到一條線；40 要跟 layout() 的 FADE 一樣 */
+  header{ position:absolute; left:0; right:0; top:0; z-index:3; pointer-events:none; padding-bottom:40px;
+    background:linear-gradient(rgb(var(--frame-rgb)) calc(100% - 40px), rgba(var(--frame-rgb),.97) calc(100% - 34px),
+      rgba(var(--frame-rgb),.87) calc(100% - 27px), rgba(var(--frame-rgb),.68) calc(100% - 20px), rgba(var(--frame-rgb),.43) calc(100% - 13px),
+      rgba(var(--frame-rgb),.18) calc(100% - 6px), rgba(var(--frame-rgb),0)) }
+  .ttl{ display:flex; align-items:center; gap:8px; margin:0; padding:9px 12px; background:var(--mast); color:var(--mast-ink) }
+  .ttl img{ height:18px; width:auto; flex:none; margin-left:auto }   /* logo 靠右 */
+  /* 標題照官網段落標題 h2：黑體、字重 900，字級跟著框寬縮放；352.8 寬時約 21px，加上靠右的 logo 剛好一行 */
+  h1{ margin:0; font-weight:900; font-size:clamp(20px, 6vw, 28px); line-height:1.25 }
+  .legend{ display:flex; flex-wrap:wrap; gap:4px 12px; list-style:none; margin:0; padding:7px 12px 8px; font-size:13px }
+  .legend li{ display:flex; align-items:center; gap:5px }
+  .sw{ display:inline-block; width:10px; height:10px; flex:none; border-radius:2px }
+
+  .isles{ position:absolute; left:12px; top:80px; z-index:2; display:flex; flex-direction:column; gap:8px; transition:none }
+  .isle{ width:100px; cursor:pointer; outline:none; touch-action:manipulation }
+  .isle svg{ display:block; width:100px; height:88px; background:var(--inset); border-radius:6px }
+  .isle[data-code="09020"] svg{ height:54px }
+  .isle span{ display:block; margin-top:3px; font-size:11px; line-height:1.2; color:var(--mute); text-align:center }
+
+  .cardpos{ position:absolute; left:4%; right:4%; bottom:44px; z-index:4; pointer-events:none }
+  /* 卡片浮在地圖板子上：淺色主題白卡、深色主題比海面淺一階；圓角 8px，跟小地圖底塊、按鈕同一組 */
+  .card{ pointer-events:auto; box-sizing:border-box; max-height:45vh; overflow:auto; overscroll-behavior:auto;   /* 卡片捲到底就接著捲文章；contain 會讓手指在卡片上直滑時整頁卡住（11-17） */
+    background:var(--card); border-radius:8px; padding:12px 14px 13px; outline:none; box-shadow:var(--card-shadow) }
+  .card.measure{ position:absolute; left:0; right:0; bottom:0; visibility:hidden }
+  .card h2{ margin:0; font-size:17px; line-height:1.3 }
+  .card .st{ margin:2px 0 0; font-size:13px; color:var(--mute) }
+  .card ol{ list-style:none; margin:9px 0 0; padding:0 }
+  .card li{ display:grid; grid-template-columns:20px minmax(0,1fr) auto 4.4em; column-gap:8px; align-items:baseline; font-size:14px; line-height:1.45 }
+  .card li + li{ margin-top:6px }
+  /* 政黨徽章：政黨色圓角方塊配白色粗體單字，白字對底色都過 4.5:1（SPEC「配色」）；旁邊照樣寫政黨名稱 */
+  .bd{ align-self:start; display:grid; place-items:center; width:20px; height:20px; border-radius:5px; color:#fff;
+    font-style:normal; font-weight:800; font-size:12.5px; line-height:1; user-select:none; -webkit-user-select:none }
+  .b-kmt{ background:var(--kmt-badge) } .b-dpp{ background:var(--dpp-badge) } .b-tpp{ background:var(--tpp-badge) } .b-oth{ background:var(--oth-badge) }
+  .card .nm b{ font-weight:500 } .card li.win .nm b{ font-weight:700 }
+  /* 當選：圈選章（圓圈裡一個「卜」），用官網的橘，不用綠（綠是民進黨）；大小跟姓名字高相近，報讀器照念「當選」 */
+  /* 圈選章：印泥紅，「卜」的兩筆都碰到圓圈，照投票用的章（11-26） */
+  .stamp{ display:inline-block; width:1.3em; height:1.3em; margin-left:5px; vertical-align:-.3em; color:#d4332b }
+  [data-theme="night"] .stamp{ color:#ff6b5e }
+  .stamp *{ fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:butt }
+  .card .v, .card .pc{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--body) }
+  .card .note{ margin:7px 0 0; font-size:12px; color:var(--mute) }
+  /* 開票中標示：中性色小藥丸加一顆不動的圓點 */
+  .live{ display:inline-flex; align-items:center; gap:5px; margin-left:8px; padding:1px 8px 1px 7px; border-radius:999px; background:var(--chip); color:var(--body);
+    font-size:12px; font-weight:500; line-height:1.5; vertical-align:2px; white-space:nowrap }
+  .live i{ width:6px; height:6px; border-radius:50%; background:currentColor; flex:none }
+  /* 當選人的標籤：藥丸、不加框線，「環境政見：」靠黨徽對齊（第一欄起，11-26 改），放不下就換行 */
+  .card .tg{ grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:4px; margin-top:5px }
+  .tag{ font-size:12px; line-height:1.35; padding:2px 9px; border-radius:999px; color:var(--body); overflow-wrap:anywhere }
+  /* 標籤前的「環境政見：」：跟標籤同字級與上下內距，文字基線才對齊；用次要文字色（paper 對白卡 5.1:1） */
+  .tgl{ font-size:12px; line-height:1.35; padding:2px 0; color:var(--mute); white-space:nowrap }
+  .t-y{ background:var(--tag-y) } .t-g{ background:var(--tag-g) } .t-p{ background:var(--tag-p) } .t-b{ background:var(--tag-b) }
+
+  footer{ position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:flex-end; justify-content:space-between; gap:8px;
+    padding:7px 10px 8px 12px; font-size:10px; color:var(--mute); background:none }
+  .src{ margin:0; line-height:1.45; min-width:0; text-shadow:0 0 2px var(--sea), 0 0 4px var(--sea), 0 0 6px var(--sea) } .src span{ display:inline-block } .src a{ color:inherit } .src i{ font-style:normal; white-space:nowrap }
+  .btns{ display:flex; gap:4px; flex:none }
+  button{ font:inherit; font-size:12px; color:var(--ink); background:var(--btn); border:0; border-radius:999px; padding:0 11px; min-height:32px; cursor:pointer;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none; transition:transform 120ms var(--ease-out), background-color 120ms ease }
+  button:active{ transform:scale(.97); background:var(--btn-3) }
+  #home[aria-hidden="true"]{ visibility:hidden }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+  :focus-visible{ outline:2px solid var(--sel); outline-offset:2px }
+  .cty:focus-visible, .isle:focus-visible{ outline:none }
+  @media (hover:hover) and (pointer:fine){
+    .cty:hover{ opacity:.86 } .isle:hover svg{ background:var(--btn-2) } button:hover{ background:var(--btn-2) }
+  }
+
+  /* 橫式（框比 1:1 寬）：資訊卡在右側 */
+  @media (min-aspect-ratio:1/1){
+    h1{ font-size:24px } .ttl img{ height:22px }
+    .cardpos{ left:auto; right:16px; width:300px; top:56px; bottom:44px; display:flex; align-items:center }
+    .card{ width:100%; max-height:100% }
+  }
+  @media (min-aspect-ratio:1/1) and (max-width:620px){
+    .ttl{ padding:7px 12px } h1{ font-size:19px } .ttl img{ height:16px } .legend{ font-size:12px; gap:3px 9px; padding:5px 12px 6px }
+    /* 卡片 260px、每位候選人一列：11-18 起每個縣市都有環境金句，原本 230px 把姓名與票數拆兩列，金句被切在卡片外 */
+    .cardpos{ width:260px; right:12px }
+    .card{ padding:9px 12px } .card h2{ font-size:15px } .card ol{ margin-top:7px }
+    .card li{ font-size:12.5px; column-gap:6px; grid-template-columns:18px minmax(0,1fr) auto 4.4em }
+    .bd{ width:18px; height:18px; font-size:11.5px; border-radius:4px }
+    .live{ font-size:11px; margin-left:6px } .stamp{ margin-left:4px } .tag{ font-size:11px; padding:1px 8px } .tgl{ font-size:11px; padding:1px 0 } .card .tg{ margin-top:3px; row-gap:2px }   /* 加了「環境政見：」，臺北的標籤換成兩行，528×352 卡片多 2px，收緊行距吃回來 */
+    .isle, .isle svg{ width:84px } .isle svg{ height:74px } .isle[data-code="09020"] svg{ height:46px }
+  }
+  @media (prefers-reduced-motion:reduce){ button{ transition:none } }
+  /* 首頁版才用的東西，文章版一律不顯示：按鈕圖示、放大鈕、右欄、卡片的「另有幾位候選人」、圖例的縣市數、資料時間 */
+  .ic, #full, .side, .card .more, .legend .n, .dtime{ display:none }
+
+  /* ── 首頁版（build_map.py --home，<html class="home">）：首頁「關鍵圖表」的 16:9 框（SPEC「首頁版」）──
+     沒有標題、logo、最下面那行；左邊整塊是地圖，右欄（白底）由上而下放圖示按鈕、圖例、資訊卡。
+     圖例、按鈕、卡片由 JS 搬進右欄（同一份 DOM，文章版不動） */
+  .home{ --side:clamp(176px, 54vw, 320px); --pad:12px }
+  .home header, .home footer{ display:none }
+  .home .mapwin{ right:var(--side) }
+  .home .side{ display:flex; flex-direction:column; gap:10px; position:absolute; top:0; right:0; bottom:0; width:var(--side); box-sizing:border-box;
+    padding:var(--pad); background:var(--frame); z-index:4 }
+  /* 按鈕在右上、圖例在左；放不下（手機）就按鈕一列、圖例接在下面。按鈕的位置在全景與出卡之間不動 */
+  .home .top{ display:flex; flex-direction:row-reverse; justify-content:space-between; align-items:flex-start; gap:8px }
+  .home .legend{ display:flex; flex-direction:column; flex-wrap:nowrap; gap:3px; padding:2px 0 0; font-size:13px; min-width:9.5em }
+  .home .legend .n{ display:inline; margin-left:auto; padding-left:10px; font-weight:700; font-variant-numeric:tabular-nums }
+  .home .btns{ gap:6px }
+  .home .ic{ display:block; width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+  .home .bt{ display:none }
+  .home .btns button, .home #full{ display:grid; place-items:center; width:32px; height:32px; min-height:0; padding:0; border-radius:50%; color:var(--ink); background:var(--btn) }
+  .home #full{ text-decoration:none; touch-action:manipulation; transition:transform 120ms var(--ease-out), background-color 120ms ease }
+  .home #full:active{ transform:scale(.97); background:var(--btn-3) }
+  #pause .play, #pause.on .bars, #full.on .open, #full .shut{ display:none } #pause.on .play, #full.on .shut{ display:inline }
+  .home .side :focus-visible{ outline-color:var(--ink) }   /* 白底上白色焦點框看不到 */
+  /* 卡片就是右欄的內容：不浮、不加陰影與內距，太長在卡片裡捲 */
+  .home .cardpos{ position:relative; inset:auto; width:auto; flex:1 1 0; min-height:0; display:flex; flex-direction:column; align-items:stretch; z-index:auto }
+  .home .card{ flex:0 1 auto; min-height:0; max-height:none; width:auto; padding:10px 0 0; border-top:1px solid var(--rule); border-radius:0; background:none; box-shadow:none }
+  .home .card.measure{ display:none }
+  /* 即時更新（SPEC「首頁版即時更新」）：圖例下面一行資料時間，自動更新中斷時變紅；已開所數由 JS 跟票數一起滾；
+     開票中標示的圓點輕輕閃。減少動態時圓點不動、數字直接換 */
+  .home .dtime{ display:block; margin:0; font-size:11px; line-height:1.3; color:var(--mute); font-variant-numeric:tabular-nums }
+  .home .dtime[hidden]{ display:none }
+  .home.stale .dtime{ color:#c0392b } [data-theme="night"].home.stale .dtime{ color:#ff6b5e }
+  .home .sn{ font-variant-numeric:tabular-nums; white-space:nowrap }
+  @keyframes pulse{ 50%{ opacity:.3 } }
+  .home .live i{ animation:pulse 2s ease-in-out infinite }
+  @media (prefers-reduced-motion:reduce){ .home .live i{ animation:none } }
+  @media (hover:hover) and (pointer:fine){ .home #full:hover{ background:var(--btn-2) } }
+  @media (max-width:620px){
+    .home{ --pad:8px }
+    .home .top{ flex-direction:column; align-items:stretch; gap:6px }
+    .home .btns{ align-self:flex-end; gap:5px }
+    .home .btns button, .home #full{ width:28px; height:28px } .home .ic{ width:14px; height:14px }
+    .home .legend{ font-size:12px; gap:1px }
+    .home .side{ gap:6px }
+    /* 窄框的圖例疊在按鈕下面、佔掉卡片的高：出卡時收起，讓卡片用右欄的高（顏色看卡片的徽章），全景時才出現 */
+    .home .side:has(#card:not([hidden])) .legend{ display:none }
+    /* 資料時間放在按鈕左邊的空位（不佔高度：底下還有卡片與小地圖），出卡時也看得到；過期的字（更新中斷）換到第二行 */
+    .home .dtime{ position:absolute; top:var(--pad); left:var(--pad); width:calc(100% - 2 * var(--pad) - 100px); font-size:10px; line-height:1.3 }
+    /* 金門、連江小地圖搬到右欄底部並排：窄框的地圖只有 170 到 280px 寬，放在地圖左上會壓到澎湖。小地圖只在全景出現，出卡時已經淡出
+       （點金門、連江時鏡頭不動、小地圖留著，卡片量過碰不到）；top 由 layout() 寫在行內，這裡要蓋掉 */
+    .home .isles{ top:auto !important; bottom:var(--pad); left:calc(100% - var(--side) + var(--pad)); flex-direction:row; align-items:flex-end; gap:8px; z-index:5 }
+    .home .isle, .home .isle svg{ width:54px } .home .isle svg{ height:44px } .home .isle[data-code="09020"] svg{ height:30px }
+    .home .isle span{ font-size:10px; margin-top:2px }
+  }
+  /* 手機的 16:9 框（高 300 以下）：卡片只列前兩名、下面寫還有幾位 */
+  @media (max-height:300px){
+    .home .card{ padding-top:6px }
+    .home .card h2{ font-size:14px } .home .card .st{ font-size:11px; margin-top:1px } .home .card ol{ margin-top:5px }
+    .home .card li{ font-size:11.5px; line-height:1.4; column-gap:5px; grid-template-columns:16px minmax(0,1fr) auto auto }
+    .home .card li + li{ margin-top:4px } .home .card li:nth-child(n+3){ display:none }
+    .home .bd{ width:16px; height:16px; font-size:10.5px; border-radius:4px }
+    .home .live{ font-size:10.5px; padding:0 6px 0 5px; margin-left:5px; vertical-align:1px }
+    .home .tag, .home .tgl{ font-size:10.5px } .home .tag{ padding:1px 7px }
+    .home .card .more{ display:block; margin:5px 0 0; font-size:11px; color:var(--mute) } .home .card .note{ font-size:11px; margin-top:4px }
+  }
+</style>
+<meta name="robots" content="noindex,nofollow"></head>
+<body><div style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99;background:#c0392b;color:#fff;font:700 13px/1.2 'Noto Sans TC',sans-serif;padding:5px 12px;border-radius:0 0 6px 6px;pointer-events:none">測試資料，非真實結果</div>
+<div class="frame">
+  <header>
+    <div class="ttl"><h1>2026 縣市長選舉結果</h1><img src="../../assets/eic-logo-green.svg" alt="環境資訊中心"></div>
+    <ul class="legend" aria-label="圖例"><li><i class="sw g-kmt"></i>國民黨</li><li><i class="sw g-dpp"></i>民進黨</li><li><i class="sw g-tpp"></i>民眾黨</li><li><i class="sw g-oth"></i>其他</li><li><i class="sw g-pend"></i>開票中</li></ul>
+  </header>
+  <div class="mapwin">
+  <svg id="map" viewBox="0 0 8000 10000" role="group" aria-label="22 縣市當選地圖，可用 Tab 選縣市、Enter 看結果、Esc 回全台">
+    <defs>
+      <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6"><rect class="hp" width="6" height="6"/><rect class="hl" width="1.3" height="6"/></pattern>
+      <pattern id="hatchI" patternUnits="userSpaceOnUse" width="6" height="6"><rect class="hp" width="6" height="6"/><rect class="hl" width="1.3" height="6"/></pattern>
+      <pattern id="hatchH" patternUnits="userSpaceOnUse" width="6" height="6"><rect class="hp" width="6" height="6"/><rect class="hl" width="1.3" height="6"/></pattern>
+      <path id="o65000" vector-effect="non-scaling-stroke" d="M7419 3164l-7 7-8 0-2 10-4 0 0 4-15 2-1 4-4 1-3 5-5 4-4-1-9 7-2 3-12 1-5 5-10 2-11 0-5 7-9 3-4 7-6-2-8 1-5-1-2 3-4 1-4 0-11 4-5 5 3 11 8 6 4 3 7 0 6 2 4 4 4 10-1 3 3 2-1 5 1 12 8 8 4 11-6 7 3 3 0 4 10 6 0 5 6 4 5 2 2 3 5 0 4 3 3 5 12 6 9-9 4-2 2 2 0 6-3 2 1 4-3 5 3 5 2 0 5 5 9 7 3 0 3 3 10 1 6 6 10-1 5 2 5-2 6-1 5 4 6 6 2 4 6 4 1 3 7 1 5 8 7 4 6-3 6-1 4 3 12 0 10-8 9-3 2-2 6-1 6 6 3-1 2-5 10-9 3 1 3-8 5-7-4-7-3-2-1-5-4-3-5-2-11 0-3-5-2-8 0-9 2-4-3-10 2-3 1-9-6-3 2-4-1-7-3-4-4-1-3 5-3-2-2-5 4-3 10 2 5-5 4 0 4-2 7 2 5-5 4-8 3-4 4 1 2 2 15 5 5-3 3 5 5 8 6-2 3 1 7-4 1-5-2-2 3-4-10-9 1-7 9 5 2 3 5 3 5-9-2-3 3-5 0-4-3-5-3-2 2-4 7 1 7 6 10-4 4 1 9-4 9 1-7 7-2 0-1 4-3 3-2 5 1 5 3 5 3 2 6 0 5-2 3-4-2-7 7 0 4 1 0-3 5 1 8-1 9 2 8 0 14 6 9 0 4-3 0 4 5 3 7 0 2-5 4 3 2-3 2 1 5-2 4 5 13 0 10 4-1 2 6 2 8-3 2 3 8-2 7-6 0-2 12 2 6-2 2 0 2-5 11-4 6-4 6 3-6 11-6 6 0 8-8 3-2 5 5 3 6-3 3 1 7 12-2 4-5 2 1 4-3-1-5 4-2 4 2 6 0 6-4 1-6 10 0 10 5 9-3 7 2 5 7-1 11 10 6 2-1 5 4 5 3 7 0 5-2 0 2 15-3 6-2 11 3 5-3 2 1 8 10 16 15 17 10 8 6 1-1-2 5-2 18-1 8-4 4 2 6-4 7-2 9 0 10 4 14 8 5 10-3 8 4-3 2-4 7-8 3 0 6 11 7 0-1 4 3 4-1 5-1 10 1 2-2 4-3-1-14 3-12 11-2 4-11 7-6-1-7 2-3 3-3 8-14 1 0 5-3-1-6-11-6-1-4 2-5-2-10 0-5 4-8-3-2 3-5 5-4-1-2 4-6 0-2 5-6-1-4 3-3-1-9 4-3-3-4 2-5-1-8 2-3 4-2 4-3-2-3 0-3 5-5-2-5 6-2 5-5 5-2 0-8 4-5 1-2 4-8-3-4 1-13 5-7 1-2 1-13-3-3 0-5-3-4 0-9 4-1 4-3 1-4-4-3 3-4-1-3 2-1 4-3 2-1 3-3 3 1 6-3 7-3 4 2 9 5 6 8 4 5 16 10 6 0 4-4 5-13 9-1 5-3 4-8 6-3 6-12 11-8-1-11 2-5 4-3 0-14-8-2 6-9 3-3 2-11 1-4-1-3 3-7 1 2 7-6 6-9 3 1 3-6 1-3 2 1 5 0 11 0 7 4 3 2 8-4 0-11 10-5 7 1 3-9 0-4-2-3 2 1 3-4 3-3 5-4-2-2 2 1 4-2 4-7 0-8 1 0 2-6 1-5-1-4 5-8 1-7-6-12-2-4 2-7 4-4 6-6 2-7 9-6 3-2 5-11 3-11 12-4 2-5-3-2 3-3-1 0 9-9 8-6 2-3 4 5 6-2 5 1 4-5 3-1-3-7 1-4-1-4 5-4 2-6 0-10-8 0 2-8 6-9 8-15-1-5-4-4 0-2-2-4 9-2 1-5-2-6-1-4 3-14 1-4 2-5-1 2 6-1 5-2 4 2 11-1 3-10 6-7-3-7 1-8-1-8 10-5 0-8 4-14 0 3 6-1 5 3 3 0 5 6 14-4 8 2 3-6 6-6 9 1 4-3 4-1 4 2 7 5 4 4 0 3 5-3 4-6 3 1 3 6 6 1 4-3 9 2 5-3 5 1 2 8 0-1 4-7 4-7 5-6 7-8-1-8-3-3 1-1 15-5 10-5 0-4-8-6 5-8-2-11 4-3-1-4 6-8 6-6-1-8 1-5 8-6 5 1 4 1 8-3 1 0 8-1 4-7 0-9 2-4-2 0 7-6 4-18 1-6-3-9 4-4 6-13 4-4 6-9 5-11-5-4 3-6-1-4 1-2-3-6-9-1-9-3-3-2-11 3-6-1-8-7-1-1 1-6-3-7-8-6-3-8-1-12-6-3-6 0-8-8-6-7-18-1-7-5-1-8-7 2-7-5-8 0-6-2-6-3-3-1-4-3-6 1-4-1-8-4-6-2-6 1-3-5-3 0-3 4-9 12-11 9-2 4-4 5-9 4-4 7-3 3-5 4-3-1-6 3-4-2-2-8 2-8-7-6-4-3-7 2-6 0-7-2-2 1-7-2-8-8-3-5-3-6-9-3-3-1-6-3-6-12 1-3-4 0-4-4-7 3-8-10-7-3-4-13-7-3 4-6 0-1-4-8 0-9 3-2 0-6 4-1 6-7 3-6 4-10 2 0-3-18-6-8-1-4-3-6-9-7-2-10-3-14 6-7-1 0-7 2-3 10-1 9-3 4 3 3-1 5 0 5-9 6 0 0-3-5-1-4-7-8-3-4-5-3-9-2-2 2-3 7-1 2-3 5-2 3-5-2-7-3-1-3-4-7 0-3-3-2-13-6-3-1-3 2-9-3 1-4-2-6 3-4 0-3-4 3-6 0-6-3-2-3 5-5 4-11-6-4-3 3-5 0-3 3-2 6-6-1-4-5-2-1-4-5-4-6-6 14-15 6-3 16-1 9-8-4 0-7-2-7 0-18 3 2-7-4-3-1-2-4-2-5-9 18-11 11-2 2-3-7-7 0-14 2-12-2-11 4-3-2-2-3 2 3-5-2-8-8 4-1-4 8-4 2-3-3-3 8-4 6 1 5-4 8 1 4-4 5 4 5 3 2-2 8-2 3 6 14 0 1-2 4-2 11 7 4-4 3-3 9-3 3-4 5-3 2 1 7-6-4-4 2-7-2-3 2-6 7-2 5 7 8 0 4-5 1-4 12-4-2-7-4-4-1-6-12-6-4-5 3-8 3 2 6-3 8 1 6-3 6-1 9-3-3-5-4 0-8-6-1-3-6-4-1-5-4-2 1-10 4 1-3-4 3-1-1-3-12-5-2-4-6 0 4-3 10-1 11-4-6 1-4-4 3-2-7-2-3 3 0-5 4 0 4 2-1-5 4 3 1-4-6 0-9-6-4 1 3-3-6 3-7 2 3-6-4-3 1-3 5 3 2-5-4-1 7-4-5 0 0-4-11 1-2-3-11-4-18 2-19 0-6 0 0-5-2-3-3 2-7-5-5-1 6-2 5-7-4 2 0-6-4 6-11 1-4-2 0-5 2-1 4 4 5-1-3-2 0-4 7-2-11-2 15-3-1-2-6-3-10-1-6 1-4-4-13-6-4-6-7-4-13-1-15-8-15 0-3-4-1-7-5-6-6 3-8 1-2-9-8-1-8-7 3-4-1-13 8 0 8-1 7-5 4-4-1-8 5 4 3-2 7 2 2-4 9 0 1 5 7 1 6-2 7 2 7-2 7 0 23-6 6-4 7 1 4-3 13-4 4-3 9-4 9-7 2-5 2 2 5-1 5-3 1-2 7 0 8-2 13-6 8-5-4-9 7-36 22 21 6-4 3-4 9-11 15-22-5-8-24-5 0-7-1-2 2-6 10-2 4 2 14-3 1-3-3-4 2-11 11-19 8-9 5-8 10-3 3-2 0-4 7-19 3-3 2-6 0-4 5-14 0-4 3-9 10-14 7-1 13 3 10-3 8-6 7-10 4-13 8-10 9-4 2 0 9-4 13-10 7-2 3 0 3-3 5 0-1-2 6-2 1-5-2-7 2-6 5-1 3 5 1 6 6 4 8-1 0-3 4-1 6 3 15-9 3-6-3-5 1-5 6-7 7 5 1 8 10 4 9 2 7-3 13 2 10-4 3-2 0-4 5-4 5 0 5-1 6 0 10 6 8 6 8 3 13 1 1 4 10 5 8 8 3 6 15 5 5 2 10 9 13 16 9 15 2 7 2 15-2 11-2 10 5 9 5 6 7 6 7 2 5 0-3-5 9-2 2 1-2 5 5 3-8 15 7 14 5 6 13 13 3-4 1 5 12 10 5 1 2-4 8-4 1 7 6-4 5-6 6-2 1 6 3 0-1-3 4-3 4-1 3-3 1-4 3-3 0-3 11-7 2 3-3 2-1 3-14 14-3 7 1 2 7 0-4 4 1 3-2 1-2 5-5 2-7 9-1 7 3 9 5 7 5 5 7-4 13 3 4 8 5 2z"/><path id="o10010" vector-effect="non-scaling-stroke" d="M4303 7086l-3 0-5-20-7-9-6-19 1-2 6 19 11 11 5 15zM4271 7014l0-3 3 5zM5462 6603l10 3 6-1 6-5 9-1 2 3 6-6 5-2 5 2 5 3 13 1 5 5 5 4 1 5 7 0 7 4 5 5 8 2 8-1 7 1 8 8 6-1 6 2 5 0 3-4 10 0 3-3 5-2 7 3 2 3-3 5 3 5 3 7 7 7 4 1-2 5-2 0-4 7-2 5-2 9 5 8-1 6-3 8 1 4-3 5-10 10 4 5-3 4-6 1 0 4-5 8-2 8 1 13 5 4 14 24 5 4-3 4 2 11 6 8 0 4 2 11-2 11 5 9 0 11 1 3 2 11 6 6 3 7 2 6 13 8 7-5 8 1 4 2 9-2 6-1 4 1 11-1 6 2 4 4 9 5 7 1 9 1 6-12 1-3 5-3 15 0 15-1 12 1 7-1 6 3 6-2 6 1 12 5 9 5 3-1 4-4 7 0 7 7 7 4 5 2 8-1 5-3 7-2-3 5-11 6-12 3-8 0-8-1-4 5 1 6-8 3-5 1 0 3-4-4-10-4-11 1-2 2-5-2-8 4-6 8-6-2-4 1 0 3-3 3-4 0-4 11-4 1-2-3-3 10-7 15-4 1-2-3-4 6-6 3-7-2 0 3-4 4-4 0-4 8-7 0-3 5-4-2-5 2-3-2-2 6-6-2-9 5-2 2 1 15-4 6-5 4-2 9-8 10-3 3 0 2 5 2 0 3-8 3-3 8-3 0 1 7-3-1-4 1-3 8 1 3-1 9-2 5-5 3-2 5-3-1-5 3-10-2-6 5-6-1-3 3-4-5-3-1-3 3 2 5-5 5-2 4 0 5-4 0-3 3-3 6-5-1-4 1 1 6-7 3 0 7-2 7-4 1-5 8-9-1-3-2-4 1-3 3-10-5-7 5-9-5-5-1-1 3 2 5-3 6 3 2 0 3-4 6-7 3-2 3 3 4-2 4-4 2-1 4-4 4-12 1-3 2-1 6-3 3-4 1-8 5-5 6 1 12-9-3-11-3-8 1-9-2-2 3-8 6-5 5-3 10-1 8 0 6 2 4-8 11-12 0-7-2-6-3-10-2-7-3-2 2-3-5-5-2-4 3-3-5-3 0-2-4-4 2-6-1-1-3-5 0-1-2-3 1-4 7-7 2-6-5-4-9-7 3-3 8 3 5-3 6 2 2 2 10-4 8 2 5-5 4 1 6-4 2-1 4 4 5 3 13 0 8 7 9 7 12-1 2 1 12 4 6 1 5-4 15 8 9-4 1-7-4-2-3-6 4-3 0-7-5-11-2-5-2-6 0-6 5-13 4-3 4-8-1-3 3-4 0-3-4-4-3-7 0-10-6-2-7 0-7-5-9-3-1-2 8-3 5 0 5-2 3-5 13-3 2-6 7-5 2-3 9-7-6-7-1-11-6-3 1-5 7-7 1-6-2-5-6-5-2-3-5-14-9-3 0-8-3-8-1-2-5-3-1-5 3-3-1-5-8-8-9 11-6 7-7 4-6 5-15-6-7-2-9-4-4-1-5-7-6-4-6 3-5-2-12 3-4 1-7-2-7 5-8 3-1 1-8-5-14-1-14-2-7 3-3 7-3 8-7 1-7 4-2 4-5 2-5 6-3-6-12-7-7-4 0-2-3-7-3-5 2-3-5-4 0-1-2-4-1-6-4-11 0-5 2-5-4-1-3 0-6-2-4 3-9 1-1 5 6 6-3 3-4 0-8-2-2-2-8-3-1-5-5-3-1 0-3-5-2-2 4-8-2-3-2-3 0-6-6-3 3-4-4-2 4-6 3-2-4 2-15 3-4 18-9 3 1 4-3 2-6-4-3 1-4-7-8-6-1-8 6-3 0 0 3-3 0-3 4-4 0-2 4-4-7-4-1 1-6-6-9-7-3-4-3-5 0-6-3-2-5-4 0-7-5-6 0-1-3-15-6-6-5-6 0-3 2-5 0 0 2-5 2-1 6-2 3-3-2-3 2-8 0-3-2-3 8-2 0-3-10-3-5-5-1-7 2-5-7-2 3-5 3-16 7-21 6-10 3-43 1-12 3-8 0-6 2-7 5 0 3-11 14-6 7-3 3-8 2-1-3-14 6-4-6 1-1-4-4-6 0-8 6-1 6 1 17-6 1-10-3-7 2-13 0-7 9-8 9-3 11 0 7 4 10 0 8-9 5-6 1-4-1-1-4-4-5-7-3-4 0-6 3-10 17 6-1 8 0-1 9-17 17-7 5-12 4-5 4-17 0-5 8-2 7-6 8-7 15-1 6-3 8-10 15-17 10-1-2-7 3-8-2-7-3-19-15-6-2-5 9 1 4 6 7-1 4-10 0-11-3-6-6-4-10 1-2-6-10-10-9-11-4-7 1-3-1-2-6-9 0-3-3 0-11-6-6-18-12-8-4-29-23 2-6-1-1 2-9 5-9 2-7 10-19 3-11 3-4 2-12-1-19 12 0 4-1 17-1 5-6 3 0 6 8 2 0 1 11 4-3-2-8-7-7 8 5 3-4-8-5 10 2 6-10-3-2-1-7-2-9-1-9-12 4 0 11-4-1-1 2-4-16 0-16-3-4 7-7-4-3 0-7 4-2 8-7 0-3-4 0-4 5-6 0 1-3-7-2 1-11 3-6-2-3 4-2 3-7 9-13 2-1-9-2 3-11-3-3-3 3-7 2-14 8 2-3-2-4-7 4 2 5-2 2-4-9 2-5 9-8 11-4 2-6 3-6-4-4-2-7 2-4 8-6 2-8 3-5 5-3 1-4 3 0 1-8-3-8 6-1 19 2 4 2 0-5-22-3-1-3-37 11-12 4-12 0-6-1-8-10-2-5-1-43 1-5 4-5 5-2 6 1 31 6 0-2 7 0 0-5 6 3 7 2 11 5 13 0 4-3 12 6 9 6 8 5 12-2 6 1 10-6 7 0 6 1-1 2 8-1 3 3 7 2 12 6 14 6 16-3 16-5 8-5 7-8 1-5-3-16-3-20-4-13 0-7 5-6 9-3 10-1 4 0 4 5 7 17 4 6 6 5 5 2 6-1 3-8 2-8 4-12 7-5 5 0 8-4 9-7-4-14 1-9 6-6 10-1 18 4 8-4-1-6-7-9 0-4 2-3 9-1 17 6 9-2 4-2 9-7 3-4 1-7 0-20 3-3 7 2 10 0 18-2 8-2 7-4 3-6 7-7 2-3 1-10 3 0 6-4 18-1 2-4 4-2-1-3 3-7 5-8 12-3 0-3 20-7-3-12 7-4 4 4 0 16 6 0 9 4 4 4 2-3 6-5 2 1 1 8 1 4 7 2 2-2 7 2 3-3 1-4 4-3 6 2 0-4-3-1 1-4 4-1 6 1 3-6 3-4 5 2 8 0 3-2 4 1-1 4-5 3 6 1 9-3 4-3 7 0 4-2 7 0 9-2 5 3 2-1 2-6 8 1 7 4 4-2-2-6 4-4 8 6 13-4 8 0 5 3 3 8-2 4 0 5 2 7 4 2 1 6 5 2 5 7 5 9 4 4 7 4 10 10 3 6 6 3 1 3 8 5 13 1 10 1 7 0 9 2 3 8 8 1 2-2 5 1 4 4 7-1 6 4 5 6 10 3 7-2 2 1 6-7 9 1 3 0 5 1 5 3 5 0 8-2 7 4 11-6 7 2 4-5 4-3 0-4 4-2 11 2 19-6 6 0 5-2 7 2-1 5-3 5 1 4 4 1-1 7-6 6-5 3 1 7 5-3 6 4 3 5 9 0 5-1 5-8 10-3 6 0 5-1 3 4 2 7 5 6 10-2 9-7 17-4 10 0 11 3 9-1 1 8 4 2 2-1 7 1 4 4 13-6 7 4 11-2 5 1 0-7-2-4-6-3 0-4 3-8 1-5-3-7-1-6-4-6 5-8-8-4-1-5-7-5 4-8zM4274 6987l-3-4 3 3zM4283 6896l1 1-2-1zM4296 6892l1 0-1 2z"/>
+    </defs>
+    <g id="counties"><g class="cty g-pend" data-code="10017" tabindex="0" role="button" aria-label="基隆市，開票中"><path id="p10017" vector-effect="non-scaling-stroke" d="M7607 3254l-2 4 3 2 3 5 0 4-3 5 2 3-5 9-5-3-2-3-9-5-1 7 10 9-3 4 2 2-1 5-7 4-3-1-6 2-5-8-3-5-5 3-15-5-2-2-4-1-3 4-4 8-5 5-7-2-4 2-4 0-5 5-10-2-4 3 2 5 3 2 3-5 4 1 3 4 1 7-2 4 6 3-1 9-2 3 3 10-2 4 0 9 2 8 3 5 11 0 5 2 4 3 1 5 3 2 4 7-5 7-3 8-3-1-10 9-2 5-3 1-6-6-6 1-2 2-9 3-10 8-12 0-4-3-6 1-6 3-7-4-5-8-7-1-1-3-6-4-2-4-6-6-5-4-6 1-5 2-5-2-10 1-6-6-10-1-3-3-3 0-9-7-5-5-2 0-3-5 3-5-1-4 3-2 0-6-2-2-4 2-9 9-12-6-3-5-4-3-5 0-2-3-5-2-6-4 0-5-10-6 0-4-3-3 6-7-4-11-8-8-1-12 1-5-3-2 1-3-4-10-4-4-6-2-7 0-4-3-8-6-3-11 5-5 11-4 4 0 4-1 2-3 5 1 8-1 6 2 4-7 9-3 5-7 11 0 10-2 5-5 12-1 2-3 9-7 4 1 5-4 3-5 4-1 1-4 15-2 0-4 4 0 2-10 8 0 7-7 1 6-3 3 3 6-4 3 1 2-2 4 7 2 3-2 10 0 12 2 12 3 2-1 4 6 5 2-3 4 11-5 1 3 6 5 9 0 3 3 9-6 4-8 2 6 4-3 4-1 4 2 1-7 5 0 10 5 1 2 5-1 15 5-7 0-1 2-6 3 2 1 2 4 5 6 4-4 8 4 2 4 8 3 5 0 3 3 4 0 1-3 10 2 13-4 2 6-7 4-3 6 3 9z"/><path id="i10017" class="isl" vector-effect="non-scaling-stroke" d="M7579 3127l-4 5-3 0-6 4-3-3 2-5 4-4 5-2 4 0zM7894 2617l-2 0 1-1zM8161 2153l7 1 2 8-2 4-6 5 1 4-4 1-4-1-1-4-5 0-3-3-1-7 3-5z"/></g><g class="cty g-pend" data-code="63000" tabindex="0" role="button" aria-label="臺北市，開票中"><path id="p63000" vector-effect="non-scaling-stroke" d="M7142 3121l4 3 6-2 6 4 3-3 7 2-3 3 3 3 0 7-2 0-2 6 2 3-4 5 1 4 4 6-1 5-3 4-8 8-1 7 4 3 8-1 7 5 4 2 3-2 1 7 3 6-1 6-4 6 8 5 1 4 3 4 1 6 5 8 4 2 7 7 3-1-2 4 0 9 7 1-7 9-6 0-1 10-4 3-3 9-4 6 4 9 4 2 5 0 12 4 5 3 10 3 4 6 12 10 4-1 1 2-2 6 2 7 4 4 1 5-2 3 1 4-8 7 0 4-2 8-5 2 2 9-7 4-4 8 5 2 6 6 6 11-2 1-6-3 1 6-6 3-3 4 0 5 5 10 6 8 6 5 2 0 7 2 1 4 6-2 10 5 4 4 12 6 2 3 2-2 4 3 14-1 8-6 10 1-2 4 1 5-3 6-13 0-7-2-8 0-8 5-3-4-3-2-4 3-11-2-6-3-3 2-4 10-13 6-4-2-6 0-3-3-5 1-7-2-4 2-8 0-3 9-10 1-2 6-2 11 1 6 4 0 5 8 0 5-5 9 2 6 6 3 0 5-4 3 1 14-2 3 1 4 10 6 10 0 3 0 5 2 4 4 6 2 2 3-1 5-5-1-4 3-3 0-8 4-2 3-6 0-9 5-5-1-3 2-4-3-3-6-5 0-5 2-6 1-2-3-5-1-7-4-8 0-3 6-5-1-11 1-8-2-5-8-2-8-3-3-2-7-2-1-2-8 2-8-3-5-3-1 0 4-4 3-4 1-4-1-2-3 2-4-2-3-8 2-6-3 0-6-1-6-3-2-1 4-6 6 0-9-2-7 2-7 5-5-4-10-3-4-5-2-4-3-10-13-3-4-10-4-5-1-6 1-6 6-11 15-10 6-6 0-7-13-1-13 1-5-8-18-3-8 3-9 8-8 13 0 12-7 6-8 3-9 1-5-2-5 0-6 3-8 0-12-2-10-7-19-5-9-15-14-7-7-6-5-10-4-5-1-24-1-10-5-8-7 0-7 7-13-4-15 12-3-1-7 2-9 7-9 6-5 2-4 7-7 0-2 8-6 5-8 7-2 13-22 9-6 3-4 3-7 3-1-1-5 2-4 5 0 2 5 2-1 9 4 5-3 12 3 5-11-2-10 8-8 16-2 5-7 9-1 5-4 0-10 7-8 5-2 3 2 4-4 0-4-2-3 3-5 4-9 9-4 7 2 1 8 2 2 1 9 3 3 7 3z"/></g><g class="cty g-pend" data-code="65000" tabindex="0" role="button" aria-label="新北市，開票中"><path id="p65000" vector-effect="non-scaling-stroke" d="M7419 3164l-7 7-8 0-2 10-4 0 0 4-15 2-1 4-4 1-3 5-5 4-4-1-9 7-2 3-12 1-5 5-10 2-11 0-5 7-9 3-4 7-6-2-8 1-5-1-2 3-4 1-4 0-11 4-5 5 3 11 8 6 4 3 7 0 6 2 4 4 4 10-1 3 3 2-1 5 1 12 8 8 4 11-6 7 3 3 0 4 10 6 0 5 6 4 5 2 2 3 5 0 4 3 3 5 12 6 9-9 4-2 2 2 0 6-3 2 1 4-3 5 3 5 2 0 5 5 9 7 3 0 3 3 10 1 6 6 10-1 5 2 5-2 6-1 5 4 6 6 2 4 6 4 1 3 7 1 5 8 7 4 6-3 6-1 4 3 12 0 10-8 9-3 2-2 6-1 6 6 3-1 2-5 10-9 3 1 3-8 5-7-4-7-3-2-1-5-4-3-5-2-11 0-3-5-2-8 0-9 2-4-3-10 2-3 1-9-6-3 2-4-1-7-3-4-4-1-3 5-3-2-2-5 4-3 10 2 5-5 4 0 4-2 7 2 5-5 4-8 3-4 4 1 2 2 15 5 5-3 3 5 5 8 6-2 3 1 7-4 1-5-2-2 3-4-10-9 1-7 9 5 2 3 5 3 5-9-2-3 3-5 0-4-3-5-3-2 2-4 7 1 7 6 10-4 4 1 9-4 9 1-7 7-2 0-1 4-3 3-2 5 1 5 3 5 3 2 6 0 5-2 3-4-2-7 7 0 4 1 0-3 5 1 8-1 9 2 8 0 14 6 9 0 4-3 0 4 5 3 7 0 2-5 4 3 2-3 2 1 5-2 4 5 13 0 10 4-1 2 6 2 8-3 2 3 8-2 7-6 0-2 12 2 6-2 2 0 2-5 11-4 6-4 6 3-6 11-6 6 0 8-8 3-2 5 5 3 6-3 3 1 7 12-2 4-5 2 1 4-3-1-5 4-2 4 2 6 0 6-4 1-6 10 0 10 5 9-3 7 2 5 7-1 11 10 6 2-1 5 4 5 3 7 0 5-2 0 2 15-3 6-2 11 3 5-3 2 1 8 10 16 15 17 10 8 6 1-1-2 5-2 18-1 8-4 4 2 6-4 7-2 9 0 10 4 14 8 5 10-3 8 4-3 2-4 7-8 3 0 6 11 7 0-1 4 3 4-1 5-1 10 1 2-2 4-3-1-14 3-12 11-2 4-11 7-6-1-7 2-3 3-3 8-14 1 0 5-3-1-6-11-6-1-4 2-5-2-10 0-5 4-8-3-2 3-5 5-4-1-2 4-6 0-2 5-6-1-4 3-3-1-9 4-3-3-4 2-5-1-8 2-3 4-2 4-3-2-3 0-3 5-5-2-5 6-2 5-5 5-2 0-8 4-5 1-2 4-8-3-4 1-13 5-7 1-2 1-13-3-3 0-5-3-4 0-9 4-1 4-3 1-4-4-3 3-4-1-3 2-1 4-3 2-1 3-3 3 1 6-3 7-3 4 2 9 5 6 8 4 5 16 10 6 0 4-4 5-13 9-1 5-3 4-8 6-3 6-12 11-8-1-11 2-5 4-3 0-14-8-2 6-9 3-3 2-11 1-4-1-3 3-7 1 2 7-6 6-9 3 1 3-6 1-3 2 1 5 0 11 0 7 4 3 2 8-4 0-11 10-5 7 1 3-9 0-4-2-3 2 1 3-4 3-3 5-4-2-2 2 1 4-2 4-7 0-8 1 0 2-6 1-5-1-4 5-8 1-7-6-12-2-4 2-7 4-4 6-6 2-7 9-6 3-2 5-11 3-11 12-4 2-5-3-2 3-3-1 0 9-9 8-6 2-3 4 5 6-2 5 1 4-5 3-1-3-7 1-4-1-4 5-4 2-6 0-10-8 0 2-8 6-9 8-15-1-5-4-4 0-2-2-4 9-2 1-5-2-6-1-4 3-14 1-4 2-5-1 2 6-1 5-2 4 2 11-1 3-10 6-7-3-7 1-8-1-8 10-5 0-8 4-14 0 3 6-1 5 3 3 0 5 6 14-4 8 2 3-6 6-6 9 1 4-3 4-1 4 2 7 5 4 4 0 3 5-3 4-6 3 1 3 6 6 1 4-3 9 2 5-3 5 1 2 8 0-1 4-7 4-7 5-6 7-8-1-8-3-3 1-1 15-5 10-5 0-4-8-6 5-8-2-11 4-3-1-4 6-8 6-6-1-8 1-5 8-6 5 1 4 1 8-3 1 0 8-1 4-7 0-9 2-4-2 0 7-6 4-18 1-6-3-9 4-4 6-13 4-4 6-9 5-11-5-4 3-6-1-4 1-2-3-6-9-1-9-3-3-2-11 3-6-1-8-7-1-1 1-6-3-7-8-6-3-8-1-12-6-3-6 0-8-8-6-7-18-1-7-5-1-8-7 2-7-5-8 0-6-2-6-3-3-1-4-3-6 1-4-1-8-4-6-2-6 1-3-5-3 0-3 4-9 12-11 9-2 4-4 5-9 4-4 7-3 3-5 4-3-1-6 3-4-2-2-8 2-8-7-6-4-3-7 2-6 0-7-2-2 1-7-2-8-8-3-5-3-6-9-3-3-1-6-3-6-12 1-3-4 0-4-4-7 3-8-10-7-3-4-13-7-3 4-6 0-1-4-8 0-9 3-2 0-6 4-1 6-7 3-6 4-10 2 0-3-18-6-8-1-4-3-6-9-7-2-10-3-14 6-7-1 0-7 2-3 10-1 9-3 4 3 3-1 5 0 5-9 6 0 0-3-5-1-4-7-8-3-4-5-3-9-2-2 2-3 7-1 2-3 5-2 3-5-2-7-3-1-3-4-7 0-3-3-2-13-6-3-1-3 2-9-3 1-4-2-6 3-4 0-3-4 3-6 0-6-3-2-3 5-5 4-11-6-4-3 3-5 0-3 3-2 6-6-1-4-5-2-1-4-5-4-6-6 14-15 6-3 16-1 9-8-4 0-7-2-7 0-18 3 2-7-4-3-1-2-4-2-5-9 18-11 11-2 2-3-7-7 0-14 2-12-2-11 4-3-2-2-3 2 3-5-2-8-8 4-1-4 8-4 2-3-3-3 8-4 6 1 5-4 8 1 4-4 5 4 5 3 2-2 8-2 3 6 14 0 1-2 4-2 11 7 4-4 3-3 9-3 3-4 5-3 2 1 7-6-4-4 2-7-2-3 2-6 7-2 5 7 8 0 4-5 1-4 12-4-2-7-4-4-1-6-12-6-4-5 3-8 3 2 6-3 8 1 6-3 6-1 9-3-3-5-4 0-8-6-1-3-6-4-1-5-4-2 1-10 4 1-3-4 3-1-1-3-12-5-2-4-6 0 4-3 10-1 11-4-6 1-4-4 3-2-7-2-3 3 0-5 4 0 4 2-1-5 4 3 1-4-6 0-9-6-4 1 3-3-6 3-7 2 3-6-4-3 1-3 5 3 2-5-4-1 7-4-5 0 0-4-11 1-2-3-11-4-18 2-19 0-6 0 0-5-2-3-3 2-7-5-5-1 6-2 5-7-4 2 0-6-4 6-11 1-4-2 0-5 2-1 4 4 5-1-3-2 0-4 7-2-11-2 15-3-1-2-6-3-10-1-6 1-4-4-13-6-4-6-7-4-13-1-15-8-15 0-3-4-1-7-5-6-6 3-8 1-2-9-8-1-8-7 3-4-1-13 8 0 8-1 7-5 4-4-1-8 5 4 3-2 7 2 2-4 9 0 1 5 7 1 6-2 7 2 7-2 7 0 23-6 6-4 7 1 4-3 13-4 4-3 9-4 9-7 2-5 2 2 5-1 5-3 1-2 7 0 8-2 13-6 8-5-4-9 7-36 22 21 6-4 3-4 9-11 15-22-5-8-24-5 0-7-1-2 2-6 10-2 4 2 14-3 1-3-3-4 2-11 11-19 8-9 5-8 10-3 3-2 0-4 7-19 3-3 2-6 0-4 5-14 0-4 3-9 10-14 7-1 13 3 10-3 8-6 7-10 4-13 8-10 9-4 2 0 9-4 13-10 7-2 3 0 3-3 5 0-1-2 6-2 1-5-2-7 2-6 5-1 3 5 1 6 6 4 8-1 0-3 4-1 6 3 15-9 3-6-3-5 1-5 6-7 7 5 1 8 10 4 9 2 7-3 13 2 10-4 3-2 0-4 5-4 5 0 5-1 6 0 10 6 8 6 8 3 13 1 1 4 10 5 8 8 3 6 15 5 5 2 10 9 13 16 9 15 2 7 2 15-2 11-2 10 5 9 5 6 7 6 7 2 5 0-3-5 9-2 2 1-2 5 5 3-8 15 7 14 5 6 13 13 3-4 1 5 12 10 5 1 2-4 8-4 1 7 6-4 5-6 6-2 1 6 3 0-1-3 4-3 4-1 3-3 1-4 3-3 0-3 11-7 2 3-3 2-1 3-14 14-3 7 1 2 7 0-4 4 1 3-2 1-2 5-5 2-7 9-1 7 3 9 5 7 5 5 7-4 13 3 4 8 5 2zM7142 3121l4 3 6-2 6 4 3-3 7 2-3 3 3 3 0 7-2 0-2 6 2 3-4 5 1 4 4 6-1 5-3 4-8 8-1 7 4 3 8-1 7 5 4 2 3-2 1 7 3 6-1 6-4 6 8 5 1 4 3 4 1 6 5 8 4 2 7 7 3-1-2 4 0 9 7 1-7 9-6 0-1 10-4 3-3 9-4 6 4 9 4 2 5 0 12 4 5 3 10 3 4 6 12 10 4-1 1 2-2 6 2 7 4 4 1 5-2 3 1 4-8 7 0 4-2 8-5 2 2 9-7 4-4 8 5 2 6 6 6 11-2 1-6-3 1 6-6 3-3 4 0 5 5 10 6 8 6 5 2 0 7 2 1 4 6-2 10 5 4 4 12 6 2 3 2-2 4 3 14-1 8-6 10 1-2 4 1 5-3 6-13 0-7-2-8 0-8 5-3-4-3-2-4 3-11-2-6-3-3 2-4 10-13 6-4-2-6 0-3-3-5 1-7-2-4 2-8 0-3 9-10 1-2 6-2 11 1 6 4 0 5 8 0 5-5 9 2 6 6 3 0 5-4 3 1 14-2 3 1 4 10 6 10 0 3 0 5 2 4 4 6 2 2 3-1 5-5-1-4 3-3 0-8 4-2 3-6 0-9 5-5-1-3 2-4-3-3-6-5 0-5 2-6 1-2-3-5-1-7-4-8 0-3 6-5-1-11 1-8-2-5-8-2-8-3-3-2-7-2-1-2-8 2-8-3-5-3-1 0 4-4 3-4 1-4-1-2-3 2-4-2-3-8 2-6-3 0-6-1-6-3-2-1 4-6 6 0-9-2-7 2-7 5-5-4-10-3-4-5-2-4-3-10-13-3-4-10-4-5-1-6 1-6 6-11 15-10 6-6 0-7-13-1-13 1-5-8-18-3-8 3-9 8-8 13 0 12-7 6-8 3-9 1-5-2-5 0-6 3-8 0-12-2-10-7-19-5-9-15-14-7-7-6-5-10-4-5-1-24-1-10-5-8-7 0-7 7-13-4-15 12-3-1-7 2-9 7-9 6-5 2-4 7-7 0-2 8-6 5-8 7-2 13-22 9-6 3-4 3-7 3-1-1-5 2-4 5 0 2 5 2-1 9 4 5-3 12 3 5-11-2-10 8-8 16-2 5-7 9-1 5-4 0-10 7-8 5-2 3 2 4-4 0-4-2-3 3-5 4-9 9-4 7 2 1 8 2 2 1 9 3 3 7 3z"/></g><g class="cty g-pend" data-code="68000" tabindex="0" role="button" aria-label="桃園市，開票中"><path id="p68000" vector-effect="non-scaling-stroke" d="M6567 3294l1 13-3 4 8 7 8 1 2 9 8-1 6-3 5 6 1 7 3 4 15 0 15 8 13 1 7 4 4 6 13 6 4 4 6-1 10 1 6 3 1 2-15 3 11 2-7 2 0 4 3 2-5 1-4-4-2 1 0 5 4 2 11-1 4-6 0 6 4-2-5 7-6 2 5 1 7 5 3-2 2 3 0 5 6 0 19 0 18-2 11 4 2 3 11-1 0 4 5 0-7 4 4 1-2 5-5-3-1 3 4 3-3 6 7-2 6-3-3 3 4-1 9 6 6 0-1 4-4-3 1 5-4-2-4 0 0 5 3-3 7 2-3 2 4 4 6-1-11 4-10 1-4 3 6 0 2 4 12 5 1 3-3 1 3 4-4-1-1 10 4 2 1 5 6 4 1 3 8 6 4 0 3 5-9 3-6 1-6 3-8-1-6 3-3-2-3 8 4 5 12 6 1 6 4 4 2 7-12 4-1 4-4 5-8 0-5-7-7 2-2 6 2 3-2 7 4 4-7 6-2-1-5 3-3 4-9 3-3 3-4 4-11-7-4 2-1 2-14 0-3-6-8 2-2 2-5-3-5-4-4 4-8-1-5 4-6-1-8 4 3 3-2 3-8 4 1 4 8-4 2 8-3 5 3-2 2 2-4 3 2 11-2 12 0 14 7 7-2 3-11 2-18 11 5 9 4 2 1 2 4 3-2 7 18-3 7 0 7 2 4 0-9 8-16 1-6 3-14 15 6 6 5 4 1 4 5 2 1 4-6 6-3 2 0 3-3 5 4 3 11 6 5-4 3-5 3 2 0 6-3 6 3 4 4 0 6-3 4 2 3-1-2 9 1 3 6 3 2 13 3 3 7 0 3 4 3 1 2 7-3 5-5 2-2 3-7 1-2 3 2 2 3 9 4 5 8 3 4 7 5 1 0 3-6 0-5 9-5 0-3 1-4-3-9 3-10 1-2 3 0 7 7 1 14-6 10 3 7 2 6 9 4 3 8 1 18 6 0 3 10-2 6-4 7-3 1-6 6-4 2 0 9-3 8 0 1 4 6 0 3-4 13 7 3 4 10 7-3 8 4 7 0 4 3 4 12-1 3 6 1 6 3 3 6 9 5 3 8 3 2 8-1 7 2 2 0 7-2 6 3 7 6 4 8 7 8-2 2 2-3 4 1 6-4 3-3 5-7 3-4 4-5 9-4 4-9 2-12 11-4 9 0 3 5 3-1 3 2 6 4 6 1 8-1 4 3 6 1 4 3 3 2 6 0 6 5 8-2 7 8 7 5 1 1 7 7 18 8 6 0 8 3 6 12 6 8 1 6 3 7 8 6 3 1-1 7 1 1 8-3 6 2 11 3 3 1 9 6 9 2 3-15 2-6 3-17-2-3-1-9 11-2 8-9 5-3 8 0 8 3 5 4 3-6 12-7 6 1 7-1 6-9 5-9 18-2 5 1 6-4 6-2 8-4 2-5 18-7 7-9 4-4 0-11-5-1 7-7 3-11 16-15 6-2 3-6 2-8 0-9-6-12-6-8-3-2-7-9-5-8-9 2-6-2-5-5-4 0-6-3-3-1-8 6-7 2 0 1-5 6-19-6-2-5-3-6 1-1-9-3-8-7-5 1-12-2-8 3-7-1-1 2-6-2-3 1-10 0-6-4 3-6-3-7 2-2-6-3 1-4 6-3-1 2-7-2-20-7-11-12-16-6-5-7-4-7-2-3-4-10 1-12 8-6 2-6-2-3-4 2-6 4-7-1-5 3-10 6-10 2-15-4-9 0-5-3-1-7-7-4-2-1-5 4-10 3-11 8-8-1-9 5-10-7-7-5-11-6 0-9-2-3-8-9-2-7-4-14-1-8-9-4 0-1-7-6-4-4 0-2-3-10-2-3-7 0-3 4-3 1-5-3-8-3 2-14-3-1-3-5-2-3-8 2-2 0-5-4-8-4-4-5 6-6 3-7 1-13 3-6 4-7 4-1-8-3-3 1-7-2-2 1-7-5-2-4 1-4 3-7 3-4 5-6 0-3-6 5-7-4-3-2-5 2-2-5-1-4 7-5-7-9-5-6-4-12-7-12-5-6-1 5-9-5-3-9-3-1 2-5-5-1 0-13-6-10-8-1-4-4 1-4-2 6-3 2-7 3-2 3-13 9-8-3-6 2-2-4-16-6-9 4 0 0-6-5-7-6 1-6-2-10 2-4-4-7-1-4 3-3 7-4-4-8 0-3-3-8 2-7-1-11-4-3-1-10-7 5-11-2-11-2-4-15 6-20 4-4-5-6-2-6-6-5 2-8-1-7-3-5 1-1-6-5-2-11-3-2 2-8-5 3-3-2-7 0-8 3-5 3-9 0-9-3-3-2-9-2-1 2-14-6 1-7-5-8-3-3-8-8-1-3 2-6-7-14 5-4-2-5 6-1 4-10-2-3 2-3-3-4 0-7-3-1-4-5 1-5-4-5 7-3 6-8-1-10 4-3 5 0 4-5-2-5-7-11-2 6-8 3-10 14-16 10-7 10-20 8-10 5-6 2-8 0-12-1-8 4-3-4 0-2-3 5-1 5-4 3-6 2-7 2-12 4-10 11-14 6-13 20-23 11-8 5-8 11-12 8-6 6-2 14-4 12-2 25-13 4-1 3-7 4-8 8 1 9-7 3-4 11-3 8-5 18-7 13-5 15-3 10-3 17-4 22-7 15-6 7-6 4-1 9-7 20-5 2-3 3 0 12-10 9-1 1-4 6-1 15-8 6-2 1-2 9-4 7-1 10-4 6-1 3-2 14-2 6 1-1-11 1-5 4 2 1 6 4 2 6-1 5-3 1-3 6 2 9-3 5-3 18 8 18 3 4 1z"/></g><g class="cty g-pend" data-code="10018" tabindex="0" role="button" aria-label="新竹市，開票中"><path id="p10018" vector-effect="non-scaling-stroke" d="M5871 4188l-5-2-5-4 0-3-3 3-8 0-5 1-3-4-6 1-9-3 6-9-5-6 0-6-2-3-2-8-6-8-1-3 0-8-5 0-9 10-9 6-7 3-2-2-3 3-7-5-5 2-3-3-5 2-13-11 7-9 6-7 3-2 5-9 7-8 4-7 3-3 2-6 10-7-2-7-3 5-2-5-3-3-1-9-1 0-1-6 3-6 0-16-2-13 1-5 7-14 2-10 0-9 5-10 0-6 7-17 6-9 5-7 2-6 3-3 2 0 6-7 2-5-1-10 3-7-7-7-1-5 7 3 9-1 8-3 13 5 8 0 10 5 5 8 4 12 5 3 16 12 3 1 13 3 8 0 14 5 9 0 5-2 8 4 4 8 10 5 6 0 10 3 4 4 4 2 8 7 13 17 6 2 7 13 8 6-10 0 5 6-5 4 3 9 5 2 1 7-3 3 8 5-3 5 0 3 4 0-1 4 4 0-3 8 5 3-3 7 2 5 6 4 0 6-5 2-6 7-13 3-3-5-2-11-10-15-11-8-7-2-10-7-7-3-6-2-5 8-5-1-6 3 3 6 1 7 3 5-3-1-10 2-5 9-5 1-1-3-3 1-10-3-5 10 0 9-8 2-4 10-6 4-2-1 1 8-8 6-6-2-10-2-4 3-2 11-2 4-1 5-3 5 5 5-1 4-8-2 3 9-3 15 1 4-5 4z"/></g><g class="cty g-pend" data-code="10004" tabindex="0" role="button" aria-label="新竹縣，開票中"><path id="p10004" vector-effect="non-scaling-stroke" d="M6806 4454l3 9 9 14 6 15 0 3-6 3-3 4-7 2-5 8-1 8-7 4-6 9 2 7 7 10-5 18 4 7 0 6 1 4 5 4 0 2-7 10-12 2-3 2-2 7-3 6-6 1 1 5-4 9-8 2-12-1-2 17-2 6-2 3-11 5-4 5-3 6-7 9-10 2-6 3-6-1-3 1-6 6-2 8-3 7-8 5 0 11-12 7-1 4-7 6-4 7-4 11-4 8-1 6-4 8-7 9-7 2-5 6-5 3-7-1-9 0-6 1-3 3-14 2-3-1-15 3-11-1-3 5-11-3-9 0-1-6 1-10-2-5-1-4 6-8-1-4 2-5-3-5 1-5 3-6-9-5 0-13-10-2-8-4-5-6-4-3-1-12-3-6-7-4-1-3-8-5 0-8-2 0-6-2-4-9-10-4-10-9 3-5 2-2 2-7 3-3-3-3-9-5 0-9-2-3-5 1-8 7-4 0-2-3-8 1-5 2-5 6-5 4-7-1-11 5-7-6-10 1-7 6-8 2-2 3-10-2-5 0-15-7-8 1-10-9-1-4-16 12-15 0-4-4-4 0-4-4-6 4-6 0-8 4-9 12-7 1-6 5-5 1-4 4-7-1-8-3-10-7-3 0-10 5-8-1-6 2 0-11-3-6-5-1 3-6-2-7 0-9-4-9 1-5 10-7 11-4 2-3 0-7-1-4 4-8 0-7-8-6-5-12-7-3-7-5-7-5-2-2-8-4 1-6 6 2 3 5 9-9 6-4 3-10 1-10 4-6 2-12 7-8 1-7 7-5-1-12-2-12-10-5-2-5 1-7-1-6-3-4-12-4-4-7-4-3-3-5-2 0-12 8-5 6-3 0 0-4-4-3-13-19-5 0-2-5-5-1-7-5-8-2-8-7-1-3 2-5-1-3-5-1-9 2-8 0-9-7-4-1 2-7-2-6 6-5-2-8-8 2-3-2-8 3-7 0-3-5 1-2-3-3-6 0-2-2 0-10-3 4-4-2-3-6-5-1 0-6-6-8-5-1-2-3 2-6-2-3 0-8-6-6-4 1-2 2-7 0-5 2 5-6-4-4 3-3 0-4 7-6 4-6 3 0 1-6-4-9 3-2 5-1 1-4-4-4 3-2-4-5-4-2-3 4-4-1-4 3-5-4-3 2-6 8-5 1-4 5-4 1 1-5-5-3-2-8-4 0-5 3-1 4-6 1-11-7-2-4 1-5 5-4-1-4 3-15-3-9 8 2 1-4-5-5 3-5 1-5 2-4 2-11 4-3 10 2 6 2 8-6-1-8 2 1 6-4 4-10 8-2 0-9 5-10 10 3 3-1 1 3 5-1 5-9 10-2 3 1-3-5-1-7-3-6 6-3 5 1 5-8 6 2 7 3 10 7 7 2 11 8 10 15 2 11 3 5 13-3 6-7 5-2 0-6-6-4-2-5 3-7-5-3 3-8-4 0 1-4-4 0 0-3 3-5-8-5 3-3-1-7-5-2-3-9 5-4-5-6 10 0-8-6-7-13-6-2-13-17-8-7-4-2-4-4-10-3-6 0-10-5-4-8-8-4-5 2-9 0-14-5-8 0-13-3-3-1-16-12-5-3-4-12-5-8-10-5-8 0-13-5 4-2 2-9 6-1 5-4 12-12 7-11 2-5 5-9 2-11 8-15 2-11 11-13 2-3 11-29 4-13 6-15 25-25 11 2 5 7 5 2 0-4 3-5 10-4 8 1 3-6 5-7 5 4 5-1 1 4 7 3 4 0 3 3 3-2 10 2 1-4 5-6 4 2 14-5 6 7 3-2 8 1 3 8 8 3 7 5 6-1-2 14 2 1 2 9 3 3 0 9-3 9-3 5 0 8 2 7-3 3 8 5 2-2 11 3 5 2 1 6 5-1 7 3 8 1 5-2 6 6 6 2 4 5 20-4 15-6 2 4 2 11-5 11 10 7 3 1 11 4 7 1 8-2 3 3 8 0 4 4 3-7 4-3 7 1 4 4 10-2 6 2 6-1 5 7 0 6-4 0 6 9 4 16-2 2 3 6-9 8-3 13-3 2-2 7-6 3 4 2 4-1 1 4 10 8 13 6 1 0 5 5 1-2 9 3 5 3-5 9 6 1 12 5 12 7 6 4 9 5 5 7 4-7 5 1-2 2 2 5 4 3-5 7 3 6 6 0 4-5 7-3 4-3 4-1 5 2-1 7 2 2-1 7 3 3 1 8 7-4 6-4 13-3 7-1 6-3 5-6 4 4 4 8 0 5-2 2 3 8 5 2 1 3 14 3 3-2 3 8-1 5-4 3 0 3 3 7 10 2 2 3 4 0 6 4 1 7 4 0 8 9 14 1 7 4 9 2 3 8 9 2 6 0 5 11 7 7-5 10 1 9-8 8-3 11-4 10 1 5 4 2 7 7 3 1 0 5 4 9-2 15-6 10-3 10 1 5-4 7-2 6 3 4 6 2 6-2 12-8 10-1 3 4 7 2 7 4 6 5 12 16 7 11 2 20-2 7 3 1 4-6 3-1 2 6 7-2 6 3 4-3 0 6-1 10 2 3-2 6 1 1-3 7 2 8-1 12 7 5 3 8 1 9 6-1 5 3 6 2-6 19-1 5-2 0-6 7 1 8 3 3 0 6 5 4 2 5-2 6 8 9 9 5 2 7 8 3 12 6 9 6 8 0 6-2 2-3z"/></g><g class="cty g-pend" data-code="10002" tabindex="0" role="button" aria-label="宜蘭縣，開票中"><path id="p10002" vector-effect="non-scaling-stroke" d="M7932 3592l-8 3-7-2-8 6-12 2-8 5-2 4-4 2-6 2-5-2-9 5-7 5-5 2-6 12-1 5-4 5 1 6-8 9-4 0-6 2-6 5-1 2-5 2-3 7 1 8-2-1-9 1-1-2-7 0-3 4-8 4-3 5-2 13 1 3-1 6-3 4 0 9-6 9-6 4-3 6-3 1-3 6-5 2-1 3-12 7-4 8-7 8-13 6-5 4-1 8-5 4-12 19-6 15-1 2-17 39-5 18-2 0 1 6-3 8-3 16-6 29-5 40-1 17-1 26 1 29 1 13 4 25 5 18 5 14 6 14 8 15 4 3 8 2 0 6-5 9 0 6 1 21 1 0 0 11 1 9 0 13 1 4-1 19 3 20 4 17 7 25 14 37 7 14 7 11 14 15 8 3 7 0 3 6 6 2 6-2 2 5 6 0-3 5 5 2-2 2-12 1-11 5 11 13-11 14 4 7 4 3 5 0-6 4-3-2 0 3-4 1-3-2-4 4-2 11 3 5 1 12 0 12 0 12 2 3 2 9 2 4-3 8 0 6 2 10-2 4 0 3-5 3-1 4-3 1-14 1-9 7-11 3-3 1-9 1-6 3-4 8-2 10-2 12 1 13 3 6 10 2 5-1 1 4 5 2-1 5 1 17 4 2 8 1 7 0 5 5-6 6-8-5-14 4-5 4-4 0-6 3-10 11-4 2-3 5-16 6-8 7-1 7 4 6-10 12-1 8-2-3-9 14-6 4-9 8-3 4-7 14-9 26-6 17-1 12-3 12-1 11 0 10-3 34-7 13-2 11-6 9-3 6 0 5-9 19-4 13-1 11 1 8 3 9 2 12 0 9-3 4-5 1-9 0-13-2-8-5-14-10-7-4-9-2-10 1-14-6-9 1-18-3-16-5-8-4-10-7-8-2-8 3-4-3-1-9-3-3-3-1-11 6-5 2-5-6 1-7-2-1-7 1-6-9-5-4-2-8-3 0-3 3-3 0-2-3-3-1-4 2 0-7-7-10-5 4 0 3 4 4 1 12-3 0-5-5-5-4-3-5-4-2 0-6-6-8-5-1 0-6-8 1-1-4 2-3-1-3-12 4-7 5-2 5 1 4 5 0-4 5-1 4 3 3 9 6 0 10 5 0 3 3 2-2 6 2 2 5-1 3-8 1 0 5 3 4 0 11-7 3-6-4 3-7-1-5-9 3-5-13-5 2-3 9 0 8 4 1 0 4-6 3-5-5-3-1-8 2-2 5 0 6-7 2-5-4-2-5-5 0-3 4 2 7 4 4 1 2 5 5-1 6 7 5 1 6 4 6-3 7-5-8-4-3-8-4-6 0-10 5-3-4-6-2-4-2-8-1-5-3-5 0-3 3-5 1-6-3-6-7-7-1-5-7-3-12-11-6-4-5-8-3-8 4-10-3-4 0-5-3-6-1-5-6-7-3-7 4-6-1-4 2-7 0-4-5-7 1-6 4-4 3-3 1-12-7-2-4-7-4-4-5-6-1-7-7-7 1-5-3-16-6-7-5-14-13-5-2-7-18-1-4-7 1-3 2-4-10-6-11-8-1-9 0-8 4-4 0-8 5-6-1-7 0-10 5-8-1-4-4-3 0-5 4-4 0-6 6-5 0-3 2-2 9-14 7-7-3-8 0-8-9 0-4-5-11 5-8-1-5-4-2-4-7-11-3-8-6-6 2-5-1-12 0-3 1-8 5-3-5-7-6-2-6-9-1-4-6 0-6-2-7 3-5 2-8-1-6 2-6-1-7 2-13-2-6 2-3-1-5-5-5-5-7-5-4-6-1 4-8 1-6 4-8 4-11 4-7 7-6 1-4 12-7 0-11 8-5 3-7 2-8 6-6 3-1 6 1 6-3 10-2 7-9 3-6 4-5 11-5 2-3 2-6 2-17 12 1 8-2 4-9-1-5 6-1 3-6 2-7 3-2 12-2 7-10 0-2-5-4-1-4 0-6-4-7 5-18-7-10-2-7 6-9 7-4 1-8 5-8 7-2 3-4 6-3 0-3-6-15-9-14-3-9 11-16 7-3 1-7 11 5 4 0 9-4 7-7 5-18 4-2 2-8 4-6-1-6 2-5 9-18 9-5 1-6-1-7 7-6 6-12-4-3-3-5 0-8 3-8 9-5 2-8 9-11 3 1 17 2 6-3 15-2 4-1 6 1 4-3 11 5 9-5 4-6 13-4 4-6 9-4 6 3 18-1 6-4 0-7 4 2 9-2 7 0 1-4 0-8 3-1-1-8-1-4 6-5 5-8 8-1 6 1 8-6 4-6 3 1 11-4 8 2 6-5 4 8 5 0 5-10 1-15 3-1 8 3 8 1 6-7 7-5 7-4 1-4-8 0-1-2 3-5-2-5 3-9-1-4-6-6-1-3 6-3 3-4-3-5-4 0-5-4-2-7 1-4 3-4-1-4 6-9 6-6-2-3 4-8-6-14 0-5-3-3 1-5-3-6 14 0 8-4 5 0 8-10 8 1 7-1 7 3 10-6 1-3-2-11 2-4 1-5-2-6 5 1 4-2 14-1 4-3 6 1 5 2 2-1 4-9 2 2 4 0 5 4 15 1 9-8 8-6 0-2 10 8 6 0 4-2 4-5 4 1 7-1 1 3 5-3-1-4 2-5-5-6 3-4 6-2 9-8 0-9 3 1 2-3 5 3 4-2 11-12 11-3 2-5 6-3 7-9 6-2 4-6 7-4 4-2 12 2 7 6 8-1 4-5 5 1 6-1 0-2 8-1 7 0 2-4-1-4 2-2 4 2 3-5 4-3-1-3 3-2 4 2 9 0-1-3 5-7 11-10 4 0-2-8-4-3 0-7 0-11-1-5 3-2 6-1-1-3 9-3 6-6-2-7 7-1 3-3 4 1 11-1 3-2 9-3 2-6 14 8 3 0 5-4 11-2 8 1 12-11 3-6 8-6 3-4 1-5 13-9 4-5 0-4-10-6-5-16-8-4-5-6-2-9 3-4 3-7-1-6 3-3 1-3 3-2 1-4 3-2 4 1 3-3 4 4 3-1 1-4 9-4 4 0 5 3 3 0 13 3 2-1 7-1 13-5 4-1 8 3 2-4 5-1 8-4 2 0 5-5 2-5 5-6 5 2 3-5 3 0 3 2 2-4 3-4 8-2 5 1 4-2 3 3 9-4 3 1 4-3 6 1 2-5 6 0 2-4 4 1 5-5 2-3 8 3 5-4 10 0 5 2 4-2 6 1z"/><path id="i10002" class="isl" vector-effect="non-scaling-stroke" d="M7930 3906l0 4-4 6-3 2-9-4-9 1-9 3-9-3-7-5-3-8-8-7 3-3 11 6 4-1 8-14 4-2 13 3 4 3 4 5 1 9 5 4z"/></g><g class="cty g-pend" data-code="10005" tabindex="0" role="button" aria-label="苗栗縣，開票中"><path id="p10005" vector-effect="non-scaling-stroke" d="M5871 4188l2 4 11 7 6-1 1-4 5-3 4 0 2 8 5 3-1 5 4-1 4-5 5-1 6-8 3-2 5 4 4-3 4 1 3-4 4 2 4 5-3 2 4 4-1 4-5 1-3 2 4 9-1 6-3 0-4 6-7 6 0 4-3 3 4 4-5 6 5-2 7 0 2-2 4-1 6 6 0 8 2 3-2 6 2 3 5 1 6 8 0 6 5 1 3 6 4 2 3-4 0 10 2 2 6 0 3 3-1 2 3 5 7 0 8-3 3 2 8-2 2 8-6 5 2 6-2 7 4 1 9 7 8 0 9-2 5 1 1 3-2 5 1 3 8 7 8 2 7 5 5 1 2 5 5 0 13 19 4 3 0 4 3 0 5-6 12-8 2 0 3 5 4 3 4 7 12 4 3 4 1 6-1 7 2 5 10 5 2 12 1 12-7 5-1 7-7 8-2 12-4 6-1 10-3 10-6 4-9 9-3-5-6-2-1 6 8 4 2 2 7 5 7 5 7 3 5 12 8 6 0 7-4 8 1 4 0 7-2 3-11 4-10 7-1 5 4 9 0 9 2 7-3 6 5 1 3 6 0 11 6-2 8 1 10-5 3 0 10 7 8 3 7 1 4-4 5-1 6-5 7-1 9-12 8-4 6 0 6-4 4 4 4 0 4 4 15 0 16-12 1 4 10 9 8-1 15 7 5 0 10 2 2-3 8-2 7-6 10-1 7 6 11-5 7 1 5-4 5-6 5-2 8-1 2 3 4 0 8-7 5-1 2 3 0 9 9 5 3 3-3 3-2 7-2 2-3 5 10 9 10 4 4 9 6 2 2 0 0 8 8 5 1 3 7 4 3 6 1 12 4 3 5 6 8 4 10 2 0 13 9 5-3 6-1 5 3 5-2 5 1 4-6 8 1 4 2 5-1 10 1 6-5 8-15 1-2 2-7 3-3 5-1 8-3 6 3 6-1 4 1 8-7 5-4 4 0 3-7 6 1 8-1 6-6 8 1 7-1 1-12 2-15 4-4 3-5-5 0-5-5-9-1-8 0-8-7-5-13 1-7 2 0 10-3 4-5 10-4 4-2 5-13 1-4 5-6 2-8 9-2 1-1 6 2 3-3 5-7 6 0 6-2 2-7-1-10 0-8 4-9 1-3 2-11-1-6-3-6 7-3 7-6 3-5 6-2 10-4 6-5 0-7 12-1 6 0 6-6 1-7 4-13-5-10 9-2 5-8 2-7 4-1 4-5 3-4 0-7 2-6-8-4-6-5 3-12 0 2 7-5 6-4 3-8-1-8 5-6 2-2 3-4 2-1 6-5 8-1 11-5 6-9 2-14-2-5-2-5-4-3-7-4-5-7-5-12-5-4-5-5-14-2-5-6-9-7-6-7-11-8-2-6 6-13 0-11-4-3-6-4-3-4 3-6 0-9 2-13 0-7-3-5 0-6-9-6 1-3-1-12 0-3-2-5 2-5-2-4-4-5-2-5 1-13 8-14 3-5 3-1 7 6 19 2 13-1 6 1 15 3 5 1 6-5 6-6 4-11 11-5 0-9 4-5 0-21-4-13-1-7-1-13 0-19 5-17 8-15 1-23-2-9-2-3-4-13-10-12-15-4-8-15-12-5-5-4-2-19-1-8-3-9-2-7 0-13-4-6-1-6-4-8-6-8-1-8-6-2 0-10-8-3-4-7-5-10-9-4-4-14-12-8-9-15-6-10-3-21-4 0-9-8 0-7-3-3-3-10-5-3-3-4-14-3-1-6-8-16-12 2-6-3-2-9-8-5-1-2-6-3-3 0-4-8-10-13-10-10-3-7-3 0-3-5-2-1-6-3 0-2-5 0-10-6-6-1-8-15-11-7-11-4-3-9-2 7-6 5-6 7-4 2-5 5-6 6-4 3-5 0-7 9-6 9-11 8-7 12-14 7-15 7 1 0-7 1-5-1-2 5-8-1-7 2-7 6-5 6-16 6-11 4-3 10-12 7-20 1-14 5-5 5-22 5-5-1-4 2-1 1-5 2-6 6-7 2-16 5-8-1-6 8-16 4-18 7-9 5-13 9-7 7-9 12-6 5-6 5-9 6-7 16-2 6-9 7-4 3-8 4-1 2-10 0-8 1-4 7-3 5-13 6-2 5-5 0-4 5-3 10-12 11-8 13-6 29-4 13-5 23-3 4 0 9-9 5-7 5-6 11-8 5-4 11-14 11-11 9-7 3-9 2-13 6-20 7-12 11-14 8-11 13 11 5-2 3 3 5-2 7 5 3-3 2 2 7-3 9-6 9-10 5 0 0 8 1 3 6 8 2 8 2 3 0 6 5 6-6 9 9 3 6-1 3 4 5-1 8 0 3-3 0 3 5 4z"/></g><g class="cty g-kmt" data-code="66000" tabindex="0" role="button" aria-label="臺中市，候選人乙當選"><path id="p66000" vector-effect="non-scaling-stroke" d="M6904 4953l-7 4-2 7-12 2-4 10-3 4-5 11 4 11-6 9-4 19 2 6 2 2 1 7-2 4-5 2-6 6-5 7-6 13-2 1-8-1-2-2-11 4-12-2-1 1-1 12-3 14-6 5-6 7-1 4-6 1-5-4-3 6-8 8-6 4-4 5 3 7 3 18 4 9 0 8 1 4-2 7-13 5-11-2-6 3-7 1-4 11-8 7-4 1-5-3-7 2 1 8 0 8-2 5-6 6-1 3-11 14-8-6-18-10-11-4-5 2-5 0-6-5-5-2-10 1-6 2-5 0-2-6-7 2 0 5-7 2-3 6-2 1-4-2-10 2-6-4-6 3-5-5-2-8-5 0-7-2-3-3-1-4-5-3 1-3-2-7-8 0-9 3-4 2-8 12-8 21-4 7-2 6-7 2-5 4-4-3-11-5 0-6-5 1 1 2-14-7-4-3-3 2-4 7-7 2-9 6-6-1-7 1-10-3-5 5-4 6 0 2-7 5-7 0-5 5-4 0-4-3-2-4-8-10-12-11-2 3-4 4-1 5-6 9-9 2-10 4-7-1-4 10-6 8-1 8-2 4-10 7-8-1-8 2-3-2-9 2-7-3-11 1-8-2-8 1-2 3-5 0-1 2-10 7-4 4-1 5-6 7 1 4-5 5-4 5-4 5-8 1-4 5-9 7-4 0-5 5-7 5-4 6-6-1-4 1-3 8-11 9-4-7-6-4-7 1-2 2-10 2-4 10-1 5-4 5-5-2 0-9-2-3-1-6-3-4-1 2-8 1-7-2-9 7-10 12-2 5-5 7 0 8-5 8-2 8-6 3-1 10-3 2-5 1-8 3 0 10-6 4-8-3-3 2-9 2-8 3-1-4-7-3-14 1-6-1-6-7-11-7-5-3-3 7-8 4-11 11-8 6-6 7-10 1-8 4-6 5-11 0-3-3-7-1-5-3 0-4-4-4-4-1-16-4-8 2-2 3 2 5 6 2 0 10-5 9 0 8-3 5-6 2-10 16-3-1-2 6-3 2-2-13 2-5 0-4 4-9 3-3-5-15 0-4-3-1-7-12-4-4-6-1-7 4-11 0-6-4-2-9-4-6-7 0-3 1-8-1-4 3-2 5-7 4-4 4-4 9-1 7 1 5-8 12 2 2 2 6-5 7-3 1 0 9-1 8 2 7-1 3 0 12 2 12-12 2-6 2-3 2-5 0-4-3-5 9-6-1-4 5-1 8-3 3-3 6 0 6-4 7-5 10-4 5 1 6-3 2-4 5-5 5 0 4 3 2-3 4-4-1-4 2-5 6-1 8-3 1-6 5 0 2-8 2-5 8-4 3-2 11-6 1-10 6-9 0-4 6-6 2-4-1-5 4-2 4-3 1-5-7-21-14-3-1-25-2-25 10-23-4-18-8-15-7-27-21-3-3-5-2-11-11-7 5-6-5-5-7-3-1-1 5 3 8 0 4-2 2-6-4-3 1-7-4-2-5-4 0-11 4-7-2-2-3 1-5 7-10-1-4-3-3 0-11-3-3-2-11 4-8 0-26-3-6-9-3-9-25 0-13-5-20 0-7-7 1-2-2-10 0-6-5-10 1-12-3-7-3-4-4-14-1-8 3-14-3-15-6-9-1-8-2-9-6-9-16-13-4-3-3-10-16-8-11 0-3 2-4 2-7 1-6-3-8-7-14-4-10-3-5-13-33-6-15-7-8-96-36 8-9 9-6-8-3 1-3 8 4 7 1 5-13 2-4 8-4 6-17 3-3 17-44 2-4-3-2 8-22 10 5 20-44 6-18 6-6 6-8 4-17 5-10 1-4 4-7 4-4 8-3 5-3 1-6 11-17 2-8 3-2 10 1 9-14 11-14 6-4 1-10 5-10-2 0 3-6 13-12-5 3 7-8 2-11 4-7 4-4 17-23 6-6 3-5 4-10 8-10 10-9 1-6 6-11 10-9 5-8 1-6 8-6 1-7 9-6 5-12 9 2 4 3 7 11 15 11 1 8 6 6 0 10 2 5 3 0 1 6 5 2 0 3 7 3 10 3 13 10 8 10 0 4 3 3 2 6 5 1 9 8 3 2-2 6 16 12 6 8 3 1 4 14 3 3 10 5 3 3 7 3 8 0 0 9 21 4 10 3 15 6 8 9 14 12 4 4 10 9 7 5 3 4 10 8 2 0 8 6 8 1 8 6 6 4 6 1 13 4 7 0 9 2 8 3 19 1 4 2 5 5 15 12 4 8 12 15 13 10 3 4 9 2 23 2 15-1 17-8 19-5 13 0 7 1 13 1 21 4 5 0 9-4 5 0 11-11 6-4 5-6-1-6-3-5-1-15 1-6-2-13-6-19 1-7 5-3 14-3 13-8 5-1 5 2 4 4 5 2 5-2 3 2 12 0 3 1 6-1 6 9 5 0 7 3 13 0 9-2 6 0 4-3 4 3 3 6 11 4 13 0 6-6 8 2 7 11 7 6 6 9 2 5 5 14 4 5 12 5 7 5 4 5 3 7 5 4 5 2 14 2 9-2 5-6 1-11 5-8 1-6 4-2 2-3 6-2 8-5 8 1 4-3 5-6-2-7 12 0 5-3 4 6 6 8 7-2 4 0 5-3 1-4 7-4 8-2 2-5 10-9 13 5 7-4 6-1 0-6 1-6 7-12 5 0 4-6 2-10 5-6 6-3 3-7 6-7 6 3 11 1 3-2 9-1 8-4 10 0 7 1 2-2 0-6 7-6 3-5-2-3 1-6 2-1 8-9 6-2 4-5 13-1 2-5 4-4 5-10 3-4 0-10 7-2 13-1 7 5 0 8 1 8 5 9 0 5 5 5 4-3 15-4 12-2 1-1-1-7 6-8 1-6-1-8 7-6 0-3 4-4 7-5-1-8 1-4-3-6 3-6 1-8 3-5 7-3 2-2 15-1 5-8 9 0 11 3 3-5 11 1 15-3 3 1 14-2 3-3 6-1 9 0 7 1 5-3 5-6 7-2 7-9 6 1 5 4 5 7 5 5 1 5-2 3 2 6-2 13 1 7-2 6 1 6-2 8-3 5 2 7 0 6 4 6 9 1 2 6 7 6 3 5 8-5 3-1 12 0 5 1 6-2 8 6 11 3 4 7 4 2 1 5-5 8 5 11 0 4 8 9 8 0 7 3 14-7 2-9 3-2 5 0 6-6 4 0 5-4 3 0 4 4 8 1 10-5 7 0 6 1 8-5 4 0 8-4 9 0 8 1 6 11 4 10 3-2 7-1 1 4z"/></g><g class="cty g-pend" data-code="10007" tabindex="0" role="button" aria-label="彰化縣，開票中"><path id="p10007" vector-effect="non-scaling-stroke" d="M5357 5722l-4 7-7 1-5-1 6 7-2 4-10-3-3-1-9-2-21 0-3 1-6-3-10 3-2 5-5-4 0 7-4 13 1 6 2 4 12 7 4 2 9 10 0 5-6 16-1 6 1 3 0 18-6 2-3 9-12 12-2 1-3-4-8-5-4 1 6 3 4 0 2 5-4-3-5 3-4 0 3 5 11 13-2 2-5-4-2 4 5 4 3 4 6 5 0 3-3-2-5 2-2 6-3 1-4 5 9 4 2 4 7 4-1 6-3 1 2 5-3-2 0 5-3 6 2 5-3-3 1 4-3 4 2 2-5 2 6 2 0 3-3-1-1 9 7 3-3 2 3 4-1 4-3 0 2 4-3 7 3 0-4 5-5 0 0 10-5 6-1 6-3 5 2 4-2 7-2 2 0 5-5-2-3 10 1 4 6 3-1 4 4 4 6 2-4 4 0 8-6 5-1 2-6-2 0 2 7 2 1 3-4 0 0 4-6 1 2 2-1 4-6 1 1 4 4 1 0-4 5-2 2 1-2 4 6-1 4-5 1 3 4 6-6 0 9 2-3 2 5 1-4 3 9 0 0 1-9 4-8 0-4 4 3 2 6-5 6-2 0 3 5-4 8 0 3 3-4 1 3 5-4 2 7 1-4 2 5 3-6-2 0 3 4 0-2 2 5 5-1 3 5 2 4 3 9 4 3 7 10 0 6-4 8-2 5 1-1-3 6 0 5-5 9-3 4 2 5 6-2 5 1 13 1 5 7 0 2 1 1 9-8-1-10 4-11 8-6 6-8 4-9 2-31 11-4 0-11-2-4-5-6-2-11 0-19-3-5 0-40 0-12-2-8-4-9-3-9-2-26-4-5-3-14-4-10 0-11 1-11-1-12 5-15-2-21 0-7-2-18-6-31-7-15-5-35-15-12-3-10-8-6-3-9-10-13-7-16 0-13 7-16 1-55-4-25-1-21 12-15 2-39 0-33 5-17 0-61-18-45-13-12-7-10-9-16-14-17-20-14-20 8-9 3-8 0-4 2-4 7-6 10-11 6-4 4-1 13-1 10-8 6-5 5-11-4-9 1-10 5-7 5-9 0-10 6-4 2-5 4-9 4-6 10-3 3 0 7-3 1-3 4-19-2-11 2-9 5-7 4-3 9-2 8-11 25-20 3-7 0-17 0-8 7-6 9-21 2-4 10-9 15-14 8-5 4-9 3-26 1-3 5-8 2-10 0-16 2-17-6-11 5-1 7-15 2-4 7-6 10-2 8-4 4-5 5-10 4-1 11-1 13-4 13-9 2-9 2-2 1-9-9 0-4 4 11-15 23-34 1-8 4-8 3-11-2-4 0-8 4-7 10-2 4-7 2-11 5-8-2-4-7-3 1-3 4-2 9-2 0-14 2-4 0-8 5-9 5-4 5-1 5-8-3-5 0-3 10-3 6-5 13 3 7-7 3 0 6-12 7-8 5-9 1-4 6-8 96 36 7 8 6 15 13 33 3 5 4 10 7 14 3 8-1 6-2 7-2 4 0 3 8 11 10 16 3 3 13 4 9 16 9 6 8 2 9 1 15 6 14 3 8-3 14 1 4 4 7 3 12 3 10-1 6 5 10 0 2 2 7-1 0 7 5 20 0 13 9 25 9 3 3 6 0 26-4 8 2 11 3 3 0 11 3 3 1 4-7 10-1 5 2 3 7 2 11-4 4 0 2 5 7 4 3-1 6 4 2-2 0-4-3-8 1-5 3 1 5 7 6 5 7-5 11 11 5 2 3 3z"/></g><g class="cty g-pend" data-code="10008" tabindex="0" role="button" aria-label="南投縣，開票中"><path id="p10008" vector-effect="non-scaling-stroke" d="M6686 5262l1 4 6 12 3 9 3 4-2 7 2 16-1 1-8-1-8 3-5-1-5 0-11 3-3 3-6 1-4 3-2 6-5 1-6 7-3 6-10 5-7 6-4 1-13 0-5 4-10 2-7-1-4 1 3 9 2 15-1 10 1 8-1 2-6 0-6-2-3 1 1 7 4 1 3 4-1 14-4 13-1 9 7 2 22 5 11 11 4 6 9 5 7 5 9 8 7 0 12 2 6 2-1 7-2 3-1 9-3 9-5 5-7 9 0 6 4 9 5 5-1 3-9 11-8 5-5 5-8 5-4 8-7 7-3 6-4 5-7-5-4 5-6 2-2 3-6 2-4 7-3 1-1 7 4 5 2 8 0 12-6 12-1 5-4 3-3 9-4 5 0 9-9 16-3 7-2 8-3 5-5 6-3 7-8 12 3 25 7 12 16 0 4 8 1 8 5 5-3 6-3 6 2 10-3 10-5 7 5 5-2 5 1 3-4 9 4 4-1 5 3 5-3 7 6 11-3 10 2 5-1 4 0 6 1 4-2 6-9 2-8-2-11 11 3 5 0 2 8 2-3 4 2 5-1 6 4 5 2 13-6 0-4 4-1 4 5 15-8 1-7 0-2 6-8 3 0 10-2 5-3 1-1 9-2 6 0 4-9 7-2 9-7 8-1 9-4 10 1 5-2 14 4 4-2 1-7 9 0 11-5 4-3 1-2 3-4 0 1 7-3 2-2 14 2 4 0 6 1 5 7 2 0 4-4 7-10 6-8 2-2 4-11 6-3 3-5-1-4 2-1 4-4 2 4 11 4 3-4 7 9 4 4 8 11 2 6 8 7 2 9-1 6 4 1 6-6 1-2 7 0 9-1 8 2 7 0 6 7 1 1 5 5 7 7 0-3 10 3 6-1 7 1 6 3 5 0 7-3 13 3 3-3 8 0 17-4 4-3 6-3 3-4 6 0 4 4 6 3 7 0 13-1 7-7 7-1 6-2 4 1 5-2 7-5 6-5 11-1 2-1 14 2 5-1 8-1 7-6 10-2 5-5 5-3 16-3 4-3 12-10 4-4 5-12-1-11-9-7 5-3 7-12 4-2 4-5 2 0 6-2 10-4 1-3-3-9-1-3-5-6-1-12 0-5 3-5-3-4 1-3 12 0 16 3 5 10 4 4 0 0 4-5 8-2 10-7-1-3-1-4 7-4 1-4 6 3 3 7 15-5 14 0 7-3 5 4 5 4 6-1 5-7-1-17 14-6 12-6 0-3-5-5-2-4 3-12-9-7-1-3 3-12 2-6 0-6 1-5-5-7-1-9 9-2 6-8 1-10-1-9-4-7-2-13-2 1 8-6 14 0 5-6 5-2 9-10 7-4 0-4 6 2 8-1 5-7 2-3 9-7 4-4 6-8 8 0 1 7 4 4 4 10 5 3 7 6 2 3 2 7 2-2 4-5 2-5 8 1 4-4 6-10 0-5 4-6 2-7 4-8 2 1 3-5 4-6 1-4 5-9 1-7 6-6 2-3-6-7-7 0-11 5-5 3-1 3-6-3-6-6-6-6-10-3-2-6 0-9 1-32-10-3-3-6-2-5 1-12 0-2-4-6-2-3 2-7 0-8 2-7 2-5 3-8 1-5-2-7-4-7-7-7 0-4 4-3 1-9-5-12-5-6-1-6 2-6-3-7 1-12-1-15 1-15 0-5 3-1 3-6 12-9-1-7-1-9-5-4-4-6-2-11 1-4-1-6 1-9 2-4-2-8-1-7 5-13-8-2-6-3-7-6-6-2-11-1-3 0-11-5-9 2-11-2-11 0-4-6-8-2-11 3-4-5-4-14-24-5-4-1-13 2-8 5-8 0-4 6-1 3-4-4-5 10-10 3-5-1-4 3-8 1-6-5-8 2-9 2-5 4-7 2 0 2-5-4-1-7-7-3-7-3-5 3-5-2-3-7-3-5 2-3 3-10 0-3 4-5 0-6-2-6 1-8-8-7-1-8 1-8-2-5-5-7-4-7 0-1-5-5-4-5-5-13-1-5-3-5-2-5 2-6 6-2-3-9 1-6 5-6 1-10-3 1-8-1-8-8-4-3-4-3 0-7-10-4-7-5 0-6 4 2 11 0 4-7 4-7 1-4 3-6 0-10-6-11-1-11 5-1 12-4 4-11 0-6 1-12 2-9-3-7 1-5-7-10-5-4-1 3-12-1-6 2-9-4-3-5 1-8-3-2 6-7 6-4 2-6 10-4 2-5-6-2-12-3-6 3-4-2-7 5-8 1-3 7-6-1-9 3-2-3-4 0-4 2-3 5-14 3-3 1-8 2-3 6-4 1-9 4-2-2-10 4-8 1-4-3-3 0-6-3-1 0-6 2-3-2-9-4-9 4-8-5-4-3-1-5-11 3-5-1-3 1-7 0-4 2-6-4-10 2-9 3 1 5-14 4 3 9-2 7 4 3-1-3-11 0-18 3-12-1-4-14-39-2-3-10-15-4-9 4 0 31-11 9-2 8-4 6-6 11-8 10-4 8 1-1-9-2-1-7 0-1-5-1-13 2-5-5-6-4-2-9 3-5 5-6 0 1 3-5-1-8 2-6 4-10 0-3-7-9-4-4-3-5-2 1-3-5-5 2-2-4 0 0-3 6 2-5-3 4-2-7-1 4-2-3-5 4-1-3-3-8 0-5 4 0-3-6 2-6 5-3-2 4-4 8 0 9-4 0-1-9 0 4-3-5-1 3-2-9-2 6 0-4-6-1-3-4 5-6 1 2-4-2-1-5 2 0 4-4-1-1-4 6-1 1-4-2-2 6-1 0-4 4 0-1-3-7-2 0-2 6 2 1-2 6-5 0-8 4-4-6-2-4-4 1-4-6-3-1-4 3-10 5 2 0-5 2-2 2-7-2-4 3-5 1-6 5-6 0-10 5 0 4-5-3 0 3-7-2-4 3 0 1-4-3-4 3-2-7-3 1-9 3 1 0-3-6-2 5-2-2-2 3-4-1-4 3 3-2-5 3-6 0-5 3 2-2-5 3-1 1-6-7-4-2-4-9-4 4-5 3-1 2-6 5-2 3 2 0-3-6-5-3-4-5-4 2-4 5 4 2-2-11-13-3-5 4 0 5-3 4 3-2-5-4 0-6-3 4-1 8 5 3 4 2-1 12-12 3-9 6-2 0-18-1-3 1-6 6-16 0-5-9-10-4-2-12-7-2-4-1-6 4-13 0-7 5 4 2-5 10-3 6 3 3-1 21 0 9 2 3 1 10 3 2-4-6-7 5 1 7-1 4-7 15 7 18 8 23 4 25-10 25 2 3 1 21 14 5 7 3-1 2-4 5-4 4 1 6-2 4-6 9 0 10-6 6-1 2-11 4-3 5-8 8-2 0-2 6-5 3-1 1-8 5-6 4-2 4 1 3-4-3-2 0-4 5-5 4-5 3-2-1-6 4-5 5-10 4-7 0-6 3-6 3-3 1-8 4-5 6 1 5-9 4 3 5 0 3-2 6-2 12-2-2-12 0-12 1-3-2-7 1-8 0-9 3-1 5-7-2-6-2-2 8-12-1-5 1-7 4-9 4-4 7-4 2-5 4-3 8 1 3-1 7 0 4 6 2 9 6 4 11 0 7-4 6 1 4 4 7 12 3 1 0 4 5 15-3 3-4 9 0 4-2 5 2 13 3-2 2-6 3 1 10-16 6-2 3-5 0-8 5-9 0-10-6-2-2-5 2-3 8-2 16 4 4 1 4 4 0 4 5 3 7 1 3 3 11 0 6-5 8-4 10-1 6-7 8-6 11-11 8-4 3-7 5 3 11 7 6 7 6 1 14-1 7 3 1 4 8-3 9-2 3-2 8 3 6-4 0-10 8-3 5-1 3-2 1-10 6-3 2-8 5-8 0-8 5-7 2-5 10-12 9-7 7 2 8-1 1-2 3 4 1 6 2 3 0 9 5 2 4-5 1-5 4-10 10-2 2-2 7-1 6 4 4 7 11-9 3-8 4-1 6 1 4-6 7-5 5-5 4 0 9-7 4-5 8-1 4-5 4-5 5-5-1-4 6-7 1-5 4-4 10-7 1-2 5 0 2-3 8-1 8 2 11-1 7 3 9-2 3 2 8-2 8 1 10-7 2-4 1-8 6-8 4-10 7 1 10-4 9-2 6-9 1-5 4-4 2-3 12 11 8 10 2 4 4 3 4 0 5-5 7 0 7-5 0-2 4-6 5-5 10 3 7-1 6 1 9-6 7-2 4-7 3-2 4 3 14 7-1-2 5-1 0 6 11 5 4 3 5-4 7-2 2-6 4-7 8-21 8-12 4-2 9-3 8 0 2 7-1 3 5 3 1 4 3 3 7 2 5 0 2 8 5 5 6-3 6 4 10-2 4 2 2-1 3-6 7-2 0-5 7-2 2 6 5 0 6-2 10-1 5 2 6 5 5 0 5-2 11 4 18 10z"/></g><g class="cty g-pend" data-code="10015" tabindex="0" role="button" aria-label="花蓮縣，開票中"><path id="p10015" vector-effect="non-scaling-stroke" d="M7548 5061l-2 15-7 13-13 12-19 20-5 7-6 11-2 10-2 9-4 22-1 2-11 10-6 7-10 10-3 5-13 5-5-1-5 2-8 9-8 15-6 14-9 6-10 5-10 8-3 1-8 8-5 2-11 7-8 3-4 3-5 12-7 6-5 8-3 11-4 11-3 11 0 16 1 12 3 9 7 15 1 26 1 7-2 13-3 6-9 11-6 11-8 9-12 8-4 3-19 11-10 10-6 8-7 12-2 1-4 8 1 4-4 10-3 10-1 17 2 21 5 18 3 10 10 23 10 17 12 14 14 10 5 12 4 11-1 4-5 7-4 9-3 5 1-5-5 9-9 24 0 11-13 22-4-9-4-5-5-4-6 4-6 6-7 15-9 14-2 16 2 8 4 2-2 2 2 9 4 21-4 7-2 14-4 9-2 8-2 12 0 14 1 11-3 26-3 16-1 12-4 15-1 9-3 14-2 5-1 6-3 8-2 8-4 9-5 7-4 13-3 5-5 21-4 8-10 11-5 15-3 14-1 14-1 6-1 13 0 13 1 23 1 8 2 0-1 13-4 9-1 6-3 6-1 5-5 9-3 3-2 7-4 6-2 8-2 2-5 8-6 1-3 4-1 5-3 8-1 11 1 19 1 6 6 4-6 13 0 5-3 15-4 8-2 10 1 7-2 7 0 9-9 9 1 4 5 6-2 7-6 2-5 7-3 6-5 25-5 17 0 18-2 20 0 13 1 3-2 9 1 1-8 34 1 7 0 4-7 11-2 10-7 7-3 8-7 10-4 9-4 17-2 5-1 9-2 6 2 6-5 5-2 14-2 6 0 6 3 7 1 6-2 7 1 6 2 0 1 11 2 20 5-2 6 2 2 9-3 4-1 8-5 5-3 17-5 3-3 4-2 8-2 10-4 8-1 9-3 11-4 27-4-1-4 2-2-2-8 4-5 5-4 2-6-2-4-8-5-6-3-7-6 0-8 2-9 1-1-5-10-1-3 2-5-1-3-3-6 0-4-1-3 6-1 5-3 3-3 7-3 3-2-2-10 1-1 3-8 5-7 7 0 3-5 4-7 8 1 5-3 3 0 4-6 12-5 7-1 6-4 7-14 21-4 1-3 8 7 21 0 3 3 11-1 4 3 4 5 2 3-1 6 3 10 7 10 1-2 11-7 6-3 6-6 4-8 4-7 13-7 8-4 10-1 6-2 5 1 7-5 4-11 0-4 2 0 10-4 9 0 3-8 4-4 7-3 2-5 8 0 3-3 8 1 10-1 5 2 3-1 12 2 10 1 6-2 8 1 3-8 1-5 5-1 8-1 3-7 3-2 5-6 3-3 7-4 2-1 8 5 4-1 6-6 8 0 5-6 8-3 3-2 4 3 6 1 7 5 4-7 8-4-1-3 6-7 1-2 8 3 9-4 3-3 9 0 7-3 11-4 3-5 12 1 7-3 4 1 2-3 3-1 8-8-3-3-3-2 2-6 0-3 2 0 8-4 6 0 6-7 2-2 9 8 11 2 9 5 2 4 4-5 7 0 6-2 3 1 4-4 8-3 4 3 12-1 5 3 13-2 15-5 7-7 7-15-1-10 0-7 4-4-2-2 2-6-2-5 2-8 5-6 1-3 6-4-1-5 7-8 5-4 2-3-7-3-2-10-5 6-11 0-7-1-4-6-3 0-5-9-7-3-11-17-11-2 4-7 2-5 1-8-1-2-4-6-7-3-7-4-5-12-2-10-4-11-4-5-1-3-9 3-12 1-2-4-11-7-5-3-6 0-4-4-5-9-13 1-6-1-11-2-7 1-5-8-9-5-13-2-9-3-3-10-2-10-8-8-4-12 7-1-1-8 1-8 2-10 13-3 2-9 2-9-2-11-5-2-3-2-11-6-6-5-10-2-10-4-7-10-4-10 1-8-1-13 3-7-1-2-5-11-4-5-3-5-8-3-1-12 0-6 2-5-2-3 3-3-4 1-7-9-15-6-5-2-5 0-7-2-7-6-4-2-5-2-8-3-6-1-5-1-8-2-2 0-8 3-6-4-9-1-6-4-3-2-6-11-5-5-5-11-3-8-10-10 3-4 2-7 3 6-7 1-7 5-1 3 1 11-7 5-2 5-3 1-7 2-5-2-12 4-6 0-4-7-6-7-1-5-3-3-6-3-3-7-1-3-5-3-2-6-1-5-5-4-14 0-4-5-5-3 0-2 5-5 4-10 1-5-7 0-6-15-10-11 0-7-2-8-3-1-10 1-6 2-10 6-2 6-10 11-11 1-3 11-2 4-3 0-4-8-5-5-6 4-7 7-4 3 0 5 4 8-4 9-10 7 2 7-5 5-2-4-5 2-8-1-7-4-4 5-4 4-8-1-6-6-3-7-1 0-6-3-4-9-4-5 1-2-5 5-5 6-2 7-6 9-1 4-5 6-1 5-4-1-3 8-2 7-4 6-2 5-4 10 0 4-6-1-4 5-8 5-2 2-4-7-2-3-2-6-2-3-7-10-5-4-4-7-4 0-1 8-8 4-6 7-4 3-9 7-2 1-5-2-8 4-6 4 0 10-7 2-9 6-5 0-5 6-14-1-8 13 2 7 2 9 4 10 1 8-1 2-6 9-9 7 1 5 5 6-1 6 0 12-2 3-3 7 1 12 9 4-3 5 2 3 5 6 0 6-12 17-14 7 1 1-5-4-6-4-5 3-5 0-7 5-14-7-15-3-3 4-6 4-1 4-7 3 1 7 1 2-10 5-8 0-4-4 0-10-4-3-5 0-16 3-12 4-1 5 3 5-3 12 0 6 1 3 5 9 1 3 3 4-1 2-10 0-6 5-2 2-4 12-4 3-7 7-5 11 9 12 1 4-5 10-4 3-12 3-4 3-16 5-5 2-5 6-10 1-7 1-8-2-5 1-14 1-2 5-11 5-6 2-7-1-5 2-4 1-6 7-7 1-7 0-13-3-7-4-6 0-4 4-6 3-3 3-6 4-4 0-17 3-8-3-3 3-13 0-7-3-5-1-6 1-7-3-6 3-10-7 0-5-7-1-5-7-1 0-6-2-7 1-8 0-9 2-7 6-1-1-6-6-4-9 1-7-2-6-8-11-2-4-8-9-4 4-7-4-3-4-11 4-2 1-4 4-2 5 1 3-3 11-6 2-4 8-2 10-6 4-7 0-4-7-2-1-5 0-6-2-4 2-14 3-2-1-7 4 0 2-3 3-1 5-4 0-11 7-9 2-1-4-4 2-14-1-5 4-10 1-9 7-8 2-9 9-7 0-4 2-6 1-9 3-1 2-5 0-10 8-3 2-6 7 0 8-1-5-15 1-4 4-4 6 0-2-13-4-5 1-6-2-5 3-4-8-2 0-2-3-5 11-11 8 2 9-2 2-6-1-4 0-6 1-4-2-5 3-10-6-11 3-7-3-5 1-5-4-4 4-9-1-3 2-5-5-5 5-7 3-10-2-10 3-6 3-6-5-5-1-8-4-8-16 0-7-12-3-25 8-12 3-7 5-6 3-5 2-8 3-7 9-16 0-9 4-5 3-9 4-3 1-5 6-12 0-12-2-8-4-5 1-7 3-1 4-7 6-2 2-3 6-2 4-5 7 5 4-5 3-6 7-7 4-8 8-5 5-5 8-5 9-11 1-3-5-5-4-9 0-6 7-9 5-5 3-9 1-9 2-3 1-7-6-2-12-2-7 0-9-8-7-5-9-5-4-6-11-11-22-5-7-2 1-9 4-13 1-14-3-4-4-1-1-7 3-1 6 2 6 0 1-2-1-8 1-10-2-15-3-9 4-1 7 1 10-2 5-4 13 0 4-1 7-6 10-5 3-6 6-7 5-1 2-6 4-3 6-1 3-3 11-3 5 0 5 1 8-3 8 1 1-1-2-16 2-7-3-4-3-9-6-12-1-4 11-14 1-3 6-6 2-5 0-8-1-8 7-2 5 3 4-1 8-7 4-11 7-1 6-3 11 2 13-5 2-7-1-4 0-8-4-9-3-18-3-7 4-5 6-4 8-8 3-6 5 4 6-1 1-4 6-7 6-5 3-14 1-12 1-1 12 2 11-4 2 2 8 1 2-1 6-13 5-7 6-6 5-2 2-4-1-7-2-2-2-6 4-19 6-9-4-11 5-11 3-4 4-10 12-2 2-7 7-4 5 2 14 13 7 5 16 6 5 3 7-1 7 7 6 1 4 5 7 4 2 4 12 7 3-1 4-3 6-4 7-1 4 5 7 0 4-2 6 1 7-4 7 3 5 6 6 1 5 3 4 0 10 3 8-4 8 3 4 5 11 6 3 12 5 7 7 1 6 7 6 3 5-1 3-3 5 0 5 3 8 1 4 2 6 2 3 4 10-5 6 0 8 4 4 3 5 8 3-7-4-6-1-6-7-5 1-6-5-5-1-2-4-4-2-7 3-4 5 0 2 5 5 4 7-2 0-6 2-5 8-2 3 1 5 5 6-3 0-4-4-1 0-8 3-9 5-2 5 13 9-3 1 5-3 7 6 4 7-3 0-11-3-4 0-5 8-1 1-3-2-5-6-2-2 2-3-3-5 0 0-10-9-6-3-3 1-4 4-5-5 0-1-4 2-5 7-5 12-4 1 3-2 3 1 4 8-1 0 6 5 1 6 8 0 6 4 2 3 5 5 4 5 5 3 0-1-12-4-4 0-3 5-4 7 10 0 7 4-2 3 1 2 3 3 0 3-3 3 0 2 8 5 4 6 9 7-1 2 1-1 7 5 6 5-2 11-6 3 1 3 3 1 9 4 3 8-3 8 2 10 7 8 4 16 5 18 3 9-1 14 6 10-1 9 2 7 4 14 10 8 5 13 2 9 0 5-1z"/></g><g class="cty g-dpp" data-code="10009" tabindex="0" role="button" aria-label="雲林縣，候選人甲當選"><path id="p10009" vector-effect="non-scaling-stroke" d="M5281 6221l4 9 10 15 2 3 14 39 1 4-3 12 0 18 3 11-3 1-7-4-9 2-4-3-5 14-3-1-2 9 4 10-2 6 0 4-1 7 1 3-3 5 5 11 3 1 5 4-4 8 4 9 2 9-2 3 0 6 3 1 0 6 3 3-1 4-4 8 2 10-4 2-1 9-6 4-2 3-1 8-3 3-5 14-2 3 0 4 3 4-3 2 1 9-7 6-1 3-5 8 2 7-3 4 3 6 2 12 5 6 4-2 6-10 4-2 7-6 2-6 8 3 5-1 4 3-2 9 1 6-3 12 4 1 10 5 5 7 7-1 9 3 12-2 6-1 11 0 4-4 1-12 11-5 11 1 10 6 6 0 4-3 7-1 7-4 0-4-2-11 6-4 5 0 4 7 7 10 3 0 3 4 8 4 1 8-1 8-9 8-4 8 7 5 1 5 8 4-5 8 4 6 1 6 3 7-1 5-3 8 0 4 6 3 2 4 0 7-5-1-11 2-7-4-13 6-4-4-7-1-2 1-4-2-1-8-9 1-11-3-10 0-17 4-9 7-10 2-5-6-2-7-3-4-5 1-6 0-10 3-5 8-5 1-9 0-3-5-6-4-5 3-1-7 5-3 6-6 1-7-4-1-1-4 3-5 1-5-7-2-5 2-6 0-19 6-11-2-4 2 0 4-4 3-4 5-7-2-11 6-7-4-8 2-5 0-5-3-5-1-3 0-9-1-6 7-2-1-7 2-10-3-5-6-6-4-7 1-4-4-5-1-2 2-8-1-3-8-9-2-7 0-10-1-13-1-8-5-1-3-6-3-3-6-10-10-7-4-4-4-5-9-5-7-5-2-1-6-4-2-2-7 0-5 2-4-3-8-5-3-8 0-13 4-8-6-4 4 2 6-4 2-7-4-8-1-2 6-2 1-5-3-9 2-7 0-4 2-7 0-4 3-9 3-6-1 5-3 1-4-4-1-3 2-8 0-5-2-3 4-3 6-6-1-4 1-1 4 3 1 0 4-6-2-4 3-1 4-3 3-7-2-2 2-7-2-1-4-1-8-2-1-6 5-2 3-4-4-9-4-6 0 0-16-4-4-7 4 3 12-20 7 0 3-12 3-5 8-3 7 1 3-4 2-2 4-18 1-6 4-3 0-1 10-2 3-7 7-3 6-7 4-8 2-18 2-10 0-7-2-3 3 0 20-1 7-3 4-9 7-4 2-9 2-17-6-9 1-2 3 0 4 7 9 1 6-8 4-18-4-10 1-6 6-1 9 4 14-9 7-8 4-5 0-7 5-4 12-2 8-3 8-6 1-5-2-6-5-4-6-7-17-4-5-4 0-10 1-9 3-5 6 0 7 4 13 3 20 3 16-1 5-7 8-8 5-16 5-16 3-14-6-12-6-7-2-3-3-8 1 1-2-6-1-7 0-10 6-6-1-12 2-8-5-9-6-12-6-4 3-13 0-11-5-7-2-6-3 1-7-2-6 10-12-3-3-1-8-6-4-8-12-2-10-2-1 2-11-1-9-4-6 0-2 6 0 2-4 2-8 1-9-4 0-2-3 1-24 1-17 6-4 0-9-5 0-1-8-2 9-2-4 2-20-1-10-2-3-5 0-1-3-6 0 1-8 7-2 1-9 2-16-3-9-2 0-3 4-4 15-3 7-5 5-7 1-3-1-10-10-8-14 1-7 6-7 8-5 4-4 3-5 4-14 6-12 4-7 5-14 8-37 4-7 9-10 2-4 0-5-2-6 3-7-1-3 1-7 4-3 7-11 7-5 0-9 20-49 2-30 4-7-9-22-3-8 0-16-2 0-10-10 6-5 10-17 21-19 0-3-11-2 1-3 9 2 4-3 2-4 6-2 2-12 7-1 12-5 3-2 5-9 9-7 12-17 3-6 2-11-4-4-4-2 0-4 1-4 12-2 7-3 2-5 8-12 2-17 14 20 17 20 16 14 10 9 12 7 45 13 61 18 17 0 33-5 39 0 15-2 21-12 25 1 55 4 16-1 13-7 16 0 13 7 9 10 6 3 10 8 12 3 35 15 15 5 31 7 18 6 7 2 21 0 15 2 12-5 11 1 11-1 10 0 14 4 5 3 26 4 9 2 9 3 8 4 12 2 40 0 5 0 19 3 11 0 6 2 4 5z"/><path id="i10009" class="isl" vector-effect="non-scaling-stroke" d="M4175 6797l1 3 6 1 5 5 3 5 0 8 2 3-5 0-4-3-2 1-7-2-4 2-6-1 1 7-6-1-6 4-3 9 5 1-4 3-6-1-3-3-5 2-3 4 14 4-2 3-5 0-1-3-7 0-2 5 8-1 0 3 4 2-5 3 1 4-3 3-2-4-3 0 0-6-3 3-4 0 2 2-11 1-4-2-3 2 4 3 14 2 3 5-2 4 1 5-7 4 4 1-8 4-6-2-1 2-4-2 2-3 5 0 4-3-5-4 2-1-5-7-4 5 2 1 0 4-2-1-1 5-5 5-3-2 2 8-4-5 0 2-9 1-1-5 7-10 0-7 2-5 5-5 5-1-8-2 0-4-5 4-1 4 2 2-2 3 1 5-2 7-8 9 1 3-6 0-1-9-3-1 2 7-3 5-4-5-6 0-6 4 1 4-6 3 3 4-6 4-1 3 6 3-3 2-1 5 2 3 0 7-5 1-4 3-9-1-3-2 2-2-1-3 4-12 6-2-7-1-7 3 0 2-6 4-4 9 5 5 5 10 4 3 1 5 2 5 6 7 2 2-3 4 3 0 2 6 2 2-3 6-3-1-3-11-3 3-4-4 3-5-3-2-4-7-8-8-7-19-8-5-7-6 3-6 4-10 2-2 5-1 12-11 5-3 0-3 3 0 4-5 11-6 5-5 2 1 5-6 5-1 16-10 5-5 6-4 13-9 4-1 1-4 5-3 6-2 5-5 4-2 3-5 5 0 5-6 4-1 5-5 5-3 6-2 4-7 0 4zM4205 6757l6 9 5 5-2 2-3-2-3 5 10-1 0 3 3 0 2 3-4 0 2 3-6 1-8-4-7 0-4 7 2 5-3 5-3 0-2-6-3-3-1-4-3 0-1-8 2-1 1-5 4-3 4-8 0-4 3 0 1-3zM4268 6742l1 8 4 0-1 6-3 3-1 6-3 2-3 5-7 2 9 5-9 0-4-2 3-4-2-4 4-3-3-2 5-3-4-2 0-5 3-3-4 0 0-3 6 1 1-5-2-1 6-3 2 3zM4262 6715l1 5-3 5 1 3-2 5 0-3-3-1-1-9-4-3-6 5 0 9-3 0-3 3-1 4-5-1-3 3 1 5-5-1-7 3 0 5-3 7-5-3 0-4-4-3 3-9 5-6 7-7 2-4 5 0 2-2 9 1 6-1-2-3 3-3 2-7 4-2 2 1 7-1zM4258 6689l-3-4 6-7 0-3 4-2-1 5 1 6-1 6-4 4z"/></g><g class="cty g-pend" data-code="10020" tabindex="0" role="button" aria-label="嘉義市，開票中"><path id="p10020" vector-effect="non-scaling-stroke" d="M4896 6805l3 3 8 2 6 0 2 5-2 4 3 7 4 4 4 8 1 5 3 3 7 2 5-4 2-7 5-7 3 0 6 4 7 1 3-2 3 9 0 5-2 2 1 5 4 6 7 4 8 0 1 2 12-1 4 10 3 2-3 10 4-1-1 5 3 0 8 9 0 6-3 0-2 4-3 1-2 5-4 1-5 4 2 5 0 5-6 6-1 5-4 6-11 1-10-9-6-4-1-4-8-4-3 0-14 1-8 7 0 6-7 0-4 3-7 8-5 12-6 3-6 0-11 7-4 2-7-10 5-2-8-13-3 2-6-5-1-19-7 1-4-2-18 2-4-4 0-3-3-2-10 2-13 1-12 2 0-8 5-4 3-6 3-1-2-6 1-10-4-4-5-1-2-4 1-14 1-4-9-1-1-6 0-10 4-4 7-1 10 5 2-7 6-4 3 0 7-6-2 8 1 9 7-1 3-7 6-7 17-2 3-5 3-1 10 1 1-6-2-4 2-2 1-7 2 0 5 5-1 2 4 4 3 1 3-3-3-11 8 2 1-2z"/></g><g class="cty g-pend" data-code="10010" tabindex="0" role="button" aria-label="嘉義縣，開票中"><path id="p10010" vector-effect="non-scaling-stroke" d="M5462 6603l10 3 6-1 6-5 9-1 2 3 6-6 5-2 5 2 5 3 13 1 5 5 5 4 1 5 7 0 7 4 5 5 8 2 8-1 7 1 8 8 6-1 6 2 5 0 3-4 10 0 3-3 5-2 7 3 2 3-3 5 3 5 3 7 7 7 4 1-2 5-2 0-4 7-2 5-2 9 5 8-1 6-3 8 1 4-3 5-10 10 4 5-3 4-6 1 0 4-5 8-2 8 1 13 5 4 14 24 5 4-3 4 2 11 6 8 0 4 2 11-2 11 5 9 0 11 1 3 2 11 6 6 3 7 2 6 13 8 7-5 8 1 4 2 9-2 6-1 4 1 11-1 6 2 4 4 9 5 7 1 9 1 6-12 1-3 5-3 15 0 15-1 12 1 7-1 6 3 6-2 6 1 12 5 9 5 3-1 4-4 7 0 7 7 7 4 5 2 8-1 5-3 7-2-3 5-11 6-12 3-8 0-8-1-4 5 1 6-8 3-5 1 0 3-4-4-10-4-11 1-2 2-5-2-8 4-6 8-6-2-4 1 0 3-3 3-4 0-4 11-4 1-2-3-3 10-7 15-4 1-2-3-4 6-6 3-7-2 0 3-4 4-4 0-4 8-7 0-3 5-4-2-5 2-3-2-2 6-6-2-9 5-2 2 1 15-4 6-5 4-2 9-8 10-3 3 0 2 5 2 0 3-8 3-3 8-3 0 1 7-3-1-4 1-3 8 1 3-1 9-2 5-5 3-2 5-3-1-5 3-10-2-6 5-6-1-3 3-4-5-3-1-3 3 2 5-5 5-2 4 0 5-4 0-3 3-3 6-5-1-4 1 1 6-7 3 0 7-2 7-4 1-5 8-9-1-3-2-4 1-3 3-10-5-7 5-9-5-5-1-1 3 2 5-3 6 3 2 0 3-4 6-7 3-2 3 3 4-2 4-4 2-1 4-4 4-12 1-3 2-1 6-3 3-4 1-8 5-5 6 1 12-9-3-11-3-8 1-9-2-2 3-8 6-5 5-3 10-1 8 0 6 2 4-8 11-12 0-7-2-6-3-10-2-7-3-2 2-3-5-5-2-4 3-3-5-3 0-2-4-4 2-6-1-1-3-5 0-1-2-3 1-4 7-7 2-6-5-4-9-7 3-3 8 3 5-3 6 2 2 2 10-4 8 2 5-5 4 1 6-4 2-1 4 4 5 3 13 0 8 7 9 7 12-1 2 1 12 4 6 1 5-4 15 8 9-4 1-7-4-2-3-6 4-3 0-7-5-11-2-5-2-6 0-6 5-13 4-3 4-8-1-3 3-4 0-3-4-4-3-7 0-10-6-2-7 0-7-5-9-3-1-2 8-3 5 0 5-2 3-5 13-3 2-6 7-5 2-3 9-7-6-7-1-11-6-3 1-5 7-7 1-6-2-5-6-5-2-3-5-14-9-3 0-8-3-8-1-2-5-3-1-5 3-3-1-5-8-8-9 11-6 7-7 4-6 5-15-6-7-2-9-4-4-1-5-7-6-4-6 3-5-2-12 3-4 1-7-2-7 5-8 3-1 1-8-5-14-1-14-2-7 3-3 7-3 8-7 1-7 4-2 4-5 2-5 6-3-6-12-7-7-4 0-2-3-7-3-5 2-3-5-4 0-1-2-4-1-6-4-11 0-5 2-5-4-1-3 0-6-2-4 3-9 1-1 5 6 6-3 3-4 0-8-2-2-2-8-3-1-5-5-3-1 0-3-5-2-2 4-8-2-3-2-3 0-6-6-3 3-4-4-2 4-6 3-2-4 2-15 3-4 18-9 3 1 4-3 2-6-4-3 1-4-7-8-6-1-8 6-3 0 0 3-3 0-3 4-4 0-2 4-4-7-4-1 1-6-6-9-7-3-4-3-5 0-6-3-2-5-4 0-7-5-6 0-1-3-15-6-6-5-6 0-3 2-5 0 0 2-5 2-1 6-2 3-3-2-3 2-8 0-3-2-3 8-2 0-3-10-3-5-5-1-7 2-5-7-2 3-5 3-16 7-21 6-10 3-43 1-12 3-8 0-6 2-7 5 0 3-11 14-6 7-3 3-8 2-1-3-14 6-4-6 1-1-4-4-6 0-8 6-1 6 1 17-6 1-10-3-7 2-13 0-7 9-8 9-3 11 0 7 4 10 0 8-9 5-6 1-4-1-1-4-4-5-7-3-4 0-6 3-10 17 6-1 8 0-1 9-17 17-7 5-12 4-5 4-17 0-5 8-2 7-6 8-7 15-1 6-3 8-10 15-17 10-1-2-7 3-8-2-7-3-19-15-6-2-5 9 1 4 6 7-1 4-10 0-11-3-6-6-4-10 1-2-6-10-10-9-11-4-7 1-3-1-2-6-9 0-3-3 0-11-6-6-18-12-8-4-29-23 2-6-1-1 2-9 5-9 2-7 10-19 3-11 3-4 2-12-1-19 12 0 4-1 17-1 5-6 3 0 6 8 2 0 1 11 4-3-2-8-7-7 8 5 3-4-8-5 10 2 6-10-3-2-1-7-2-9-1-9-12 4 0 11-4-1-1 2-4-16 0-16-3-4 7-7-4-3 0-7 4-2 8-7 0-3-4 0-4 5-6 0 1-3-7-2 1-11 3-6-2-3 4-2 3-7 9-13 2-1-9-2 3-11-3-3-3 3-7 2-14 8 2-3-2-4-7 4 2 5-2 2-4-9 2-5 9-8 11-4 2-6 3-6-4-4-2-7 2-4 8-6 2-8 3-5 5-3 1-4 3 0 1-8-3-8 6-1 19 2 4 2 0-5-22-3-1-3-37 11-12 4-12 0-6-1-8-10-2-5-1-43 1-5 4-5 5-2 6 1 31 6 0-2 7 0 0-5 6 3 7 2 11 5 13 0 4-3 12 6 9 6 8 5 12-2 6 1 10-6 7 0 6 1-1 2 8-1 3 3 7 2 12 6 14 6 16-3 16-5 8-5 7-8 1-5-3-16-3-20-4-13 0-7 5-6 9-3 10-1 4 0 4 5 7 17 4 6 6 5 5 2 6-1 3-8 2-8 4-12 7-5 5 0 8-4 9-7-4-14 1-9 6-6 10-1 18 4 8-4-1-6-7-9 0-4 2-3 9-1 17 6 9-2 4-2 9-7 3-4 1-7 0-20 3-3 7 2 10 0 18-2 8-2 7-4 3-6 7-7 2-3 1-10 3 0 6-4 18-1 2-4 4-2-1-3 3-7 5-8 12-3 0-3 20-7-3-12 7-4 4 4 0 16 6 0 9 4 4 4 2-3 6-5 2 1 1 8 1 4 7 2 2-2 7 2 3-3 1-4 4-3 6 2 0-4-3-1 1-4 4-1 6 1 3-6 3-4 5 2 8 0 3-2 4 1-1 4-5 3 6 1 9-3 4-3 7 0 4-2 7 0 9-2 5 3 2-1 2-6 8 1 7 4 4-2-2-6 4-4 8 6 13-4 8 0 5 3 3 8-2 4 0 5 2 7 4 2 1 6 5 2 5 7 5 9 4 4 7 4 10 10 3 6 6 3 1 3 8 5 13 1 10 1 7 0 9 2 3 8 8 1 2-2 5 1 4 4 7-1 6 4 5 6 10 3 7-2 2 1 6-7 9 1 3 0 5 1 5 3 5 0 8-2 7 4 11-6 7 2 4-5 4-3 0-4 4-2 11 2 19-6 6 0 5-2 7 2-1 5-3 5 1 4 4 1-1 7-6 6-5 3 1 7 5-3 6 4 3 5 9 0 5-1 5-8 10-3 6 0 5-1 3 4 2 7 5 6 10-2 9-7 17-4 10 0 11 3 9-1 1 8 4 2 2-1 7 1 4 4 13-6 7 4 11-2 5 1 0-7-2-4-6-3 0-4 3-8 1-5-3-7-1-6-4-6 5-8-8-4-1-5-7-5 4-8zM4896 6805l3 3 8 2 6 0 2 5-2 4 3 7 4 4 4 8 1 5 3 3 7 2 5-4 2-7 5-7 3 0 6 4 7 1 3-2 3 9 0 5-2 2 1 5 4 6 7 4 8 0 1 2 12-1 4 10 3 2-3 10 4-1-1 5 3 0 8 9 0 6-3 0-2 4-3 1-2 5-4 1-5 4 2 5 0 5-6 6-1 5-4 6-11 1-10-9-6-4-1-4-8-4-3 0-14 1-8 7 0 6-7 0-4 3-7 8-5 12-6 3-6 0-11 7-4 2-7-10 5-2-8-13-3 2-6-5-1-19-7 1-4-2-18 2-4-4 0-3-3-2-10 2-13 1-12 2 0-8 5-4 3-6 3-1-2-6 1-10-4-4-5-1-2-4 1-14 1-4-9-1-1-6 0-10 4-4 7-1 10 5 2-7 6-4 3 0 7-6-2 8 1 9 7-1 3-7 6-7 17-2 3-5 3-1 10 1 1-6-2-4 2-2 1-7 2 0 5 5-1 2 4 4 3 1 3-3-3-11 8 2 1-2z"/><path id="i10010" class="isl" vector-effect="non-scaling-stroke" d="M4303 7086l-3 0-5-20-7-9-6-19 1-2 6 19 11 11 5 15zM4271 7014l0-3 3 5zM4274 6987l-3-4 3 3zM4283 6896l1 1-2-1zM4296 6892l1 0-1 2z"/></g><g class="cty g-pend" data-code="10016" tabindex="0" role="button" aria-label="澎湖縣，開票中"><path id="p10016" class="isl" vector-effect="non-scaling-stroke" d="M2893 7453l3 3-3 5-5 6-1 13-3 3 3 5-1 10-13-4-7 6 0 3-6 2-2 8 5 5-2 10-3-4-11-7-4 0 0-10-6 1 5-8-2-3 1-6-4-5-4-1-2-6-2 0-4-6-2 0-4-10 4 0 3 5 4-5-1-2 10 0 8-4 8 0 4-2 13-1 8-2zM2997 7430l-3-2 2-1zM3042 7423l-2 2-1-3zM3040 7388l0 1-1 0zM3038 7387l1 1-2 0zM3029 7387l-1-2 5 0zM3028 7383l1 1-1 0zM3037 7385l-1-3 3-1zM3006 7373l-2 0 1-3zM3044 7359l0 4-5 3-3 6-3 2 0 5-6-2-3 1 0-3 4-6 0-6 9-7zM3019 7340l3 5 0 7-12-2-2-3-2-6 6-2 3 2zM3022 7342l2-1 1 1zM3016 7340l0-1 1 1zM3008 7332l0 1-5 0zM3003 7332l-1 0 2 0zM3000 7309l1 0 0 1zM3005 7301l-3 3 0-3zM3002 7301l-1 0 0-1zM2683 7263l1-1 1 2zM2675 7234l-1 4 3 4-3 2-3-2-1-9 2-2zM2651 7229l-4 0 1-2zM2646 7228l-1-1 1 0zM2646 7229l-4 1-5-3 2-6zM2929 7178l2-3 1 2zM2939 7166l-3 4 0-6zM2926 7161l-6 1 3-3zM3035 7157l1 0 0 1zM2960 7152l4 5-3 0-3-5zM3051 7117l3 4-5 0-3-4zM2990 7069l0 5 3 0 3 6-1 3 7 4 2-5 4-1 0-5 3-2 1 5 3 1 1 3-2 13 0 6 3-1 1 8-1 5 7 2-7 8 2 3 3-2 6 0 1-8 4 3 0 3-3 4 2 1 1 5-9 5-5-2-4 4 2 13 2 5 9 6-2 2-3-2-8-1-5-3-6 0-5 3-5-1-9 1-4 2-8-6 7-8 0-2 4-6 5-4-2-12 3-5-3-5-3 0 4-6-4-2 2-10 4-3 2-6-6-4 0-6-7-5 5-6zM2975 7111l0-1 1-1zM3031 7102l-2 3-5-3 4-4zM3028 7071l-3 2 0-2zM2643 7039l7 6 0 3 8-1 3 5-3 4-3 0 0 5-7 4-4-1-5 3-10-3 0-8 5-2 0-4 3-2 1-10zM3043 6813l1 9-5 4-10-2 3-5 0-6 3 4 4 1zM2962 6641l0-2 2 0zM3048 6524l1-2 1 3zM3048 6518l0-1 1 1zM3051 6508l0 1-1 0zM3093 7422l2-3 1 3zM3102 7407l-1 0 1-1zM3101 7406l-2-1 2-1zM3103 7403l-1 0 1-1zM3080 7171l-2 3-2-2zM3083 7169l0 1-1 0zM3055 7160l0 1-1-1zM3077 7147l-2 3-4-3 2-4zM3075 7119l7 3 2 7-1 5 4 1 1 4-5 0-3-2-5 1-8-3-11 5-4 4 1 5-3 7-2-1 1-5-8-3 2-2-6-4 2-6 3 0 3 2 6-1 4-5-1-7 2-2 5 3 1-5 4 3 6-3 1-4zM3062 7119l1 0 0 1zM3059 7114l-6-4 0-2zM3087 6859l-7 1-6 3-16 11-12 1-6 2-5 0-6 4-7 1-4-6 2-6-1-5 6-1 3 9 5 1 8-7 0-5 10-1 8-7 7-1 4 1 5-5 9 6 3 1zM3067 6760l-7-5 6-2zM3084 6730l-1-5 4 3zM3080 6669l1 0-1 1zM3062 6577l-3 0 0-4zM3093 6540l1-1-1 3zM3079 6538l-1 0 0-1zM3059 6535l-1 1 0-1zM3076 6536l1-2 2 2zM3076 6532l2-1 0 1zM3062 6531l1-2 2 1zM3087 6525l0-1 1 2zM3087 6522l1 0-1 1zM3088 6518l2 0-1 3zM3090 6518l1-1 0 1zM3053 6512l-1 1 0-1zM3053 6510l0 1-1-1zM3097 6510l-2-1 1-1zM3055 6503l-5 2 0-4zM3098 6489l-1-2 1 1zM3103 6358l0 1-1-1zM3110 7176l1-2 1 2zM3104 7142l1-3 1 3zM3105 7137l0-2 2 0zM3194 6657l-2-1 4-1zM3175 6468l6 2 6 0 3-1 1-3 5-2 4 2-1 4 8 6-2 8 1 2 7 3 4 1-4 5 1 7 5 5 6 5-1 5-4 5-3-2-10-1-5 4-1 5 2 6-8 3 0 3 3 8 6 5 6-1 5-5 4 3 2-1-2 7-6 0-8 9 4 7 3 9 2-3 3 2 10 4 0 8 1 3-3 4-5 5 5 8 1 10 5-3 3 6 8-3 1-2-2-8 8-3 1 2 8 1 4-1 0 5-6 2-3 5-3 3 5 7 1 3-7 6 1 9-2 5 5 4-4 10 9 0 2-4 4-2-1-4 6-13-3-10 2-2 6-3 1-3 5 0 3 6-3 5-5 5 8 6-4 2 1 3 9-6-5-2 4-12 5-3 0-8 7-7 2-7-7 2-1-2 6-3 2-3 8 3 5 5 0 5-6 8 2 3 11 6-3 6 1 4 5 2 11-1 3-5-3-4 4-3-4-4 2-1-2-4 3-2 5 1-1 5 4 8 5 3 9 19 4 3-3 4 2 8-2 0 0 7-2 1 1 4 5 6 0 10 8 7 15 4-4 4 4 9-2-1-7 1-3 0-7 4-6-2-3 3-5 2-5-2-2-6 1-3 4-1-2-6-6-2-2-2-5 1-4-2 1 8-2-1-1-6-5 2-17-1-18 1-10 5-3 4-3 7-7 4-1 5 2 4-7 2-1-3-6 1-2 3-5 2-7 7-1-1 1 9-4 1-3-3-4 0-6 4-3 7-4 4-1 4-7 3-2 8 4 7 10-1-3 9-9 5 5 7 0 8-3 3-3-3-7-1-2-3-7-2 2-5-5 4-12-1-3 5-2-1-5 4-3-1-10 1-5 4-7-3-2-4 0-6 5-7 1-3-3-9-5-5-6-3-8-1-3 4-9 2-7-11 2-4-2-4-4-2-5 0-1-5 3-4-1-4-4-1-7 5-6-4 1-9 2-5-1-6 5 5 5-7-1-1 3-9 2 1-2 3 3 5 5 2-2 2 0 10-2 5 2 0 7 4 5 2-1 6 2 3-6 5 1 5 7 6 6-2-3-2 2-5 7 2 3-4-3-5 2-2 2 7 3 1 8-2 0 6-2 1 3 4 3 0-4 2-1 4 3 2 2 8 4 0 0-3 5-2 4-4-1-4 3-1-3-6 1-6 4-2 5 2 3 5 6-4 3 0 5 9 5 1 1-4 6-6-5-4-4-9 4-5 5 2 2-3 5-1-5-7-1-4 4-2 1-3-6-6-7 2-5-1-3-6-6 3-3-1-2 5-3 0-2 2-5-2-17 7-1-6-7 1 1-5-2-1-1 3-3-1-2 3-6-2 1-3 5-1-1-3-5 1-1-5 2-6 2 3 7 3 1 5 5 0 6-4 4-1-5-6 1-3 6 5 2-4-6-4 1-1-5-5 2-1 7 7 5-6-10-10-5 6-3-3-8 8-14 1-3 4-4-6 8-3 1-5-1-7 1-2 11-5 3-3-2-7-9-13 0-3 4-1 6 1 5 0 10 1 5-3-1-3 4-1 7-5 1-8 3-1 0 6-2 2 4 3 2 6-7 7 1 9 5 2 4 0 3-5 0 4-7 6 0 5 4 4 5-1 2-5 6 0 0 9 7 3-1-3 2-9 3-5 0-11-2-2 4-4 12-1-1-4 3-5-1-7 1-2-5-5-4-6 0-5 5-4 1-6 13 0-1-4-5-7-5 1-3-2-2 4-2-6-4-2-8-6 0-4 4 1 6-1 6-6-2-11-5 2-4 8-3-6-7-3-7 1-4 4-1-6 5-7-2-3 8-5 3-6-4-15-10-6-1-7-3 0-2-5-7-6-1-3 3-3-6-5 4-1-3-2 1-4-7-4-13 1-8 5-2 7-6 12-10-10-8-4-13 16-11 16-3 6 5-1-1 6-5 2-1 6-2 2-3-2-9 3-6 6-11 0-2-2-1 4-1-5-5 3-4 3-1 4 4 6 3 8-3 1 1 5 3 5-1 10-2-1 6 14 0 7-7 16-9 0-5 5 4 9 4 6-3 6-6 1 0 5 3 5-2 4 5 2-2 3-2 6 5 5 5 3-6 6-8-1-11-4-5 0-10-4-8 2-4 3-2 6-3 1-13-3-7 0 1 2-7 7-4 0-5 2-8-3 0-7 3-4 4-1 13-7 5-9 1-4 5-1 3 5 4 2 4 5 6 1 3-2 11-9 1 1 8-11-1-2 3-16-2-3-7-7-3-2-13-3-4 1 0-3 8-2 0-2-4-2 0-3 4-6 0 3 6-1 3 2-2 5 1 4 4 2 1-3 3 1 4-2 1-3-5-8 2-10 3-1 3-7 4-1 1-5-9-8 0 2-6-4-3-5 5-6 4-2 1-4-4-5-1-7 3-8 3-3 5 0 1-6 7-19 2-3 3 3 3-5 5 2 3 3 0-4-4-3-1-4-6 1-1-5 2-3 7 3 3-2 9-1 1 10-7 7-2 0-1 8 4 4 9-2-1 3 10 6 9 2 11-4 16-24 11-14-4-4-2-7 3-2 1-5 4-6 3 0 9-5 8 0 7-2 2 2 9-5 7-3 2-4 8-2 5 2zM3177 6638l-2-1 3-2zM3129 6612l3 3-3 3zM3197 6609l1 0-1 1zM3168 6601l1 0-2 2zM3155 6599l1 2-1 2zM3140 6589l-6-1-3-4 4-1 1-5 2 0 4 9zM3119 6562l-1 0-1-1zM3107 6559l1-1 1 1zM3175 6540l0-2 1 0zM3164 6521l-2-1 2 0zM3109 6476l1 0 0 1zM3109 6475l0 1-1-1zM3113 6467l-3-2-1-5 5 1zM3116 6434l-3-3 3-2zM3193 6429l1 1-3 0zM3114 6429l1-4 1 2zM3191 6422l0 4-4-5zM3120 6422l-1 1 0-1zM3130 6419l0 3-3-3zM3187 6419l-1-2 1 0zM3178 6386l-2 1 1-2zM3104 6386l-1 0 0-1zM3135 6381l-1 4-3-3zM3110 6362l4 1 2 9-2 3 0 4 3 6-7 4 0-2-4-4 6-5-2-4 2-4-5-4-5 1 0-3zM3131 6370l1 2-1-1zM3196 6288l1 3-3-3zM3213 6246l3 3-1 4-10 8 0 1-4 12-2 7-5-1 0-7 4-8 1-9 5 2-1-4 5-3 2-4zM3172 6262l-2 2-1-3zM3205 6262l1-1 0 1zM3175 6260l0-2 1 1zM3156 6236l-5 1 3-6zM3204 6220l-3 2-3-1 3-5zM3207 6220l-2 1-1-2zM3207 6220l-2-1 0-1zM3205 6216l-3 2 1-4zM3196 6207l0-2 1 1zM3197 6204l-2 0 3-1zM3195 6198l0 2-2-2zM3199 6199l2 3-6-4-3 0 0-4zM3187 6170l-1-2 5-1 2 2zM3243 7383l-1 6-3 3 5 5-1 4-4-1-6 3-5-3-4-1-7-7 0-5 6-2 3-2 5-1zM3228 6612l1-2 0 1zM3216 6544l1 1-1 0zM3207 6395l1-1 0 1zM3224 6384l-5 3 3-3zM3217 6386l-1 0 3 0zM3216 6385l-2-1 4-6 2 6zM3219 6379l1 0 1 0zM3226 6377l-1 1 1-3zM3224 6375l0-1 1 0zM3223 6373l0 2-1-2zM3217 6339l2-1-1 1zM3220 6340l0-3 0 1zM3225 6337l0-3 2 2zM3222 6335l2-2 1 1zM3221 6326l-1 1-2 1zM3223 6291l5 4 5 1 8 4 5 4 1 8-1 3-5-1-3 5-5-2-5 3-3-3-4 5 8 2 1 3-10-4-7 5-3 9-3 2-1 14-3-2 1-9-4-10-3-3-4-1-1-2 3-9 8-3 5-5 2-9 3-6 4 0 0-2-6 2 1-2 5-2-1-2 3-2 4-4 2 5zM3216 6283l-2 2 0-2zM3215 6282l1-2 1 1zM3213 6279l0-1 1 0zM3215 6267l-2-1 1-1zM3213 6264l-2 1-2-3zM3223 6243l1 0 0-1zM3224 6242l-1 0 0-1zM3223 6241l-1-1 2 0zM3221 6239l1-1 0 2zM3225 6241l0-3 3-1zM3225 6237l-2 1 1-2zM3215 6238l0-1 1 0zM3215 6237l-1-1 2-1zM3224 6236l-3 0 2-3zM3217 6235l-1 0-1-2zM3223 6232l-4 4 2-4zM3216 6232l-1 3-2-2zM3213 6231l-2 0 1-2zM3209 6230l0-1 1 1zM3211 6229l0-1 1 1zM3209 6228l0 1-1-1zM3217 6228l-1 2-2-5zM3211 6227l-1-1 1 0zM3237 7379l-2 0 1-1zM3323 7362l-3 6-7-2 5-7 4-1zM3323 6759l-3 0 3-2zM3319 6754l0-2 1 2zM3320 6751l-1-2 3-2zM3320 6723l2 1-2 1zM3324 6563l-7-2 3-3zM3262 6537l-2 1 0-1zM3274 6516l-2 6-4 3 0 6-2-6-3 2 0-10 3-4zM3286 6496l-8 2 3-3zM3335 6477l-4 4 1 5-1 2 2 3-5 8-10-1-1-4-4 2-2-2 3-3 7-1 3-2 3-7 0-6zM3239 6467l-6 0 3-6 3 1zM3285 6467l0-1 2 0zM3288 6463l1-2 1 2zM3248 6441l-2 1 1-1zM3243 6440l-1-1 1-2zM3310 6434l-1-1 1 0zM3305 6432l-2 2-2-2zM3307 6425l-2 4-3-2-1-4 3-1zM3236 6389l2 0 0 1zM3250 6303l-1 0 1-1zM3249 6301l0 1-1-1zM3248 6300l0-1 2 0zM3250 6297l-1 1 0-1zM3249 6297l-1 0 0-1zM3248 6296l1-1 0 1zM3249 6295l-1 1 0-1zM3248 6294l0 1-1-1zM3241 6287l1 1 0 1zM3358 7360l2 8-3-1-1 8-2 4-4 2-5 8 3 8-3 1-1 4-5-4 0-3-4-4-3 2 1-4-3-1 5-5 1-5-4-3-1-4 2-6 10-4 5 1 6-3zM3452 6766l2 4-4 0-2-3zM3399 6760l-2 1-4-2 4-3zM3379 6742l1-1 0 2zM3372 6742l-1-5 2 3zM3395 6726l-4-2 3 0zM3325 6719l1 1-1 1zM3389 6721l0-2 2 0zM3450 6720l-5-1 6-3zM3325 6717l1-2 3 4zM3323 6720l-1-3 1-1zM3331 6720l-2 1 0-5zM3385 6706l0 5-4 0 1-5zM3378 6708l1-1 1 1zM3388 6706l-2-2 1 0zM3382 6631l-2 3 0-4zM3356 6631l1-2 1 1zM3353 6627l-2 3-1-2zM3350 6621l-2 0 1-1zM3355 6617l-1 2-7 1-3-4 4-1zM3401 6594l-1 0 1-2zM3402 6591l1 0-1 1zM3400 6592l-4 0 1-3zM3405 6591l-2-1 2-2zM3397 6587l-2 0 1-2zM3402 6584l0 4-4 1 0-6zM3392 6585l-2 0 2-3zM3374 6570l-4 3-4-4 6-3zM3419 6569l-1-1 2-1zM3393 6536l0 1-1 0zM3345 6464l-8 2 5-6zM3336 6447l0 6 3 6-3 2-6-3 2-3-1-6zM3329 6446l0 3-2-2zM3335 6444l1 0 0 2zM3345 6433l0 6-3 4 2 4-3-1 1-4-2-6 3-2-1-5zM3342 6427l0 2-1-2zM3341 6424l-1-2 2 0z"/></g><g class="cty g-pend" data-code="67000" tabindex="0" role="button" aria-label="臺南市，開票中"><path id="p67000" vector-effect="non-scaling-stroke" d="M5307 7445l3 2 2 13-4 5-2 8-3 7-6 0-5 3-5 8-2 7-3 3-4 13-5 6 4 10 5 5-7 6 0 4-3 8-12 1-1 3 3 6-8 5-4 1-4 8-5 2-8 0-3 8-3 0-5 7 3 5-1 5-9 7-4 0 0 3-3 4-6 2-4 7-3 8-2 1-3 11-9 10-4 10 1 5-2 13-2 4-8 10-1 4-3 2-8 12-3 9-3 2 2 7-4 3-8 12-7 8-4 1-2 4-4 3-4 4 1 3-9 11-16 7-2 3-6 2-2 2-7 3-1 4-5 4-10 3-6 5-8 9 1 4-3 4-4 1-7 7-5 7-7 7-4 2-10 13-10 7-2 3-5 2-6 4-12 7-7 5-2 8-2 13-2 3 1 4-3-1-16 2-7-3-12 0-3 4 4 8-5 5 4 8 0 3-3 2-8-2-4 8-1 5 4 5-1 4-3 7-2-2-5 3-9-5-5 5-1 7-5 12-3 8-1 5-9 14-1 8-4 8-4 18-5 2-2 13-4 5-2 8-4 10-5 7-2 7-14 6-2 3-4-5-2-8-7 0-3-2-3-7-6-1-8 1-10 9-4-2-6-4-3 5-6 1-2 5 1 2-6 2-2 4-4 0 4 6-1 6-3-1-4 3-2 4-1-3-4 2 1 5-7 0-1 3-5-2 2 4 2-2-1 6-6 4-3 7-3-2-3 3 2 5-6 3-5-4-8 3-25 0-3-3-8-17-4-5-2 1-6 10-5-1-6-7-4-1-9-2-11 1-9-2-11-4-18-4-9 0-4 1 0 7 3 11-6 1-8 0-6-3-6-3-12-7-5 0-2 6 4 5-1 3-4 3-8-2-10-8-4-6-5-5-14-4-6 0-3-7 0-15-2-3-8 1-8 11-5 4-11-2-7-5-6-5-4 1-8-3-12-8-8-4-11 4-8 5-11 11-5 1 5-2-6-4-2-10 4-17 0-13-3-23-3-13-7-16-8-10-4-8-6 4-8-3 0-6 9-8-3-8-11-14-6-6-5-8-10-9-4-3 1-6-4-4-2 2-14-12-19-16-23-20-12-8-14-8-6-5-14-9-13-6-2-2-13-6-11-4-5-5-6-2-2 2-6 1-8-9-8-11-7-11-5-10-10-13-4 1-6 0-11 2-3-3 2-10 0-6 8-28 2-15 2-3 3-13 7-17 5-10 5-10 7-7 9-8 4 1-6 7 8-6-4-7 0-7 5-10 1-5 5-36 4-18 6-16 8-19 4-7 0-5 8-18 8-16 5-18 0-6 4-23 0-7-3-8 1-5-2-8 1-5 7-10 7-10 1-5 3-1 5-22 3-13 3-33 0-17-1-14 4-9 11-7 2-5 8-2 3-3 5-8 3-11 2-15-1 0 0-7-4-13 6-10 7-6 1-3 29 23 8 4 18 12 6 6 0 11 3 3 9 0 2 6 3 1 7-1 11 4 10 9 6 10-1 2 4 10 6 6 11 3 10 0 1-4-6-7-1-4 5-9 6 2 19 15 7 3 8 2 7-3 1 2 17-10 10-15 3-8 1-6 7-15 6-8 2-7 5-8 17 0 5-4 12-4 7-5 17-17 1-9-8 0-6 1 10-17 6-3 4 0 7 3 4 5 1 4 4 1 6-1 9-5 0-8-4-10 0-7 3-11 8-9 7-9 13 0 7-2 10 3 6-1-1-17 1-6 8-6 6 0 4 4-1 1 4 6 14-6 1 3 8-2 3-3 6-7 11-14 0-3 7-5 6-2 8 0 12-3 43-1 10-3 21-6 16-7 5-3 2-3 5 7 7-2 5 1 3 5 3 10 2 0 3-8 3 2 8 0 3-2 3 2 2-3 1-6 5-2 0-2 5 0 3-2 6 0 6 5 15 6 1 3 6 0 7 5 4 0 2 5 6 3 5 0 4 3 7 3 6 9-1 6 4 1 4 7 2-4 4 0 3-4 3 0 0-3 3 0 8-6 6 1 7 8-1 4 4 3-2 6-4 3-3-1-18 9-3 4-2 15 2 4 6-3 2-4 4 4 3-3 6 6 3 0 3 2 8 2 2-4 5 2 0 3 3 1 5 5 3 1 2 8 2 2 0 8-3 4-6 3-5-6-1 1-3 9 2 4 0 6 1 3 5 4 5-2 11 0 6 4 4 1 1 2 4 0 3 5 5-2 7 3 2 3 4 0 7 7 6 12-6 3-2 5-4 5-4 2-1 7-8 7-7 3-3 3 2 7 1 14 5 14-1 8-3 1-5 8 2 7-1 7-3 4 2 12-3 5 4 6 7 6 1 5 4 4 2 9 6 7-5 15-4 6-7 7-11 6 8 9 5 8 3 1 5-3 3 1 2 5 8 1 8 3 3 0 14 9 3 5 5 2 5 6 6 2 7-1 5-7 3-1 11 6 7 1 7 6 3-9 5-2 6-7 3-2 5-13 2-3 0-5 3-5 2-8 3 1 5 9 0 7 2 7 10 6 7 0 4 3 3 4 4 0 3-3 8 1 3-4 13-4 6-5 6 0 5 2 11 2 7 5 3 0 6-4 2 3 7 4z"/></g><g class="cty g-pend" data-code="64000" tabindex="0" role="button" aria-label="高雄市，開票中"><path id="p64000" vector-effect="non-scaling-stroke" d="M6031 6986l-5 5 2 5 5-1 9 4 3 4 0 6 7 1 6 3 1 6-4 8-5 4 4 4 1 7-2 8 4 5-5 2-7 5-7-2-9 10-8 4-5-4-3 0-7 4-4 7 5 6 8 5 0 4-4 3-11 2-1 3-11 11-6 10-6 2-2 10-1 6 1 10 8 3 7 2 11 0 15 10 0 6 5 7 10-1 5-4 2-5 3 0 5 5 0 4 4 14 5 5 6 1 3 2 3 5 7 1 3 3 3 6 5 3 7 1 7 6 0 4-4 6 2 12-2 5-1 7-5 3-5 2-11 7-3-1-5 1-1 7-6 7-6 2-4 5-7-1-6 3-12 0-5 4-6 1-8 7-4 1-11 6-7 1-5 7-4 1-14-5-11 1-2 0-4 3-4 6-5 3-5 10-8 2-3 12-1 3-8 7-5 3-4 8-5 6-10 3-6 9-1 6-8 2-5 3-4-1-5-4-2 1-5 5-8 2-5 6-3 2-2 11-5 9 0 7-1 9 1 8-1 15-2 5-6 2-2 4 1 9-3 3 2 7 9 9 3 12-2 9-5 6-6-1-9 4-6 5 0 7-5 4-2 23-9 5-6 0-2 6-6 5-8 2-6 3 6 5 3 5 9 4 5 18-4 10 0 5 1 7 3 7-1 3-5 3 4 14 5 7-1 8-2 6 2 8-2 8-5 9 1 7-5 6-2 7-9 11-2 6-3 15-5 6-7 13 4 11 4 3 2 5 8 5 2 2 4 8 0 5-3 13-1 3-6 1-8-1-13 5-5 0-5 6-1 8 3 8-1 20-2 6 0 5-5 6-14 0 2 4 0 8-4 7-6 8-10 3-1 3 1 5-2 8-18 9-3 9-3 5 2 7-16 12-2 8 4 13 4 6-3 4-3 12-1 13 1 9 3 3 4 8 2 2 5 17 5 3 2 13 2 3-7 6-3 9 0 3 4 5 6 4-1 3 4 12 6 6 2 12 2 4 4 3 12 4 8 3 6-1 9 0 3 5 8 9 1 5-3 7-10 7 5 4 16 8 0 3-6 7 4 6-6 7-2 9-4-8-6-4 1-6-6-3-2-5-6-5-8 9-4 3-6-3-6-9 0-7-8-8-4-1-4-3-9 1-5-2-6 2-8 7-6 1-4 3 0 6-14 6-9 6-3 3-6-2-9 0-4 8 3 13-1 2-5 3-8 0-8 7-7 3-8-5-3-8-3-1-3-6-3-2-5-7-4-1 0-6-4-11-6-9-5-2-2-5-6-1-6-2-6-5 0-3-5-4-3-5-10-2-13-4-12-10-9-2-7 2-14 0-3-2-8 2-4 4-2 6-7 7-12 10-3 8-9 0-4 3-10 1-2 7-3 5-9 2-4-1-3-4-8 0-7-2-3-5-2-9 2-8-2-10-1-11-3-4-3 0-5 4-3 5-5 0-4-14-3-3-9 4-7 2-5 3-8 2-9 4-11 5-8-2-7 1-14 7-7 5-9 8-5 7-20 16-21 18-11 11-6 10-10 10-8 4-7 7-3 1-9 0-8-3-15 1-5-3-6 0-2-2 1-3-12 2-2-2-7 1 0 2-9 0-4 2-7 5-2-3-11-4-7 1-7-3-5-9-5-1 3 3-4 1-5-1-6 1-6-2-4-3-3 2-6-3-4 2-4 7-6 7 0 12-3 6 0 15-4 6-1 11-2 16-5 12-3 9-5 11-3 11-1 12-3 8 0 8 1 7-1 6-1 11 1 6 2 31 2 19 0 17-1 9-5 26 0 5-3 9-1 5-4 14-3 7-10 8-6 13 1 12-4 13-3 4-1 8 0 12 0 17-1 17 0 14 1 7-5 13 0 15 2 9 6 13 10 9 7 10 1 9 1 18-3 15-3 23-1 3-2 11-3 9-4 7-2 6-3 10-10 6-5 13-8 22-1 9-3 13 0 16 1 10 4 18-3 39 1 24-7 1-14-4-6-1-18-7-2-2-11-5-4-4-13-9-4-4-24-13-3-4-14-11-9-7-8-7-2-3-8-8-15-11-3-1-17-14 7-8-7-8-16 12 2-14 7-7-1-1-9 8-2 15-23 17-48-62 10 12 7-6 13 18 8-6 19 24 10-7-29-38-11-1-7-4 4-8 6-7-1-7-34-44-3 0-4-6-8-8-14-18-3-7-5-5-1-4-6-4-2 1 1-8 3-3 2-5-1-4-3-2-2 3 0-6-1-2-13-8 1-7 14-7 0-5-5-11-3-5-7-5-2-8-7-12-1-9-2-3 1-9 0-3 2-9-1-3 4-7 5-4 2-4 6 0 10-14 0-12-3-7 1-5-1-6-10 0 0-14 6-2 2-4-1-7-6-16-3-7 0-5-1-8-3-3-4-10-6 0-1-4 2-2-10-24 0-2-4-9-8-18-3-3-4-9-4-8-6 0 3-4-1-9-3-5-3-10-12-26-6-15-8-21-1-5-6-7-29 5-9-5-7-13 1-4 31-10 2-2-2-10-2 1-9-29 2 0-5-11-5-2-7-9 5-3-2-6-6-12-5 0 9-2-8-3 2-7 5-2-6-18-14-36-6-12-2-9-9-24 0-3 5-1 11-11 8-5 11-4 8 4 12 8 8 3 4-1 6 5 7 5 11 2 5-4 8-11 8-1 2 3 0 15 3 7 6 0 14 4 5 5 4 6 10 8 8 2 4-3 1-3-4-5 2-6 5 0 12 7 6 3 6 3 8 0 6-1-3-11 0-7 4-1 9 0 18 4 11 4 9 2 11-1 9 2 4 1 6 7 5 1 6-10 2-1 4 5 8 17 3 3 25 0 8-3 5 4 6-3-2-5 3-3 3 2 3-7 6-4 1-6-2 2-2-4 5 2 1-3 7 0-1-5 4-2 1 3 2-4 4-3 3 1 1-6-4-6 4 0 2-4 6-2-1-2 2-5 6-1 3-5 6 4 4 2 10-9 8-1 6 1 3 7 3 2 7 0 2 8 4 5 2-3 14-6 2-7 5-7 4-10 2-8 4-5 2-13 5-2 4-18 4-8 1-8 9-14 1-5 3-8 5-12 1-7 5-5 9 5 5-3 2 2 3-7 1-4-4-5 1-5 4-8 8 2 3-2 0-3-4-8 5-5-4-8 3-4 12 0 7 3 16-2 3 1-1-4 2-3 2-13 2-8 7-5 12-7 6-4 5-2 2-3 10-7 10-13 4-2 7-7 5-7 7-7 4-1 3-4-1-4 8-9 6-5 10-3 5-4 1-4 7-3 2-2 6-2 2-3 16-7 9-11-1-3 4-4 4-3 2-4 4-1 7-8 8-12 4-3-2-7 3-2 3-9 8-12 3-2 1-4 8-10 2-4 2-13-1-5 4-10 9-10 3-11 2-1 3-8 4-7 6-2 3-4 0-3 4 0 9-7 1-5-3-5 5-7 3 0 3-8 8 0 5-2 4-8 4-1 8-5-3-6 1-3 12-1 3-8 0-4 7-6-5-5-4-10 5-6 4-13 3-3 2-7 5-8 5-3 6 0 3-7 2-8 4-5-2-13-3-2-8-9 4-15-1-5-4-6-1-12 1-2-7-12-7-9 0-8-3-13-4-5 1-4 4-2-1-6 5-4-2-5 4-8-2-10-2-2 3-6-3-5 3-8 7-3 4 9 6 5 7-2 4-7 3-1 1 2 5 0 1 3 6 1 4-2 2 4 3 0 3 5 4-3 5 2 3 5 2-2 7 3 10 2 6 3 7 2 12 0 8-11-2-4 0-6 1-8 3-10 5-5 8-6 2-3 9 2 8-1 11 3 9 3-1-12 5-6 8-5 4-1 3-3 1-6 3-2 12-1 4-4 1-4 4-2 2-4-3-4 2-3 7-3 4-6 0-3-3-2 3-6-2-5 1-3 5 1 9 5 7-5 10 5 3-3 4-1 3 2 9 1 5-8 4-1 2-7 0-7 7-3-1-6 4-1 5 1 3-6 3-3 4 0 0-5 2-4 5-5-2-5 3-3 3 1 4 5 3-3 6 1 6-5 10 2 5-3 3 1 2-5 5-3 2-5 1-9-1-3 3-8 4-1 3 1-1-7 3 0 3-8 8-3 0-3-5-2 0-2 3-3 8-10 2-9 5-4 4-6-1-15 2-2 9-5 6 2 2-6 3 2 5-2 4 2 3-5 7 0 4-8 4 0 4-4 0-3 7 2 6-3 4-6 2 3 4-1 7-15 3-10 2 3 4-1 4-11 4 0 3-3 0-3 4-1 6 2 6-8 8-4 5 2 2-2 11-1 10 4 4 4 0-3 5-1 8-3-1-6 4-5 8 1 8 0 12-3 11-6 3-5 8-2 7 0 3-2 6 2 2 4 12 0 5-1 6 2 3 3 32 10 9-1 6 0 3 2 6 10 6 6 3 6-3 6-3 1-5 5 0 11 7 7z"/></g><g class="cty g-pend" data-code="10014" tabindex="0" role="button" aria-label="臺東縣，開票中"><path id="p10014" vector-effect="non-scaling-stroke" d="M6992 6987l-7 18-6 5-7 23-4 7-1 10 1 4-4 4 0 11-8 4-2 5 0 8-4 6 0 4-2 14-4 15 0 4 3 12-5 16 2 2 0 8-8 9-1 5 0 30-2 5-2 10 0 7-5 9-2 12-4 1-5-4-7 0-14 10 1 5-2 4-6 2-4 9 0 6-5 1-2 6-4 3-4 10-2 0-7 14-4 19-1 8 1 7-7 4-3 5-1 7-2 2 0 9 0 8-5 6 1 4-4 8 0 6-4 9 0 10 2 6 4-2 5 1 0 3-12 15-7 10-4 4-9 0-3 2-6 8-3 1-3 6-2 9 1 11 2 7 2 16 2 5 8 10 1 5-3 5 1 5 8 3 2 8-1 9-5 14 0 4-4 6-5 2-2 5 3 5 0 9-2 9 0 6 8 17 5 3 9 4 5 0 6-6 9-1 6-1 0 6-3 0-8 5-6-2-6 2-9 10-2 4-8 5-4 1-7-3-5 3-7 11-8 7-1 7-3 2-2 5 1 2-4 5-16-2-8 1-7-1-8 5-8 11-3 8 0 6-6 6 3 13-8 8-6 7-3 5-3 12 0 13-2 4-4 6 1 4-1 6-4 3-5 18-2 11 2 0 0 7-5 2-2 2-1 5 4 4-5 4-8 2-4 4 0 13-4 8-3 3-4-1-2 6-1 10 5 8-7 9-8 18-6 10-4 4-1 4-7 7-16 22-7 6-2 5-3 0-3-2-11 8 1 5-5 0-6 9-3 14-2 10 0 6-8 14-4 16-9 14-10 7-3 4-4 10-2 7-7 7-3 8-6 12-8 10-14 4-4 5-4 7-2 10 2 3-5 8-3 0-13-6-4 0-7 4-5 1-13 3-4 1-15 13-5 1-3 5-12 10-4 7 1 5-4 19-3 2 0 3 4 11 5 2 3 3-1 6 3 3 0 6 6 6 2 1-2 6 1 6 4 7 2 8 0 5 2 4 0 7-5 1-1 5-5 2-1 3-5 1-2-1-7 0-4 4-9 13-2 7-1 18-3 14-3 10-6 9-16 10-10 4-8 5-10 11-8 9-6 8-6 5-5 2-5 4-18 21-9 7-6 3-6 2-16 10-17 9-10 1-7 3-10 6-12 5-9 7-8 7-4 7-5 5-9 9-9 6-8 7-15 7-5 0-12 6-8 6-13 14-7 11-6 15-1 4-10 25-9 35-1 12-1 19-2 12 0 8-3 15-4 6-7 6-11 12-16 10-9 8-4 6-5 9-8 19-5 15-7 25-5 18-8 22-5 11-5 15-1 8-5 13-3 11-1 10-6 20-5 21-5 17 0 4-4 11-5 11-9 24-6 18-3 9-3 6-5 7-8 18-3 10-3 13-3 7-3 4-8 18-3 9-6 29-3 17-8 8-5 7-4 12-4 7-4 14-3 5-4 25-1 16-2 39 1 18-1 14 1 12 2 23 3 4 2 7-2 2 3 18 1 13-9 2-1 3-11 5-4 3-6 12-9 0-10 4-1 4-5 0-4 3-8-3 4-7-6-7-5-2-1-5-6-1-9-5-9 0-3 2-7-4-3 2-8-4-3 0-4-4-2-6-11-14-10-4-5-6-7-4-2 3-3-1-6 3-3 3-3-1-14 6-3-2 2-4-1-8 2-3-7-6 1-5 2-5 1-9 4-2 10 1 4 0 0-7-2-2-1-6-10-1-3-2-6 0-5-1-5-5 0-5-2-6-3-2-14-1-8-7-1-10 2-13 10-2 8 0 12-6 6-9 2-4-4-10-3-2-2-15 0-11-7-6-1-7-4-1-3-7-8-2-4-3-6-2-9 0-7 3-5-5-4-6-1-9 0-5-4-3-5 2-6-2-6 0-2-3-8-5-8-7 3-6 5-3 3-4 0-5-1-11 4-8 4-3 4-2 4-4-8-8 0-4 3-5 7-4-4-10-4-5 9 0 10-4 4-4 7 0 4 4 6 0 3-4 11-1 5-4 7-8 0-2 6-4-3-5-2-11-4-7-4-11-5-8-7-6-4-10 3-10-1-3-8-3-13-2-6-4-9-8-3 2-5 0-5-2-1-4 2-3-1-6 5-11 1-7-5-12-2-2 13-6 2-14 4 0 7-6 1-9-4-13-7-10-3-6-7-5-2-15-3-7 0-9-3-9 0-10-4-9-5-5-12-24-1-5 2-11-1-8 4-13 13-5 2-3 0-14-5-11-1-10 1-5 5-7 6-6 6-10-2-6 0-9-2-8 4-11 7-14 5-5 1-9 3-2 2-5 7-6 2-5 6-6 5-11 6-9 6-5 11-18 2-4-1-20 5-8 6-7-4-10 0-6-4-7-2-7 5-1 7 4 5 1 5 4 21 0 3 2 4-8 10 0 5 2 0-8 2-2 12-1 5-4 5 2 8 1 4-1 3-5-1-5 3-5 1-6 7-2-2-6 3-1 9-13 9 0 4-2 4 6 3 3 6-7 11 0 4 2 7-2 6-1 8 3 8-3 8-11 2-9 6-6 2-8 0-5 4-5 2-9-3-3 3-11-3-6 3-10-2-8 1-7-6-2 3-7 12-5 3-7 4-4 2-4-2-10 2-6-5-9 4-14 0-13-5-10-3-1-6-7-4-1-7-7-14-4-6-2-7 3-6-5-6 1-6-4-3-6-4-11-6-3-1-2 6-11 2-9-3-7 1-8 2-9 6-7-4-6 6-7 0-3-16-8-5-4 10-7 3-7-1-5-8-9-3-5-9 0-6 1-8-3-12-4-4-3-2-4-2-12-6-6-4-12 1-3-6-4-4-5 0-3 3-9 7-6-2-3-2-13-5-3-5-17-2-2-4-8-3-3-1-9 1-13 3-12 3-4-4-6-4-13 2-8 16-12-2-7 3-5 3-9 18-9 2-8-1-5 1-3 10-3 6-8 4-7 0-8-2-4 14 0 5-6 0-5 2-6 1-20-3-8 1-8 5-6 5 0 13-5 8 1 6-1 1-3 3-13 0-5-4-8-2-2-8-5-2-5-4-3-4-11 7-13 5-6 3-15 2-6 9-11 2-7 5-6-1-7 5-9 2-8-2-8 2-6 1-8-5-7-4-14 5-3 1-3-3-7-1-7 0-5 4-10-5-18-9-4-3-5-6-5 6-3 8-2 6-5 2-6 6 0 9-5 2-23 5-4 0-7 6-5 9-4 6 1 5-6 2-9-3-12-9-9-2-7 3-3-1-9 2-4 6-2 2-5 1-15-1-8 1-9 0-7 5-9 2-11 3-2 5-6 8-2 5-5 2-1 5 4 4 1 5-3 8-2 1-6 6-9 10-3 5-6 4-8 5-3 8-7 1-3 3-12 8-2 5-10 5-3 4-6 4-3 2 0 11-1 14 5 4-1 5-7 7-1 11-6 4-1 8-7 6-1 5-4 12 0 6-3 7 1 4-5 6-2 7-3 4-2 10-3 8 10 11 3 5 5 11 5 2 6 4 3 1 6 4 9-3 6 0 8 2 2 1 8 1 5 3 6 2 8 2 5 6 4 2 7 0 7 2 5 6 5 9 15-1 7 3 4 3-3 5 2 6-2 12 0 3 1 5 8 5 3 11 4 2 5 7 1 13-3 8 1 10-1 10 4 4 7 2 10 5 10 6 6 2 11 2 3 11 5 9 2 9-2 3-2 10-13 8-2 8-1 1 1 12-7 8 4 10 8 10 2 3 3 2 9 5 13 8 9-1 5 2 7 1 11-1 6 9 13 4 5 0 4 3 6 7 5 4 11-1 2-3 12 3 9 5 1 11 4 10 4 12 2 4 5 3 7 6 7 2 4 8 1 5-1 7-2 2-4 17 11 3 11 9 7 0 5 6 3 1 4 0 7-6 11 10 5 3 2 3 7 4-2 8-5 5-7 4 1 3-6 6-1 8-5 5-2 6 2 2-2 4 2 7-4 10 0 15 1 7-7 5-7 2-15-3-13 1-5-3-12 3-4 4-8-1-4 2-3 0-6 5-7-4-4-5-2-2-9-8-11 2-9 7-2 0-6 4-6 0-8 3-2 6 0 2-2 3 3 8 3 1-8 3-3-1-2 3-4-1-7 5-12 4-3 3-11 0-7 3-9 4-3-3-9 2-8 7-1 3-6 4 1 7-8-5-4-1-7-3-6 2-4 3-3 6-8 0-5 6-8 1-6-5-4 1-8 4-2 3-7 6-3 2-5 7-3 1-3 1-8 5-5 8-1-1-3 2-8-1-6-2-10 1-12-2-3 1-5-1-10 3-8 0-3 5-8 3-2 4-7 8-4 0-3 4-9 0-10 4-2 11 0 5-4-1-7 2-5 1-6 4-10 7-8 7-13 8-4 6-4 3-6 7-6 2-11-10-1-10-7-6-3-3 1-5-2-3-4 1-4-3-11 0-3-7-21 3-8 4-1 14-21 4-7 1-6 5-7 6-12 0-4 3-3-1-5 7-8 5-4 0-3 7-7 8-5 1-3 10-1 2 2 3-3 3-7 3-3 1-5 3-6 4 1 6 0 3 3 5 1 3-2 10 1 1 5 9-1 8-2 6 0 3 7 5 6 4 8 6 2 4-2 5-5 8-4 2 2 4-2z"/><path id="i10014" class="isl" vector-effect="non-scaling-stroke" d="M7216 10222l-2-4-2-8-5-7 14-5 5-3 4 0 0 5 2 1-1 5 2 7-1 5-6 1-4 3zM7017 9921l5 3 5 1 24-2 7 3 3-3 5-1 8 0 14-2 4 1 12-1 10 2 2 2 4 1 6-5 7-4 7 4 1 4-5 11 0 5 4 7 2 12 10 10-2 1-8-1-7 4-7 9 0 11 2 3 2 7 2 4-2 2 4 1-1 3 6 1 11 11 5 3 20 9 5 1 8 5 3 1 12 11-1 10-7 7-1 6-10 16-4 4-7 1-5-2-8-7 2-1-5-2 0 3-6 2-10-2-2 3-2-14-5-5-3-6-6-7-11-10-7-3 0-2-9-3-11 0-3 2-7 1-10-9-6-7-6-6-2-5-5-5-6 1-2-6-5-6-1-4-4-2-9-1-4 2 5-7-3-7-2-9-3 0 0-5 4 0 3-8-1-10-3-5-10-13-1-3-6-4-1-3 5-7 8-2zM7154 9928l0 1-1 0zM7161 9927l1 2-2-1zM7157 9926l0 1-1-2zM7140 9910l1 2-1 0zM7135 9909l2 0-3 4zM6987 8638l5-3 5 2 13-3 4-3 6 3-2 9 1 6 3 1-1 6-3 5 0 10-4 6 4 8-6 2 0 2-8-1-5 14 5 4 0 5 5 7 1 6 5 2-3 1-8 0-5-2-3 2 2 4-8 0-2-5-1-8-9-7 0-2-6-3-17-5-8-1 3-10-1-2 2-14-4-5-6-9-6-8-4-4-2-6 2-6 8 0 7 3 14 2 10-7 10 0 3-4 1 5zM7022 8625l2 0 0 2z"/></g><g class="cty g-pend" data-code="10013" tabindex="0" role="button" aria-label="屏東縣，開票中"><path id="p10013" vector-effect="non-scaling-stroke" d="M5729 8274l-1 8 3 7-2 9-6 11 1 2 6 3 4 11 3 6 6 4 6-1 6 5 7-3 6 2 14 4 7 7 4 1 6 7 3 1 5 10 0 13-4 14 5 9-2 6 2 10-2 4-4 4-3 7-12 5-3 7 6 2-1 7 2 8-3 10 3 6-3 11 3 3-2 9-4 5 0 5-2 8-6 6-2 9-8 11-8 3-8-3-6 1-7 2-4-2-11 0-6 7-3-3-4-6-4 2-9 0-9 13-3 1 2 6-7 2-1 6-3 5 1 5-3 5-4 1-8-1-5-2-5 4-12 1-2 2 0 8-5-2-10 0-4 8-3-2-21 0-5-4-5-1-7-4-5 1 2 7 4 7 0 6 4 10-6 7-5 8 1 20-2 4-11 18-6 5-6 9-5 11-6 6-2 5-7 6-2 5-3 2-1 9-5 5-7 14-4 11 2 8 0 9 2 6-6 10-6 6-5 7-1 5 1 10 5 11 0 14-2 3-13 5-4 13 1 8-2 11 1 5 12 24 5 5 4 9 0 10 3 9 0 9 3 7 2 15 7 5 3 6 7 10 4 13-1 9-7 6-4 0-2 14-13 6 2 2 5 12-1 7-5 11 1 6-2 3 1 4 5 2 5 0 3-2 9 8 6 4 13 2 8 3 1 3-3 10 4 10 7 6 5 8 4 11 4 7 2 11 3 5-6 4 0 2-7 8-5 4-11 1-3 4-6 0-4-4-7 0-4 4-10 4-9 0 4 5 4 10-7 4-3 5 0 4 8 8-4 4-4 2-4 3-4 8 1 11 0 5-3 4-5 3-3 6 8 7 8 5 2 3 6 0 6 2 5-2 4 3 0 5 1 9 4 6 5 5 7-3 9 0 6 2 4 3 8 2 3 7 4 1 1 7 7 6 0 11 2 15 3 2 4 10-2 4-6 9-12 6-8 0-10 2-2 13 1 10 8 7 14 1 3 2 2 6 0 5 5 5 5 1 6 0 3 2 10 1 1 6 2 2 0 7-4 0-10-1-4 2-1 9-2 5-1 5 7 6-2 3 1 8-2 4 3 2 14-6 3 1 3-3 6-3 3 1 2-3 7 4 5 6 10 4 11 14 2 6 4 4 3 0 8 4 3-2 7 4 3-2 9 0 9 5 6 1 1 5 5 2 6 7-4 7 8 3 4-3 5 0 1-4 10-4 9 0 6-12 4-3 11-5 1-3 9-2 1 11 4 16-1 3 1 6-5 3-4 10-1 7 0 9 2 9 3 19-6 12-6 6 2 17 2 4 0 8 3 9 0 11 0 8-4 14 3 4 1 10-3 12 5 9 4 4-1 7-10 12-1 2-6 2-3 11 3 17 7 16 2 7 11 7 8 2 0 3-4 2-2 5-2 6 1 9-9 12-1 27-1 17 2 14 0 12-1 14 12 28 3 5 0 3-9 4-15 11-1 7-3 5 0 9-7 7-11 5 2 8 0 6-6 12-17 8-12 9-11 4-9 0-6 2-5 4-4 13 3 8-2 6 0 12-6 18 0 7 3 5-1 9 2 8 3 6 1 5 4 6 2 5 1 5 9 7 9 13 1 4 8 11 1 8-2 9 3 9 7 6 0 4-4 6-13 5-15-1-6-8-3-6-1-7 0-17-2-2-7 0-8-3-6-6-3-10-19-17-3-6-7-1-4 2-7 1-6-2-5-4-5-7-4-1-3 6-6-2-1-6-3-3-9-3-18 0-5-5-6-8-9-2-6-4-3-6-8-9-6 1-2 3-4 2-2-2-9 5 1 3 3-1-5 7-3 0-5 3 0 5 1 5-1 7-5-4-1 2 0 8 3 10-3 7-3-3 0 6-4 5-4 2-1 15-12 2-2-1-8 1-4-1-6-6-9-12 1-12-7-4-7 3-4-2-1-16 3-22 0-21 0-5 7-16 0-3-3-17-7-11-6-4-3-13-2-2-8-3-13-14-2-11-4-12-4-6-8-17 0-4 4-16 5-7 8-8 1-3 6 1-1-5-3 1 1-7-2-5 6-15 4-2 5 1 5-1 3-8-2-17 1-6-4-17-6-4-2-6 4-7 12-4 10-6 4 0 5-5-3-8 1-8-1-3 1-6-2-4-5-4 1-6-2-7-5-3 2-3-2-5-1-7-5-7-4-3-4-5-2-9-6-6-2-8 1-8 3-6 0-7-3-5-4-4-3-7 3-5-1-14-3-2 0-11-6-6 1-5-1-8-2-5-2-10-7-9-3-13 4-10-2-16-6-9-3-1 0-4-4-4-4-8-5-2-4-8 2-4-2-9-4-5-5-3-4-6-3 1-12-8 0-9-10-9-5-1-2-9 2-14 3-8 0-5-6-16-2-10-8-16 0-5-3-2 1-7-1-16-4-9-6-7-3-8-11-14-20-20-20-17-11-11 0-3-10-23-2-5-14-14-4-3 3-2-12-11-11-6-7-6-5-2-6-4 0-3-21-15-22-13-51-28-13-8 0-6-3 1-15-2-6-5-12-8-15-8-18-9-13-6-36-23-23-22-5-6-10-10-2-5-5-1-3-9 1-1-4-9-17-1-1-24 3-39-4-18-1-10 0-16 3-13 1-9 8-22 5-13 10-6 3-10 2-6 4-7 3-9 2-11 1-3 3-23 3-15-1-18-1-9-7-10-10-9-6-13-2-9 0-15 5-13-1-7 0-14 1-17 0-17 0-12 1-8 3-4 4-13-1-12 6-13 10-8 3-7 4-14 1-5 3-9 0-5 5-26 1-9 0-17-2-19-2-31-1-6 1-11 1-6-1-7 0-8 3-8 1-12 3-11 5-11 3-9 5-12 2-16 1-11 4-6 0-15 3-6 0-12 6-7 4-7 4-2 6 3 3-2 4 3 6 2 6-1 5 1 4-1-3-3 5 1 5 9 7 3 7-1 11 4 2 3 7-5 4-2 9 0 0-2 7-1 2 2 12-2-1 3 2 2 6 0 5 3 15-1 8 3 9 0 3-1 7-7 8-4 10-10 6-10 11-11 21-18 20-16 5-7 9-8 7-5 14-7 7-1 8 2 11-5 9-4 8-2 5-3 7-2 9-4 3 3 4 14 5 0 3-5 5-4 3 0 3 4 1 11 2 10-2 8 2 9 3 5 7 2 8 0 3 4 4 1 9-2 3-5 2-7 10-1 4-3 9 0 3-8 12-10 7-7 2-6 4-4 8-2 3 2 14 0 7-2 9 2 12 10 13 4 10 2 3 5 5 4 0 3 6 5 6 2 6 1 2 5 5 2 6 9 4 11 0 6 4 1 5 7 3 2 3 6 3 1 3 8 8 5 7-3 8-7 8 0 5-3 1-2-3-13 4-8 9 0 6 2 3-3 9-6 14-6 0-6 4-3 6-1 8-7 6-2 5 2 9-1 4 3 4 1 8 8 0 7 6 9 6 3 4-3 8-9 6 5 2 5 6 3-1 6 6 4z"/><path id="i10013" class="isl" vector-effect="non-scaling-stroke" d="M4770 9338l7 3 1 3-1 11-3 5-12 7-8 6-3 5-8 5-8 10-9 6-6 3-5 0-6-2-3-4 1-9 3-3 6-5 5-4 2-9 3-2-1-7-3-6 6-5 3-6 4-2 9-3 10-5 5-1z"/></g></g>
+    <!-- 浮起的板子：sh 接觸影（往下錯開）、sk 側面（原位）、lc 板面（抬高）、ol 外緣；路徑由 JS 從縣市複製 d -->
+    <g id="lift"><path id="cv" d=""/><path id="sh" d=""/><path id="sk" d=""/><g id="lt"><path id="lc" d=""/><path id="ol" d=""/></g></g>
+    <path id="fo" d=""/>
+    <g id="hits"><circle class="hit dot" data-code="10017" cx="7415" cy="3301" r="0"/><circle class="hit dot" data-code="63000" cx="7129" cy="3365" r="0"/><circle class="hit dot" data-code="10018" cx="5918" cy="4031" r="0"/><circle class="hit dot" data-code="10020" cx="4902" cy="6889" r="0"/><path class="hit" data-code="10016" d="M2861 7528l-18-11-206-290-8-163 0-8 9-18 548-870 5-1 2 2 149 253 78 145 31 149 3 54-94 598-12 29-4 5z"/></g>
+  </svg>
+  </div>
+  <div class="isles"><div class="isle" data-code="09007" tabindex="0" role="button" aria-label="連江縣，開票中"><svg viewBox="3722 388 1397 1161" preserveAspectRatio="xMidYMid meet"><g class="lf"><path class="g-pend" d="M3928 1461l1 3-6 6-1-3 4-7 1-4 2 1zM3890 1382l7-1-2 6-2 0 0 3-9 9-5-3-4 4 2 3-7 7-7 1 3-6-5-4-3 3 0-4-7-10-3-5 6-5 9 0 4 3 8-4 3 3 2-3 8 0zM3839 1394l2-1-2 2zM3844 1390l0 1-1 0zM3845 1387l0 1-1-1zM3893 1379l0-1 1 0zM3890 1378l-1-1 1 0zM3889 1376l1 0 0 1zM3926 1148l-2 2-1-3zM3922 1145l1-1 0 1zM3837 950l3-1 1 5 3 2 6 1 7-1 0 4-5 0 0 5-5 9 2 6 9 1 3-3-1 7 2 2 8-4 2 3-1 9 7-4 6-6-4-7-1-9 10 2 9-5 6-2 2 2-1 4 2 3 4-8 10-1 9 4 0 3-4 3 1 4-2 1-1 7-5 2-5 10-4 5-5-6-5 0-3 3 1 8-4-1-2 5-4 2-4 6-8 0-2-7-5 1-2 4-3-1-6 7 3 2-6 1-6 5-3-4 3-3-2-2-5-1-8 2-8-5 0-4-6 3-2-3 3-5 0-5 9-8-2-3 4-2 3-5 0-3-4-2-6 1 5-7 5 1 0-7 2-5-3 0-4-4 4-4-3-2 2-7zM3898 903l-1 3-3-1zM3929 1459l0 1-1 0zM3935 1400l-6 3 1-3 0-4 2-2zM3931 1396l-1-1 1 0zM3933 1392l0 2-1-1zM3931 1017l-2 0 0-1zM3930 966l6-3-1 2zM3975 1405l2 5-8 8 1 4-9 6-4 0 1 7-4 1-2 2-3 0 0 4-3 0-3-5-8 10-4 0-1 5-4 1-2-3 5-13 2-1-1-4 6-3 3-3 4-8-1-5 7-4 8 0 0 3 7 1 2-3-2-2 4-4zM3976 1405l3-2 1 2zM3949 1398l-1 1 0-1zM3955 1395l-2 4-5 6 1-11zM3954 1394l-1 0 1-1zM3950 1393l0-1 1 0zM3954 1391l-2 1 0-1zM3949 1081l-1 1 0-1zM3946 1080l-1-1 1 0zM3946 971l1 0-1 1zM3947 970l-2 1-2 6-3-2 1-9 3-2zM3961 923l-1 0 0-2zM4000 808l3 10 7-2 3 1-2 9 2 2-6 12 5 1 1-7 6-3 9-1 3 3-5 6 3 2-8 5-1 3 3 5 0 7-4-1-1-8-3-2-2-7-6-1-6 9-3-1 3-5-4-2-3 10-8-1-5 9-3-2 1-4-4-3-7-1-3 4-8 3-1 2-4-1-7 8 1 5-3 4 2 3 1 11-3 4 4 4-1 6 6 1 0 3-5 2-1-5-4-1-7 3-2 0 0-10-1-2 1-10-2-3 4-4 2-6 5-7-5-6 1-7-3-1 0-5 7 1 8-7 2 1 5-6 3 2 7 0 10-12 9-8 0-5 5-4zM3967 834l-2 1 1-2zM3951 732l2-3 1 3zM3981 712l-4 3 1 4 4-2-2 4 3 0 1 5-7 5 0 4 4 1-5 8-6 0-5 1-4-1 1-4-4-2 2-4-3-2 10-3 2-5-1-3-5-3 11-5-2-3 6-3zM3980 710l1-3 1 1zM3973 706l1 0-1 1zM3980 706l1-1-1 2zM3973 703l1 0-1 2zM3984 1378l2-1-1 1zM4022 870l4-3 3 1-6 4zM4030 864l-6 1-1-3 4 0zM4032 862l0 1-1 0zM4125 818l1 0-1 1zM4122 809l3-1-1 2zM4028 807l-4 2 0 5-2 0 0-6 4-5zM4032 809l-3-3 4-1zM4012 780l-2 8-3-1 0 5-5 1-7 7-3 0-1-4 5-13 6 2 6-6zM4013 778l1 0 0 2zM4014 778l0-1 1 0zM4030 772l-4 4-11 1 2-2 2-5zM3985 768l1 0 0 1zM3987 766l0 1-1 0zM3985 765l1 0 0 1zM3985 765l-2-2 3 0zM3998 712l1 0-1 2zM3997 709l2 0-3 1zM3983 708l2 0-3 1zM4017 675l-1 0 1-2zM4165 486l1 0 0 1zM4165 487l-1-1 1-1zM4170 482l-4 0 7-2zM4809 987l4 4-1 2-6-3-2-3zM4432 592l1 1-1 0zM4428 591l1 1-1 1zM4455 570l-9 14-5 1 0 4-3 2-2-5 3-2 2-7 3 1 4-7 10-7 2 5zM4454 572l1 1-1 0zM4454 571l2 1-2 0zM4968 548l-2 3-2 2zM4971 547l0-1 1 1zM4988 543l1 0-2 1zM5022 526l1-1 0 1zM4961 489l4 1 2 8-3 7-1 6 9 3 4-4 1 2 8 0-1-8 3-6 5-3 7 0 2 5-4 6 2 2 4-1 2 4 7-4 2 1 3 7 5 3 1 7-3 1-4-2-3-3-3 3-4-8-3 1-1 6-5 9-5 2-5 9-2-5-8 4 0-4-5-1-1 2-1 6-6-6 2-4 2-7-2-2 5-2 0-8-9-4-6 8-1-4 1-11-3-2 2-7-2-2-2 4-4 3-4 8-4 2 0-3 2-5-3-4 6-5 5-2-1-6 6-2 0 3 5-2zM4968 494l0 1-1 0zM4967 493l1-1 1 1z"/></g></svg><span>連江縣</span></div><div class="isle" data-code="09020" tabindex="0" role="button" aria-label="金門縣，開票中"><svg viewBox="380 4537 619 413" preserveAspectRatio="xMidYMid meet"><g class="lf"><path class="g-pend" d="M469 5401l-4-1 1-5 4 1zM277 4930l1 1-1 1zM289 4926l-2-3 4-1zM286 4924l-2 1-1-2zM303 4914l4-3 10 3 10 2-8 7-9 0zM330 4897l3 1 6-1 3 1 2 5 3 0-5 5-4 2-5-5-9-2 0-6-5-5 0-4 3-3 5 2zM388 4886l-5-5 6-1zM463 4869l-5 0-1-4 4 0zM520 4759l4 8 8 6 6 1-2 14 3 5-6 6 2 2-4 10 2 3-3 6-4 2 0 4-5-1-1-3-8-2-8 4-4 4-3 5 3 2-9 10-4 1-4 5 0-7-4-1-8 1-6 3-6 10-4 1-3 6-5-3 0-3-9-4-11 0-4-5 4 0 6-2-4-2 4-12 2-3-1-16 5-8 3-2 6-9 0-7 5-11 2-7 6-9 6-4 4 0 6-3 6-2 4 3 5-3 19 2zM396 4794l3 0-2 1zM423 4762l-1 0 3-1zM421 4759l-3 1 2-4zM484 4743l1 0-1 1zM679 4898l-1 1 0-3zM876 4860l0-1 1 1zM878 4857l-1 0 0-1zM691 4857l2-1-1 2zM543 4758l-5 2 0-3 4-8 3-1 9 8 0 4zM829 4593l9-4 5 2 5 4 4-2 7 2 0 5 8 1 0 5-4 1 2 8 6 9 8 2 13 4 8 1 1 3-2 11 4 12 6 3 3 5-2 6 1 4 8 12 5 3 14 1 0 8-7 4-2 4-2 0 0 7 1 5 0 8 4 14 9 13 5 4 6 0 4 7-1 2-7-1-1 12-2 3 0 3-5 3-8-4-4 2-3 3 1 4-3-1-2 5 6 0 1 6 5 4-4 8-4 2-1 4-4 1-5-3 0 5-1 8-3 1 1 4-6 3 0 2-7-1-7 5 1 2-6 4-5 0-7 2-6 6-6-1-2 2-2-1-7 1 4-4 4 0 2-2-4-2 4-5 1-5 3-3-5-10-6-6-11-5-8-2-9 0-2-3-4 0-1-8-2 4-3-5-6-3-4-3-5-1-8 1-1-1-15 3-4-2-26 7-21 10-17 10-2 3-4 1-5 6-2 7-3 2-2 6-8 6-7 15-2 10-5 14-5 3-2 3-3 0-3 3-5-2-3 4-7 1-4-6-3 0-1-2-6-3-8 1 0-3-5-4-3-5-5-2-13 1-1-7-5-4-5-2 2-3-3-3-10-6-1-3-8-5-5-4 1-4 5-1 0-4 14-2 6-2 2-6 13-18 7-14 2-11-2-11-5-11-6-6-2-5 1-10-1-4-9-12-5-4 1-2-6-9 1-9 6-16 6-8 15-9 15-4 6-1 5 2 10 5 9 7 4 5 5 10 9 9 6 4 8 5 6 1 4-1 6 2 8 5 12 1 13-1 3-2 10-10 19-17 2-6 1-8 9-2 1-3-2-13-2-7 1-12 6-4 3 0 7-4 4-6 1-4 5-7 8-6-3-7-6-1 2-5 4-1 9 3 3-1 4-6 0-3-4 0 4-6 4 1 4 4-1 3zM792 4605l3 0-1 2zM878 4604l-7 3-1-1 8-6zM793 4602l1-1-1 2zM879 4857l0 1-1-1zM880 4855l-1-1 1 0zM917 4844l2 3-7 0 2-4zM895 4846l0-1 1 0zM915 4841l1-1 0 1zM918 4841l1-3 2 0zM1008 4818l-1-5 4 0 0 4zM2958 3588l-3 9-8 7-14-4-2-4 5-7 9-6 4 3 6-2zM2902 3582l-7 0-2-2 0-7-6-11 0-5 3-2 5 4 6 1 11 5 4 6 1 11-3 5z"/></g></svg><span>金門縣</span></div></div>
+  <div class="cardpos">
+    <section class="card" id="card" tabindex="0" aria-label="縣市結果" hidden><div class="in"></div></section>
+    <div class="card measure" aria-hidden="true"><div class="in"></div></div>
+  </div>
+  <footer>
+    <p class="src"><span>資料來源：中央選舉委員會 <i>2026-11-27</i> <i>開票中</i>，<i>資料時間 09:27</i>；</span><span><a href="https://data.gov.tw/license" target="_blank" rel="noopener">縣市界：內政部國土測繪中心</a></span></p>
+    <!-- 圖示只在首頁版顯示（首頁版的字藏起來，名稱靠 aria-label）；放大鈕連到文章版，JS 在能全螢幕的橫螢幕上改成全螢幕 -->
+    <div class="btns"><button id="home" type="button" aria-hidden="true" tabindex="-1" aria-label="回全台" title="回全台"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 7.5L8 2.5l5.5 5M4 6.5V13.5h3v-3.5h2v3.5h3V6.5"/></svg><span class="bt">回全台</span></button><button id="pause" type="button" aria-label="暫停輪播" title="暫停輪播"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="bars"><path d="M5.5 3.5v9M10.5 3.5v9"/></g><g class="play"><path d="M5 3l8 5-8 5z"/></g></svg><span class="bt">暫停輪播</span></button><a id="full" href="../election-2026.html" target="_blank" rel="noopener" aria-label="放大看完整版" title="放大看完整版"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><g class="open"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></g><g class="shut"><path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/></g></svg></a></div>
+  </footer>
+  <div class="side"><div class="top"></div><p class="dtime" hidden></p></div>
+  <table class="sr"><caption>2026 縣市長選舉結果，各縣市前兩名</caption><tbody><tr><th scope="row">連江縣</th><td>開票中，候選人乙（民眾黨）4,569 票，50.67%；候選人甲（無黨籍）4,449 票，49.33%</td></tr><tr><th scope="row">基隆市</th><td>開票中，候選人甲（國民黨）106,035 票，51.86%；候選人乙（民進黨）92,373 票，45.18%；候選人丙（無黨籍）6,060 票，2.96%</td></tr><tr><th scope="row">臺北市</th><td>開票中，候選人甲（民眾黨）594,242 票，50.45%；候選人乙（民進黨）524,169 票，44.50%；候選人丙（臺灣SoR無法黨）33,682 票，2.86%；候選人丁（無黨籍）13,966 票，1.19%；候選人戊（三勢團結促進聯盟）7,075 票，0.60%；候選人己（台灣麻將最大黨）4,744 票，0.40%</td></tr><tr><th scope="row">新北市</th><td>開票中，候選人乙（無黨籍）392,812 票，52.52%；候選人甲（民眾黨）332,257 票，44.42%；候選人丙（無黨籍）22,899 票，3.06%</td></tr><tr><th scope="row">桃園市</th><td>開票中，候選人甲（民進黨）244,363 票，54.08%；候選人乙（國民黨）207,485 票，45.92%</td></tr><tr><th scope="row">新竹市</th><td>開票中，候選人乙（國民黨）534,646 票，51.90%；候選人甲（民進黨）464,877 票，45.13%；候選人丙（無黨籍）30,562 票，2.97%</td></tr><tr><th scope="row">新竹縣</th><td>開票中，候選人甲（無黨籍）737,652 票，51.75%；候選人乙（民進黨）645,333 票，45.27%；候選人丙（無黨籍）42,378 票，2.97%</td></tr><tr><th scope="row">宜蘭縣</th><td>開票中，候選人甲（民眾黨）82,461 票，47.70%；候選人乙（無黨籍）81,855 票，47.35%；候選人丙（無黨籍）5,322 票，3.08%；候選人丁（無黨籍）2,137 票，1.24%；候選人戊（無黨籍）1,103 票，0.64%</td></tr><tr><th scope="row">苗栗縣</th><td>開票中，候選人乙（民進黨）49,049 票，52.65%；候選人甲（無黨籍）44,117 票，47.35%</td></tr><tr><th scope="row">金門縣</th><td>開票中，候選人甲（民眾黨）22,487 票，51.53%；候選人乙（無黨籍）18,883 票，43.27%；候選人丙（無黨籍）1,289 票，2.95%；候選人丁（無黨籍）526 票，1.21%；候選人戊（無黨籍）276 票，0.63%；候選人己（無黨籍）180 票，0.41%</td></tr><tr><th scope="row">臺中市</th><td>候選人乙（國民黨）當選，332,883 票，51.94%；候選人甲（無黨籍）288,979 票，45.09%；候選人丙（司法正義黨）19,003 票，2.97%</td></tr><tr><th scope="row">彰化縣</th><td>開票中，候選人甲（無黨籍）397,106 票，53.38%；候選人乙（國民黨）316,327 票，42.52%；候選人丙（無黨籍）21,819 票，2.93%；候選人丁（無黨籍）8,733 票，1.17%</td></tr><tr><th scope="row">南投縣</th><td>開票中，候選人乙（民進黨）411,042 票，52.57%；候選人甲（民眾黨）370,878 票，47.43%</td></tr><tr><th scope="row">花蓮縣</th><td>開票中，候選人乙（國民黨）537,598 票，51.31%；候選人甲（民眾黨）466,835 票，44.55%；候選人丙（台灣工黨）30,701 票，2.93%；候選人丁（無黨籍）12,708 票，1.21%</td></tr><tr><th scope="row">雲林縣</th><td>候選人甲（民進黨）當選，750,532 票，51.31%；候選人乙（國民黨）651,544 票，44.55%；候選人丙（無黨籍）42,845 票，2.93%；候選人丁（無黨籍）17,729 票，1.21%</td></tr><tr><th scope="row">嘉義市</th><td>開票中，候選人乙（民眾黨）729,722 票，51.50%；候選人甲（國民黨）620,664 票，43.81%；候選人丙（無黨籍）40,825 票，2.88%；候選人丁（無黨籍）17,096 票，1.21%；候選人戊（無黨籍）8,545 票，0.60%</td></tr><tr><th scope="row">嘉義縣</th><td>開票中，候選人甲（無黨籍）211,655 票，54.32%；候選人乙（國民黨）178,009 票，45.68%</td></tr><tr><th scope="row">澎湖縣</th><td>開票中，候選人乙（國民黨）430,612 票，51.17%；候選人甲（民眾黨）370,055 票，43.97%；候選人丙（無黨籍）22,939 票，2.73%；候選人丁（台灣聯盟黨）9,926 票，1.18%；候選人戊（無黨籍）4,863 票，0.58%；候選人己（無黨籍）3,185 票，0.38%</td></tr><tr><th scope="row">臺南市</th><td>開票中，候選人甲（民眾黨）473,195 票，51.21%；候選人乙（民進黨）413,517 票，44.75%；候選人丙（臺灣SoR無法黨）25,640 票，2.78%；候選人丁（無黨籍）11,606 票，1.26%</td></tr><tr><th scope="row">高雄市</th><td>開票中，候選人乙（國民黨）236,294 票，53.06%；候選人甲（無黨籍）189,489 票，42.55%；候選人丙（無黨籍）12,418 票，2.79%；候選人丁（無黨籍）4,852 票，1.09%；候選人戊（司法改革黨）2,295 票，0.52%</td></tr><tr><th scope="row">臺東縣</th><td>開票中，候選人甲（民眾黨）180,272 票，54.21%；候選人乙（民進黨）138,687 票，41.71%；候選人丙（無黨籍）9,874 票，2.97%；候選人丁（無黨籍）3,702 票，1.11%</td></tr><tr><th scope="row">屏東縣</th><td>開票中，候選人乙（民眾黨）414,767 票，52.41%；候選人甲（民進黨）376,630 票，47.59%</td></tr></tbody></table>
+</div>
+<script>
+"use strict";
+const D = {"counties":[{"code":"09007","name":"連江縣","six":false,"status":"counting","group":"pend","stations":{"reported":8,"total":10},"updated":"09:24","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"民眾黨","badge":"眾","group":"tpp","votes":4569,"pct":50.67,"elected":false},{"name":"候選人甲","party":"無黨籍","badge":"無","group":"oth","votes":4449,"pct":49.33,"elected":false}],"bbox":[3818,484,5023,1453]},{"code":"09020","name":"金門縣","six":false,"status":"counting","group":"pend","stations":{"reported":44,"total":50},"updated":"09:24","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":22487,"pct":51.53,"elected":false},{"name":"候選人乙","party":"無黨籍","badge":"無","group":"oth","votes":18883,"pct":43.27,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":1289,"pct":2.95,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":526,"pct":1.21,"elected":false},{"name":"候選人戊","party":"無黨籍","badge":"無","group":"oth","votes":276,"pct":0.63,"elected":false},{"name":"候選人己","party":"無黨籍","badge":"無","group":"oth","votes":180,"pct":0.41,"elected":false}],"bbox":[423,4580,956,4907]},{"code":"10002","name":"宜蘭縣","six":false,"status":"counting","group":"pend","stations":{"reported":176,"total":464},"updated":"09:26","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":82461,"pct":47.7,"elected":false},{"name":"候選人乙","party":"無黨籍","badge":"無","group":"oth","votes":81855,"pct":47.35,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":5322,"pct":3.08,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":2137,"pct":1.24,"elected":false},{"name":"候選人戊","party":"無黨籍","badge":"無","group":"oth","votes":1103,"pct":0.64,"elected":false}],"bbox":[6635,3580,7932,5074]},{"code":"10004","name":"新竹縣","six":false,"status":"counting","group":"pend","stations":{"reported":1423,"total":1447},"updated":"09:26","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"無黨籍","badge":"無","group":"oth","votes":737652,"pct":51.75,"elected":false},{"name":"候選人乙","party":"民進黨","badge":"民","group":"dpp","votes":645333,"pct":45.27,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":42378,"pct":2.97,"elected":false}],"bbox":[5850,3673,6824,4815]},{"code":"10005","name":"苗栗縣","six":false,"status":"counting","group":"pend","stations":{"reported":92,"total":193},"updated":"09:26","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"民進黨","badge":"民","group":"dpp","votes":49049,"pct":52.65,"elected":false},{"name":"候選人甲","party":"無黨籍","badge":"無","group":"oth","votes":44117,"pct":47.35,"elected":false}],"bbox":[5244,4126,6525,5120]},{"code":"10007","name":"彰化縣","six":false,"status":"counting","group":"pend","stations":{"reported":744,"total":1067},"updated":"09:26","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"無黨籍","badge":"無","group":"oth","votes":397106,"pct":53.38,"elected":false},{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":316327,"pct":42.52,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":21819,"pct":2.93,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":8733,"pct":1.17,"elected":false}],"bbox":[4441,5298,5368,6221]},{"code":"10008","name":"南投縣","six":false,"status":"counting","group":"pend","stations":{"reported":743,"total":869},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"民進黨","badge":"民","group":"dpp","votes":411042,"pct":52.57,"elected":false},{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":370878,"pct":47.43,"elected":false}],"bbox":[5232,5214,6699,6986]},{"code":"10009","name":"雲林縣","six":false,"status":"final","group":"dpp","stations":{"reported":1470,"total":1470},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"民進黨","badge":"民","group":"dpp","votes":750532,"pct":51.31,"elected":true},{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":651544,"pct":44.55,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":42845,"pct":2.93,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":17729,"pct":1.21,"elected":false}],"bbox":[3994,6045,5472,6985]},{"code":"10010","name":"嘉義縣","six":false,"status":"counting","group":"pend","stations":{"reported":414,"total":1082},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"無黨籍","badge":"無","group":"oth","votes":211655,"pct":54.32,"elected":false},{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":178009,"pct":45.68,"elected":false}],"bbox":[4236,6548,5915,7466]},{"code":"10013","name":"屏東縣","six":false,"status":"counting","group":"pend","stations":{"reported":694,"total":1233},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"民眾黨","badge":"眾","group":"tpp","votes":414767,"pct":52.41,"elected":false},{"name":"候選人甲","party":"民進黨","badge":"民","group":"dpp","votes":376630,"pct":47.59,"elected":false}],"bbox":[4706,8183,5808,10323]},{"code":"10014","name":"臺東縣","six":false,"status":"counting","group":"pend","stations":{"reported":360,"total":820},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":180272,"pct":54.21,"elected":false},{"name":"候選人乙","party":"民進黨","badge":"民","group":"dpp","votes":138687,"pct":41.71,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":9874,"pct":2.97,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":3702,"pct":1.11,"elected":false}],"bbox":[5478,6968,7233,10222]},{"code":"10015","name":"花蓮縣","six":false,"status":"counting","group":"pend","stations":{"reported":1052,"total":1055},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":537598,"pct":51.31,"elected":false},{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":466835,"pct":44.55,"elected":false},{"name":"候選人丙","party":"台灣工黨","badge":"台","group":"oth","votes":30701,"pct":2.93,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":12708,"pct":1.21,"elected":false}],"bbox":[5973,4940,7548,7721]},{"code":"10016","name":"澎湖縣","six":false,"status":"counting","group":"pend","stations":{"reported":794,"total":900},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":430612,"pct":51.17,"elected":false},{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":370055,"pct":43.97,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":22939,"pct":2.73,"elected":false},{"name":"候選人丁","party":"台灣聯盟黨","badge":"台","group":"oth","votes":9926,"pct":1.18,"elected":false},{"name":"候選人戊","party":"無黨籍","badge":"無","group":"oth","votes":4863,"pct":0.58,"elected":false},{"name":"候選人己","party":"無黨籍","badge":"無","group":"oth","votes":3185,"pct":0.38,"elected":false}],"bbox":[2629,6167,3454,7528]},{"code":"10017","name":"基隆市","six":false,"status":"counting","group":"pend","stations":{"reported":195,"total":199},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"國民黨","badge":"國","group":"kmt","votes":106035,"pct":51.86,"elected":false},{"name":"候選人乙","party":"民進黨","badge":"民","group":"dpp","votes":92373,"pct":45.18,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":6060,"pct":2.96,"elected":false}],"bbox":[7254,3122,7616,3438]},{"code":"10018","name":"新竹市","six":false,"status":"counting","group":"pend","stations":{"reported":1102,"total":1112},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":534646,"pct":51.9,"elected":false},{"name":"候選人甲","party":"民進黨","badge":"民","group":"dpp","votes":464877,"pct":45.13,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":30562,"pct":2.97,"elected":false}],"bbox":[5749,3875,6066,4188]},{"code":"10020","name":"嘉義市","six":false,"status":"counting","group":"pend","stations":{"reported":1333,"total":1383},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"民眾黨","badge":"眾","group":"tpp","votes":729722,"pct":51.5,"elected":false},{"name":"候選人甲","party":"國民黨","badge":"國","group":"kmt","votes":620664,"pct":43.81,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":40825,"pct":2.88,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":17096,"pct":1.21,"elected":false},{"name":"候選人戊","party":"無黨籍","badge":"無","group":"oth","votes":8545,"pct":0.6,"elected":false}],"bbox":[4779,6805,5018,6977]},{"code":"63000","name":"臺北市","six":true,"status":"counting","group":"pend","stations":{"reported":1161,"total":1238},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":594242,"pct":50.45,"elected":false},{"name":"候選人乙","party":"民進黨","badge":"民","group":"dpp","votes":524169,"pct":44.5,"elected":false},{"name":"候選人丙","party":"臺灣SoR無法黨","badge":"臺","group":"oth","votes":33682,"pct":2.86,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":13966,"pct":1.19,"elected":false},{"name":"候選人戊","party":"三勢團結促進聯盟","badge":"三","group":"oth","votes":7075,"pct":0.6,"elected":false},{"name":"候選人己","party":"台灣麻將最大黨","badge":"台","group":"oth","votes":4744,"pct":0.4,"elected":false}],"bbox":[6915,3090,7332,3642]},{"code":"64000","name":"高雄市","six":true,"status":"counting","group":"pend","stations":{"reported":421,"total":722},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":236294,"pct":53.06,"elected":false},{"name":"候選人甲","party":"無黨籍","badge":"無","group":"oth","votes":189489,"pct":42.55,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":12418,"pct":2.79,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":4852,"pct":1.09,"elected":false},{"name":"候選人戊","party":"司法改革黨","badge":"司","group":"oth","votes":2295,"pct":0.52,"elected":false}],"bbox":[4349,6907,6098,9086]},{"code":"65000","name":"新北市","six":true,"status":"counting","group":"pend","stations":{"reported":764,"total":904},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"無黨籍","badge":"無","group":"oth","votes":392812,"pct":52.52,"elected":false},{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":332257,"pct":44.42,"elected":false},{"name":"候選人丙","party":"無黨籍","badge":"無","group":"oth","votes":22899,"pct":3.06,"elected":false}],"bbox":[6565,2891,8013,4275]},{"code":"66000","name":"臺中市","six":true,"status":"final","group":"kmt","stations":{"reported":618,"total":618},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":332883,"pct":51.94,"elected":true},{"name":"候選人甲","party":"無黨籍","badge":"無","group":"oth","votes":288979,"pct":45.09,"elected":false},{"name":"候選人丙","party":"司法正義黨","badge":"司","group":"oth","votes":19003,"pct":2.97,"elected":false}],"bbox":[4913,4784,6904,5755]},{"code":"67000","name":"臺南市","six":true,"status":"counting","group":"pend","stations":{"reported":863,"total":1177},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"民眾黨","badge":"眾","group":"tpp","votes":473195,"pct":51.21,"elected":false},{"name":"候選人乙","party":"民進黨","badge":"民","group":"dpp","votes":413517,"pct":44.75,"elected":false},{"name":"候選人丙","party":"臺灣SoR無法黨","badge":"臺","group":"oth","votes":25640,"pct":2.78,"elected":false},{"name":"候選人丁","party":"無黨籍","badge":"無","group":"oth","votes":11606,"pct":1.26,"elected":false}],"bbox":[4054,7034,5312,8175]},{"code":"68000","name":"桃園市","six":true,"status":"counting","group":"pend","stations":{"reported":498,"total":1135},"updated":"09:27","note":"","vote_date":"2026-11-27","cands":[{"name":"候選人甲","party":"民進黨","badge":"民","group":"dpp","votes":244363,"pct":54.08,"elected":false},{"name":"候選人乙","party":"國民黨","badge":"國","group":"kmt","votes":207485,"pct":45.92,"elected":false}],"bbox":[5964,3282,6960,4465]}],"pano":[2819,2891,8013,10323],"six":["63000","65000","68000","66000","67000","64000"],"isles":["09007","09020"],"date":"2026-11-27"};
+const $ = s => document.querySelector(s);
+const frame = $(".frame"), svg = $("#map"), card = $("#card"), cardIn = card.firstElementChild, measure = $(".card.measure .in");
+const hatch = $("#hatch"), hatchH = $("#hatchH"), hatchI = $("#hatchI"), ol = $("#ol"), fo = $("#fo"), isles = $(".isles"), homeBtn = $("#home"), pauseBtn = $("#pause");
+const lt = $("#lt"), lc = $("#lc"), sh = $("#sh"), sk = $("#sk"), cv = $("#cv"), liftG = $("#lift"), mapwin = $(".mapwin");
+// 縣市路徑的 d（outer＝外緣只框自己，新北不框到臺北）；浮起、外緣、焦點都複製 d，不用 <use>
+// p 是本島（澎湖是整個縣、標 isl），i 是外海小島（11-18 拆開：離島不畫白邊）
+const $id = id => document.getElementById(id);
+const dOf = (code, outer) => !code ? "" : outer && $id("o" + code) ? $id("o" + code).getAttribute("d")
+  : $id("p" + code).getAttribute("d") + ($id("i" + code)?.getAttribute("d") || "");
+const dOl = code => $id("p" + code).classList.contains("isl") ? "" : $id("p" + code).getAttribute("d");   // 白色外框只框本島，澎湖不框
+const C = Object.fromEntries(D.counties.map(c => [c.code, c]));
+const SIX = D.six, ISLE = new Set(D.isles);
+const RM = matchMedia("(prefers-reduced-motion: reduce)");
+const DEV = new URLSearchParams(location.search).has("dev");
+// 首頁版：按鈕、圖例、資訊卡搬進右欄；版面一律是橫式（地圖在左）
+const HOME = document.documentElement.classList.contains("home");
+if (HOME) { const side = $(".side"); side.firstElementChild.append($(".btns"), $(".legend")); side.append($(".cardpos")); }
+
+// ── 資訊卡內容 ──
+const fmt = n => n.toLocaleString("en-US");
+const opened = c => c.stations && c.stations.total ? 100 * c.stations.reported / c.stations.total : 0;   // 已開幾成（%）
+function statusLine(c) {
+  const t = c.stations ? `已開 ${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所，` : "";
+  // 首頁版：所數包在 .sn 裡，新資料到時跟票數一起滾（11-27 拿掉進度條，只留文字）
+  const s = !t ? "" : HOME ? `已開 <span class="sn">${fmt(c.stations.reported)}／${fmt(c.stations.total)} 所</span>，${c.updated}` : t + c.updated;
+  // counting、called 的標題旁有「開票中」標示，這行只寫票所與時間；called 的當選由姓名旁的印章表示
+  return { counting: s, called: s, postponed: "選舉延後", pending: D.date.slice(5).replace("-", "/") + " 開票後更新" }[c.status] || "";
+}
+// 投票印章：圓圈裡一個「卜」字形；螢幕報讀照念「當選」
+const STAMP = '<svg class="stamp" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M10.5 2.11V21.89M10.5 10.6L21.34 15.58"/></svg><span class="sr">當選</span>';
+function cardHTML(c) {
+  const st = statusLine(c), live = c.status === "counting" || c.status === "called";
+  let h = `<h2>${c.name}${live ? '<span class="live"><i aria-hidden="true"></i>開票中</span>' : ""}</h2>` + (st ? `<p class="st">${st}</p>` : "");
+  if (c.cands.length && c.status !== "pending" && c.status !== "postponed") h += "<ol>" + c.cands.map(p =>
+    `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? STAMP : ""}<span class="sr">（${p.party}）</span></span>` +
+    `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span>` +
+    (p.elected && c.tags ? `<span class="tg"><span class="tgl">環境政見：</span>${c.tags.map(g => `<span class="tag t-${g.k}">${g.t}</span>`).join('<span class="sr">、</span>')}</span>` : "") + "</li>").join("") + "</ol>" +
+    (c.cands.length > 2 ? `<p class="more">另有 ${c.cands.length - 2} 位候選人</p>` : "");   // 首頁版手機框只列前兩名時才顯示
+  if (c.note) h += `<p class="note">${c.note}</p>`;
+  return h;
+}
+const HTML = Object.fromEntries(D.counties.map(c => [c.code, cardHTML(c)]));
+// 小地圖浮起的影子：在原位複製一份島的路徑，點到時才顯示（複製 d、不用 <use>：WebKit 會把原路徑的樣式帶進 <use> 的複本）
+isles.querySelectorAll(".isle svg").forEach(s => { const sd = s.querySelector(".lf path").cloneNode(); sd.setAttribute("class", "sd"); s.insertBefore(sd, s.firstChild); });
+
+// ── 曲線 ──
+function bezier(x1, y1, x2, y2) {
+  const f = (u, a, b) => 3 * (1 - u) * (1 - u) * u * a + 3 * (1 - u) * u * u * b + u * u * u;
+  return t => { if (t <= 0) return 0; if (t >= 1) return 1; let lo = 0, hi = 1, u = t;
+    for (let i = 0; i < 24; i++) { u = (lo + hi) / 2; if (f(u, x1, x2) < t) lo = u; else hi = u; } return f(u, y1, y2); };
+}
+const easeOut = bezier(0.23, 1, 0.32, 1);
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;   // easeInOutQuad，跟東京短影音一樣
+const easeInv = v => v < .5 ? Math.sqrt(v / 2) : 1 - Math.sqrt((1 - v) / 2);   // 鏡頭走到幾成是在第幾成時間
+const clamp = v => Math.min(1, Math.max(0, v));
+
+// ── 傾斜（2.5D）：拉近出卡時地圖往後倒一點，全景是平的。鏡頭的 t 是傾斜的幾成（0 平、1 最斜） ──
+const TILT_DEG = 16, LIFT = 5, SH_OFF = 2, UP = 260, DOWN = 180;   // 浮起：板面抬 5px、接觸影再往下 2px；抬起 260ms、放下 180ms
+let TILT = 0, O = { x: 0, y: 0, p: 1, ml: 0, mr: 0, mt: 0 };   // O：傾斜的軸心（框內座標）、透視距離、SVG 往外多長的邊
+function proj(px, py, t) {   // 框內平面座標 → 傾斜後的螢幕座標（CSS perspective(p) rotateX(t·TILT)，軸心 O）
+  if (!t || !TILT) return [px, py];
+  const a = t * TILT, dy = py - O.y, s = O.p / (O.p - dy * Math.sin(a));
+  return [O.x + (px - O.x) * s, O.y + dy * Math.cos(a) * s];
+}
+function unproj(X, Y, a = TILT) {   // 反算：傾斜 a 時螢幕上的點原本在平面哪裡（預設最斜，量 SVG 要多大；觸控縮放換算手指位置）
+  if (!a) return [X, Y];
+  const yd = Y - O.y, dy = yd * O.p / (O.p * Math.cos(a) + yd * Math.sin(a)), s = O.p / (O.p - dy * Math.sin(a));
+  return [O.x + (X - O.x) / s, O.y + dy];
+}
+
+// ── 版面：量標題、出處、每張資訊卡，算每個縣市的鏡頭 ──
+let W, H, cams = {}, tour = null, smallHits = [];
+function fit(bb, R, pad, t, kmax = Infinity, kmin = 0) {   // 把縣市外框（傾斜後的梯形外框）塞進 R、四周留 pad；縮放夾在 kmin 到 kmax
+  const tw = (R.r - R.l) * (1 - 2 * pad), th = (R.b - R.t) * (1 - 2 * pad), rx = (R.l + R.r) / 2, ry = (R.t + R.b) / 2;
+  let x = (bb[0] + bb[2]) / 2, y = (bb[1] + bb[3]) / 2, k = Math.max(kmin, Math.min(tw / (bb[2] - bb[0]), th / (bb[3] - bb[1]), kmax));
+  const box = () => { const p = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([mx, my]) => proj(W / 2 + (mx - x) * k, H / 2 + (my - y) * k, t));
+    const X = p.map(q => q[0]), Y = p.map(q => q[1]); return [Math.min(...X), Math.min(...Y), Math.max(...X), Math.max(...Y)]; };
+  for (let i = 0; i < (t && TILT ? 24 : 1); i++) {   // 平的一輪就準；斜的要迭代（透視不是線性）
+    let b = box(); k = Math.max(kmin, Math.min(k * Math.min(tw / (b[2] - b[0]), th / (b[3] - b[1])), kmax));
+    b = box(); x += ((b[0] + b[2]) / 2 - rx) / k; y += ((b[1] + b[3]) / 2 - ry) / k;
+  }
+  return { x, y, k, t };
+}
+function layout() {
+  W = frame.clientWidth; H = frame.clientHeight;
+  const land = HOME || matchMedia("(min-aspect-ratio: 1/1)").matches;
+  // 地圖板子＝標題下緣到出處上緣；卡片與小地圖離板子邊 8px（首頁版沒有標題與出處，板子是右欄左邊整塊）
+  const hdrB = $("header").getBoundingClientRect().bottom, ftrH = HOME ? 0 : H - $("footer").getBoundingClientRect().top;
+  // 板子往上伸進標題下緣那段漸層（CSS header 的 padding-bottom），地圖才會從標題底下淡出；取景照樣從 hdrB 算
+  const FADE = 40, mwT = Math.max(0, hdrB - FADE);
+  mapwin.style.top = mwT + "px"; mapwin.style.bottom = ftrH + "px"; BD = { t: mwT, b: H - ftrH };
+  const pos = $(".cardpos");
+  // 橫式卡片從圖例下面就開始（蓋在漸層上）：漸層那 40px 只是地圖淡出，平板 528×352 少了它金句會放不下（11-18）
+  if (!HOME) { pos.style.top = land ? hdrB - FADE + 8 + "px" : ""; pos.style.bottom = ftrH + 8 + "px"; }
+  isles.style.top = hdrB + 8 + "px";
+  const pr = pos.getBoundingClientRect();
+  const mapR = HOME ? mapwin.getBoundingClientRect().right : pr.left - 8;   // 橫式留給縣市的空白右緣：文章版是卡片左邊 8px，首頁版是右欄左緣
+  // 軸心放在留給縣市的空白中央，透視距離約框長邊的 2.2 倍（角度小、近大遠小也小）
+  TILT = RM.matches ? 0 : TILT_DEG * Math.PI / 180;
+  O = { x: land ? mapR / 2 : W / 2, y: (hdrB + H - ftrH) / 2, p: 2.2 * Math.max(W, H), ml: 0, mr: 0, mt: 0 };
+  if (TILT) { const a = unproj(0, 0), b = unproj(W, 0);
+    O.ml = Math.ceil(Math.max(0, -a[0])) + 2; O.mr = Math.ceil(Math.max(0, b[0] - W)) + 2; O.mt = Math.ceil(Math.max(0, -a[1])) + 2; }
+  // SVG 放在板子裡，座標照樣以框為準（往上多扣板子的 top）
+  Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt - mwT + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
+    transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
+  lastTr = null;
+  cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: HOME ? mapR : W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };   // 首頁版的右欄一直在，全景也只用左邊
+  const panoH = D.pano[3] - D.pano[1];   // 台灣（含澎湖）外框的高
+  for (const c of D.counties) {
+    if (ISLE.has(c.code)) { cams[c.code] = cams.pano; continue; }
+    measure.innerHTML = HTML[c.code];
+    const m = measure.parentNode.getBoundingClientRect();
+    const R = land ? { l: 0, t: hdrB, r: mapR, b: H - ftrH } : { l: 0, t: hdrB, r: W, b: pr.bottom - m.height - 8 };
+    // 縣市佔空白的四成（11-17：原本佔八成太大，縮一半）。拉近的上限：卡片以外的空白區至少放得下半個台灣的高度
+    // （11-17：臺中這類還是太大），最多全景的 2 倍；下限是全景，長條縣不會比全景還遠
+    const KMAX = Math.max(cams.pano.k, Math.min(cams.pano.k * 2, (R.b - R.t) / (0.5 * panoH)));
+    cams[c.code] = fit(c.bbox, R, 0.3, 1, KMAX, cams.pano.k);
+  }
+  const ib = isles.getBoundingClientRect(), isv = isles.querySelector("svg").getBoundingClientRect();
+  smallHits = [...document.querySelectorAll(".hit.dot")].map(el => ({ el, c: C[el.dataset.code] }));
+  // 小地圖的斜線：照小地圖自己的縮放換算成 6px 一格
+  const iv = isles.querySelector("svg").viewBox.baseVal;
+  hatchI.setAttribute("patternTransform", `rotate(45) scale(${iv.width / isv.width})`);
+  isles.querySelectorAll('.g-pend').forEach(u => u.style.fill = "url(#hatchI)");
+  // 小地圖浮起抬 3px，換算成小地圖自己的 viewBox 單位（preserveAspectRatio meet 取較小的縮放）
+  isles.querySelectorAll("svg").forEach(s => { const v = s.viewBox.baseVal, r = s.getBoundingClientRect();
+    const u = r.width && r.height ? Math.max(v.width / r.width, v.height / r.height) : 1;
+    s.style.setProperty("--lf-t", `translateY(${(-3 * u).toFixed(1)}px)`); });
+  buildTour();
+}
+
+// ── 鏡頭：中心線性、縮放取對數內插；太遠就中途先拉遠再推近（照東京短影音） ──
+function lerpCam(a, b, t, dip) {
+  const lk = Math.log2(a.k) + (Math.log2(b.k) - Math.log2(a.k)) * t - dip * Math.sin(Math.PI * t);
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, k: 2 ** lk, t: a.t + (b.t - a.t) * t };   // 傾斜跟著拉近一起走
+}
+function seg(from, to, dur, cardFrom, cardTo, t0, keyTo) {
+  // 同一格：容許浮點誤差（飛到的鏡頭是內插算出來的，跟 cams 裡的差一點點，點金門、連江才不會原地「飛」1.5 秒）
+  const a = cams[from] || from, b = cams[to] || to, same = Math.hypot(a.x - b.x, a.y - b.y) * a.k < 0.01 && Math.abs(a.k / b.k - 1) < 1e-9;
+  let dip = 0;
+  if (same) dur = from === to && typeof from === "string" ? dur : 0;
+  else { const d = Math.hypot(a.x - b.x, a.y - b.y) * Math.sqrt(a.k * b.k);   // 兩端縮放的中間值量距離
+    if (d > 1.85 * W) { dip = Math.log2(d / (1.3 * W)); dur += dip * 600; } }
+  const ev = [];   // 資訊卡換的時刻（絕對時間）
+  if (from !== to || !same) {
+    if (cardTo == null) ev.push([t0, null]);
+    else if (!dur) ev.push([t0, cardTo]);
+    else { if (dip && !RM.matches) ev.push([t0 + easeInv(.25) * dur, null]); ev.push([t0 + easeInv(.6) * dur, cardTo]); }
+  }
+  return { a, b, dur, dip, t0, ev, cardFrom, keyTo: keyTo ?? to, six: SIX.indexOf(cardTo) };
+}
+function camAt(s, t) {
+  const u = s.dur ? clamp((t - s.t0) / s.dur) : 1;
+  if (RM.matches) return u >= easeInv(.6) ? s.b : s.a;   // 減少動態：不飛，到換卡那一刻直接切
+  return lerpCam(s.a, s.b, ease(u), s.dip);
+}
+function buildTour() {
+  const keep = tour ? tourT / tour.cycle : 0, S = []; let t = 0;
+  const add = (f, to, dur, cf, ct) => { const s = seg(f, to, dur, cf, ct, t); S.push(s); t += s.dur; };
+  add("pano", "pano", 1750, null, null);   // 一打開與每輪回到全景停 1.75 秒（11-18：原本 3 秒，先改 2.5 秒）
+  add("pano", SIX[0], 1500, null, SIX[0]);
+  // 每個六都停 3.5 秒（11-17：原本 6 秒）
+  SIX.forEach((c, i) => { add(c, c, 3500, c, c); if (i < 5) add(c, SIX[i + 1], 1500, c, SIX[i + 1]); });
+  add(SIX[5], "pano", 1500, SIX[5], null);
+  const ev = S.flatMap(s => s.ev);
+  tour = { S, cycle: t, ev, holdStart: Object.fromEntries(S.filter(s => s.a === s.b && s.cardFrom).map(s => [s.cardFrom, s.t0])) };
+  tourT = keep * t;
+  if (mode === "user" && userSeg) userSeg = seg(cams[userSeg.keyTo] || cams.pano, userSeg.keyTo, 0, curCard, curCard, performance.now() - 1e4);
+}
+
+// ── 狀態 ──
+let mode = "tour", tourT = 0, started = DEV, frozen = false, userSeg = null, userEv = [], resumeTo = -1, lastSix = -1;
+let backAt = 0;   // 點六都以外的縣市（含金門、連江）：這個時刻自動回全台；0＝沒有排
+let hover = false, focusIn = false, held = false, inView = DEV, userPaused = false, lastInteract = 0;
+let curCam = null, curCard = null, shown = undefined, lastVB = "", lastTr = null;
+let curLift = { code: null, v: 0 }, drop = null, liftKey = "";   // 浮起的縣市與抬了幾成；drop＝點別處時先放下
+let foCode = null;   // 鍵盤聚焦中的縣市（焦點外緣畫在它身上）
+let curBase = null;   // 輪播或點選給的鏡頭（curCam 是疊上讀者縮放後、畫面上實際的鏡頭）
+let ANIM = null;   // 首頁版收到新資料：{ t0, from: {代碼: { c: {姓名: [票數, 得票率]}, s: 已開幾成 }} }，資訊卡的數字從舊值走到新值
+// 讀者的觸控縮放：疊在基準鏡頭上的一層，平面座標（傾斜前的框內座標）P' = (Z.x, Z.y) + Z.s × P；zb＝放手後的彈回
+let Z = { s: 1, x: 0, y: 0 }, zb = null, BD = { t: 0, b: 0 };   // BD：地圖板子的上下緣（平移夾在這裡面）
+const paused = () => hover || focusIn || held || !inView || document.hidden || userPaused || moved() || zb != null;
+
+function cardAt(evs, t) {   // 最後一次換卡與前一次 → [現在, 前一張, 換了多久]
+  let i = -1; for (let j = 0; j < evs.length; j++) if (evs[j][0] <= t) i = j;
+  return i < 0 ? [evs.at(-1)?.[1] ?? null, null, 1e9] : [evs[i][1], i > 0 ? evs[i - 1][1] : evs.at(-1)[1], t - evs[i][0]];
+}
+function tourState(t) {
+  const s = tour.S.find(s => t >= s.t0 && t < s.t0 + s.dur) || tour.S.at(-1);
+  let [cur, prev, el] = cardAt(tour.ev, t);
+  if (el === 1e9) { const ev = tour.ev.at(-1); el = t + tour.cycle - ev[0]; prev = tour.ev.at(-2)[1]; }
+  lastSix = SIX.indexOf(cur) >= 0 ? SIX.indexOf(cur) : (t < tour.S[2].t0 ? -1 : 5);
+  // 浮起只在停住的那段：抵達後抬起，離開前先放下
+  const hold = s.a === s.b && s.cardFrom && !ISLE.has(s.cardFrom);
+  const lift = hold ? { code: s.cardFrom, v: ease(clamp(Math.min((t - s.t0) / UP, (s.t0 + s.dur - t) / DOWN))) } : { code: null, v: 0 };
+  return { cam: camAt(s, t), cur, prev, el, atPano: s.a === cams.pano && s.b === cams.pano, lift };
+}
+function userState(now) {
+  const [cur, prev, el] = cardAt(userEv, now), end = userSeg.t0 + userSeg.dur, to = userSeg.keyTo;
+  let lift = { code: null, v: 0 };
+  if (drop && now < drop.end) lift = { code: drop.code, v: drop.v * (1 - ease(clamp((now - drop.t0) / (drop.end - drop.t0)))) };
+  else if (to !== "pano" && now >= end) lift = { code: to, v: ease(clamp((now - end) / UP)) };
+  return { cam: camAt(userSeg, now), cur, prev, el, atPano: userSeg.b === cams.pano && now >= end, lift };
+}
+
+function draw(now) {
+  const st = mode === "tour" ? tourState(tourT) : userState(now);
+  if (zb && now >= zb.t0) {   // 放手停 ZWAIT 後彈回；減少動態直接切回去
+    const u = RM.matches ? 1 : clamp((now - zb.t0) / ZBACK), e = easeOut(u);
+    Z = u >= 1 ? { s: 1, x: 0, y: 0 } : { s: zb.s + (1 - zb.s) * e, x: zb.x * (1 - e), y: zb.y * (1 - e) };
+    if (u >= 1) { zb = null; lastInteract = now; }   // 彈回後才開始算 5 秒
+  }
+  curBase = st.cam;
+  const c = curCam = zcam(st.cam);
+  const vb = [c.x - (W / 2 + O.ml) / c.k, c.y - (H / 2 + O.mt) / c.k, (W + O.ml + O.mr) / c.k, (H + O.mt) / c.k].map(v => v.toFixed(1)).join(" ");
+  const tr = TILT && c.t > 0.001 ? `perspective(${O.p.toFixed(0)}px) rotateX(${(c.t * TILT_DEG).toFixed(2)}deg)` : "";
+  if (tr !== lastTr) { lastTr = tr; svg.style.transform = tr; }
+  if (vb !== lastVB) {
+    lastVB = vb; svg.setAttribute("viewBox", vb); liftKey = "";
+    for (const p of [hatch, hatchH]) p.setAttribute("patternTransform", `rotate(45) scale(${(1 / c.k).toFixed(4)})`);
+    for (const { el, c: cc } of smallHits) { const size = Math.max(cc.bbox[2] - cc.bbox[0], cc.bbox[3] - cc.bbox[1]) * c.k;
+      el.setAttribute("r", size < 44 ? (22 / c.k).toFixed(1) : 0); }
+    // 小地圖只在全景出現：拉近、平移或傾斜離開全景就淡出（手機上六都幾乎不放大、只平移，只看縮放會留著壓到地圖）
+    const pz = cams.pano, dk = Math.abs(Math.log2(c.k / pz.k)), dp = Math.hypot((c.x - pz.x) * pz.k / W, (c.y - pz.y) * pz.k / H);
+    const op = clamp(1 - Math.max(dk / 0.4, dp / 0.08, c.t / 0.3));
+    isles.style.opacity = op; isles.style.pointerEvents = op > .5 ? "" : "none"; isles.style.visibility = op ? "" : "hidden";
+  }
+  renderCard(st.cur, st.prev, st.el);
+  if (ANIM) countUp(now);
+  renderLift(RM.matches ? { code: st.cur && !ISLE.has(st.cur) ? st.cur : null, v: 1 } : st.lift, c.k);
+  homeBtn.setAttribute("aria-hidden", st.atPano && st.cur == null); homeBtn.tabIndex = st.atPano && st.cur == null ? -1 : 0;
+}
+// 浮起的板子：打亮的板面抬高 LIFT px；原位先用原色蓋掉自己的白界線（cv），再疊兩層半透明的影子（sk 原位、sh 往下 SH_OFF px），
+// 寬的半透明描邊疊出柔邊。原本原位畫實心的深色側面，在 iPhone 上看起來像一圈破掉的雙邊，11-17 改掉。
+// 全是平的色塊、沒有濾鏡，各家瀏覽器畫出來一樣；v＝0（飛行途中）整組關掉。減少動態：只留打亮與外緣，不抬、沒有影子
+let liftCode = null;
+function renderLift(L, k) {
+  if (L.v <= 0) L = { code: null, v: 0 };
+  curLift = L;
+  const key = `${L.code} ${L.v.toFixed(3)}`;
+  if (key === liftKey) return;
+  liftKey = key;
+  // 澎湖（整個縣標 isl）：影子只留原位一條灰，不加寬描邊、不要往下錯開那層（小島一多會變成一圈圈灰暈），跟金門、連江小地圖一樣（11-18）
+  const on = L.code != null, motion = on && !RM.matches, isl = on && $id("p" + L.code).classList.contains("isl");
+  liftG.classList.toggle("isl", isl);
+  if (L.code !== liftCode) {
+    liftCode = L.code;
+    const d = dOf(L.code), g = on ? C[L.code].group : "";
+    for (const el of [lc, sk, sh, cv]) el.setAttribute("d", d);
+    lc.style.fill = g === "pend" ? "url(#hatchH)" : g ? `var(--${g}-hi)` : "";
+    cv.style.fill = cv.style.stroke = g === "pend" ? "url(#hatch)" : g ? `var(--${g})` : "";   // 蓋掉自己的白界線，抬起後下緣才不會多一條白線
+  }
+  lc.style.opacity = on ? L.v : 0;
+  fo.style.visibility = on && foCode === L.code ? "hidden" : "";   // 抬起的那個已經有外緣，焦點外緣不要在原位再畫一圈
+  lt.setAttribute("transform", motion ? `translate(0 ${(-LIFT * L.v / k).toFixed(2)})` : "");
+  sk.style.display = cv.style.display = motion ? "" : "none"; sh.style.display = motion && !isl ? "" : "none";
+  if (motion) { sk.style.opacity = sh.style.opacity = L.v; sh.setAttribute("transform", `translate(0 ${(SH_OFF * L.v / k).toFixed(2)})`); }
+}
+function renderCard(cur, prev, el) {
+  let show = cur, op = 1, ty = 0, inOp = 1;
+  if (cur == null) { if (prev != null && el < 150) { show = prev; op = 1 - easeOut(el / 150); } else show = null; }
+  else if (prev == null) { const p = easeOut(clamp(el / 200)); op = p; ty = RM.matches ? 0 : 8 * (1 - p); }
+  else if (prev !== cur) inOp = easeOut(clamp(el / 180));
+  if (show !== shown) { shown = show; card.hidden = show == null; if (show) { cardIn.innerHTML = HTML[show]; card.scrollTop = 0; } }
+  card.style.opacity = op; card.style.transform = ty ? `translateY(${ty.toFixed(2)}px)` : ""; cardIn.style.opacity = inOp;
+  if (curCard !== cur) {   // 外緣跟資訊卡同一刻換
+    curCard = cur;
+    ol.setAttribute("d", cur && !ISLE.has(cur) ? dOl(cur) : "");   // 連內環一起框：新北跟臺北、嘉義縣跟嘉義市的交界也畫白邊（11-17）；離島不框（11-18）
+    isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("on", i.dataset.code === cur));
+  }
+}
+
+// ── 互動 ──
+function go(code, instant) {   // code＝縣市代碼，null＝回全台
+  const now = performance.now(); lastInteract = now; resumeTo = -1;
+  Z = { s: 1, x: 0, y: 0 }; zb = null;   // 放大中點縣市：從畫面上的樣子直接飛過去，讀者的縮放併進這段飛行
+  if (mode === "tour") userEv = [[-1e9, curCard]]; else userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  mode = "user";
+  const to = code == null || ISLE.has(code) ? "pano" : code;
+  userSeg = seg(curCam, to, 1500, curCard, code, instant ? now - 1e4 : now + putDown(now, to, instant), to);
+  userEv.push(...userSeg.ev);
+  // 點六都：輪播直接跳到那一站，飛到後照原本順序接著輪（11-17：原本停住等 5 秒）
+  if (SIX.includes(code)) { lastSix = SIX.indexOf(code); resumeTo = lastSix; }
+  // 六都以外：抵達後停 3.5 秒自動回全台（金門、連江鏡頭不動，從現在算）；讀者中途再點、捏、拖、Esc、回全台都會蓋掉
+  backAt = code != null && !SIX.includes(code) ? userSeg.t0 + userSeg.dur + 3500 : 0;
+}
+function putDown(now, to, instant) {   // 板子還抬著就先放下再飛（放下的時間照抬了幾成）；回傳要等多久
+  drop = null;
+  if (instant || RM.matches || curLift.v <= 0 || curLift.code === to) return 0;
+  drop = { code: curLift.code, v: curLift.v, t0: now, end: now + DOWN * curLift.v };
+  return drop.end - now;
+}
+function maybeResume(now) {
+  if (resumeTo >= 0) {
+    if (now >= userSeg.t0 + userSeg.dur) { mode = "tour"; tourT = tour.holdStart[SIX[resumeTo]]; lastSix = resumeTo; resumeTo = -1; }
+    return;
+  }
+  const end = userSeg.t0 + userSeg.dur;
+  if (paused() || now < end) return;
+  if (backAt) { if (now >= backAt) go(null, RM.matches); return; }   // 減少動態：直接切回全台，不飛
+  // 停在縣市或回到全台：2.5 秒沒動作就接著輪（11-18：原本縣市 5 秒、全台抵達後 4 秒；11-17 以前是 20 秒）
+  const pano = userSeg.keyTo === "pano" && curCard == null;
+  if (now - (pano ? Math.max(lastInteract, end) : lastInteract) < 2500) return;
+  const n = (lastSix + 1) % 6;
+  userEv = userEv.filter(e => e[0] <= now).slice(-1);
+  userSeg = seg(curCam, SIX[n], 1500, curCard, SIX[n], now + putDown(now, SIX[n])); userEv.push(...userSeg.ev); resumeTo = n;
+}
+function codeOf(e) { const t = e.target.closest("[data-code]"); return t && t.dataset.code; }
+// 小縣市的隱形點擊圓會互相蓋住（臺北、基隆的圓心在手機全景只差約 18px，點基隆中間會選到臺北）：
+// 點到圓的時候改選離手指最近的圓心（11-18）
+const nearestDot = e => { let best = null, bd = Infinity;
+  for (const { el } of smallHits) { if (!(+el.getAttribute("r") > 0)) continue;
+    const b = el.getBoundingClientRect(), d = Math.hypot(e.clientX - b.left - b.width / 2, e.clientY - b.top - b.height / 2);
+    if (d < bd) { bd = d; best = el.dataset.code; } }
+  return best; };
+svg.addEventListener("click", e => { const c = e.target.classList.contains("dot") ? nearestDot(e) : codeOf(e); go(c || null); });
+isles.addEventListener("click", e => { const c = codeOf(e); if (c) go(c); });
+frame.addEventListener("keydown", e => {
+  if (e.key === "Escape") { go(null); return; }
+  if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.code) { e.preventDefault(); go(e.target.dataset.code); }
+});
+// 焦點外緣只給鍵盤用：手指點縣市也會聚焦，原位多畫一圈白邊、跟抬起的外緣錯開 5px，iPhone 上看就是兩圈破掉的邊（11-17）
+// 只有鍵盤聚焦才算暫停：手指、滑鼠點縣市也會聚焦，算進去的話點過就再也不接著輪（11-17 發現）
+frame.addEventListener("focusin", e => { const c = e.target.dataset && e.target.dataset.code;
+  const kb = e.target.matches && e.target.matches(":focus-visible"); focusIn = !!kb;
+  foCode = kb && c && !ISLE.has(c) ? c : null;
+  fo.setAttribute("d", foCode ? dOf(c, true) : ""); fo.style.visibility = foCode && foCode === curLift.code ? "hidden" : "";
+  isles.querySelectorAll(".isle").forEach(i => i.classList.toggle("focus", kb && i === e.target)); });   // 手指點小地圖不畫白邊（11-18）
+frame.addEventListener("focusout", e => { if (!frame.contains(e.relatedTarget)) { focusIn = false; fo.setAttribute("d", ""); isles.querySelectorAll(".isle").forEach(i => i.classList.remove("focus")); } });
+frame.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") hover = true; });
+frame.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hover = false; });
+frame.addEventListener("pointerdown", e => { held = true; lastInteract = performance.now(); });
+addEventListener("pointerup", () => held = false); addEventListener("pointercancel", () => held = false);
+homeBtn.addEventListener("click", e => { e.stopPropagation(); go(null); });
+pauseBtn.addEventListener("click", () => {
+  userPaused = !userPaused; const t = userPaused ? "繼續輪播" : "暫停輪播";
+  pauseBtn.lastChild.textContent = pauseBtn.title = t; pauseBtn.setAttribute("aria-label", t); pauseBtn.classList.toggle("on", userPaused);   // 首頁版換圖示
+  if (!userPaused && mode === "user") lastInteract = -1e9;   // 按繼續就接著輪，不再等 5 秒
+});
+// 首頁版的放大鈕：能全螢幕又是橫的螢幕（桌機、平板）就把首頁版開成全螢幕；iPhone（沒有全螢幕 API）與直拿的手機照連結另開文章版，直式排法在那邊
+const fullBtn = $("#full");
+fullBtn.addEventListener("click", e => {
+  if (!document.fullscreenEnabled || screen.width < screen.height) return;
+  e.preventDefault();
+  if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => open(fullBtn.href, "_blank", "noopener"));
+});
+document.addEventListener("fullscreenchange", () => { const on = !!document.fullscreenElement, t = on ? "結束全螢幕" : "放大看完整版";
+  fullBtn.classList.toggle("on", on); fullBtn.title = t; fullBtn.setAttribute("aria-label", t); });
+
+// ── 觸控縮放：照吐瓦魯地圖（template/gen_map.py）的捏開放大改寫。只做觸控，桌機不縮放、滾輪不攔 ──
+// 雙指捏：目前鏡頭的 0.5 到 2 倍、原地縮放，兩指一起移動可平移；縮放中單指拖就移動畫面；1 倍時橫向起手的單指拖也移動；
+// 放手停 0.5 秒彈回基準鏡頭。
+// 走鏡頭本身：Z 換算成鏡頭再改 viewBox，向量照樣清楚、線寬不變，浮起與斜線也照放大後的鏡頭算。
+// 傾斜不收平：手指位置用 unproj 照目前的傾斜反算回平面，捏的那一點照樣留在兩指中間；收平的話一開始捏，地圖就在手指底下變形
+const ZMIN = 0.5, ZMAX = 2, ZWAIT = 500, ZBACK = 300;
+function zcam(b) {   // 基準鏡頭疊上 Z：平面座標 P = (w − b)·k + 框中心，解出新的鏡頭
+  if (Z.s === 1 && !Z.x && !Z.y) return b;
+  return { x: b.x + (W / 2 * (1 - Z.s) - Z.x) / (Z.s * b.k), y: b.y + (H / 2 * (1 - Z.s) - Z.y) / (Z.s * b.k), k: b.k * Z.s, t: b.t };
+}
+function setZ(s, x, y) {   // 夾住平移：放大時板子一直被地圖蓋滿，縮小時縮小的畫面整塊留在板子裡，拖不出邊界
+  // 這條規則在 1 倍時一步都不能動，所以另給一段餘裕：1 倍時可拖開半個板子，往 2 倍、0.5 倍漸漸收回，到兩端跟原規則一樣
+  const f = Math.max(0, 1 - Math.abs(Math.log2(s))), mx = W / 2 * f, my = (BD.b - BD.t) / 2 * f;
+  const cl = (v, a, b, m) => Math.min(Math.max(a, b) + m, Math.max(Math.min(a, b) - m, v));
+  Z = { s, x: cl(x, W * (1 - s), 0, mx), y: cl(y, BD.b * (1 - s), BD.t * (1 - s), my) };
+}
+function holdCam(now) {   // 讀者開始捏或拖：輪播停住、飛行中就停在這一格，彈回也回到這一格
+  lastInteract = now; zb = null; backAt = 0;   // 捏、拖就不自動回全台
+  if (mode === "user" && now >= userSeg.t0 + userSeg.dur) return;   // 已經停在點選的縣市
+  const P = cams.pano, b = curBase, atP = Math.abs(b.k / P.k - 1) < 1e-6 && Math.hypot(b.x - P.x, b.y - P.y) * b.k < 0.5 && b.t < 1e-6;
+  const key = curCard && !ISLE.has(curCard) ? curCard : "pano";
+  userEv = [[-1e9, curCard]]; mode = "user"; resumeTo = -1; drop = null;
+  userSeg = seg(atP ? P : b, atP ? P : b, 0, curCard, curCard, curLift.code === key ? now - 1e4 : now, key);   // 已經抬著就維持抬著，否則現在抬起
+}
+const moved = () => Z.s !== 1 || Z.x !== 0 || Z.y !== 0;   // 縮放過或拖開過（還沒彈回）
+const plane = (x, y) => { const r = frame.getBoundingClientRect(); return unproj(x - r.left, y - r.top, curBase.t * TILT); };
+const mid = ts => plane((ts[0].clientX + ts[1].clientX) / 2, (ts[0].clientY + ts[1].clientY) / 2);
+const gap = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+const grab = t => ({ p: plane(t.clientX, t.clientY), x: Z.x, y: Z.y });
+let pinch = null, drag = null, aim = null;   // pinch＝雙指捏 { d:兩指距離, m:中點, s, x, y }；drag＝單指拖 { p:起點, x, y }；aim＝1 倍時單指的起點，還沒判方向
+const AIM = 8;   // 1 倍時手指走超過 8px 才判方向：橫向起手就拖地圖，直向起手交給瀏覽器捲文章
+const springBack = () => { lastInteract = performance.now(); zb = { ...Z, t0: performance.now() + ZWAIT }; };
+for (const el of [mapwin, isles]) {   // 小地圖淡出前也收得到，手指壓在它上面一樣能捏
+  // 只有捏、縮放或拖開中的拖、1 倍時橫向起手的拖才擋瀏覽器預設；CSS 的 touch-action:pan-y 讓直向捲動一直歸瀏覽器
+  el.addEventListener("touchstart", e => {
+    aim = null;
+    if (e.touches.length === 2) { holdCam(performance.now()); drag = null; pinch = { d: gap(e.touches), m: mid(e.touches), s: Z.s, x: Z.x, y: Z.y }; }
+    else if (e.touches.length === 1 && moved()) { holdCam(performance.now()); drag = grab(e.touches[0]); }
+    else if (e.touches.length === 1) aim = [e.touches[0].clientX, e.touches[0].clientY];
+  }, { passive: true });
+  el.addEventListener("touchmove", e => {
+    if (aim && e.touches.length === 1) {
+      const t = e.touches[0], dx = t.clientX - aim[0], dy = t.clientY - aim[1];
+      if (Math.hypot(dx, dy) < AIM) return;
+      if (Math.abs(dx) > Math.abs(dy)) { holdCam(performance.now()); drag = { p: plane(...aim), x: Z.x, y: Z.y }; }   // 從起點算，先走的那幾 px 也補上
+      aim = null;   // 直向起手：這一筆都不攔，讓頁面捲
+    }
+    if (pinch && e.touches.length === 2) {
+      e.preventDefault();
+      // 原地縮放：一開始捏的那一點底下的地圖，一直留在兩指中間
+      const s = Math.min(ZMAX, Math.max(ZMIN, pinch.s * gap(e.touches) / pinch.d)), m = mid(e.touches), k = s / pinch.s;
+      setZ(s, m[0] - (pinch.m[0] - pinch.x) * k, m[1] - (pinch.m[1] - pinch.y) * k);
+    } else if (drag && e.touches.length === 1) {
+      e.preventDefault();
+      const q = plane(e.touches[0].clientX, e.touches[0].clientY);
+      setZ(Z.s, drag.x + q[0] - drag.p[0], drag.y + q[1] - drag.p[1]);
+    }
+  }, { passive: false });
+  const untouch = e => {
+    if (pinch && e.touches.length < 2) {   // 放開一指就接著用剩下那指拖
+      pinch = null;
+      if (e.touches.length === 1 && moved()) drag = grab(e.touches[0]); else springBack();
+    } else if (drag && !e.touches.length) { drag = null; springBack(); }
+    if (!e.touches.length) aim = null;
+  };
+  el.addEventListener("touchend", untouch); el.addEventListener("touchcancel", untouch);
+}
+new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) started = true; }, { threshold: 0.25 }).observe(frame);
+new ResizeObserver(() => layout()).observe(frame);
+RM.addEventListener("change", () => { layout(); liftKey = ""; });   // 減少動態一切換，傾斜與取景跟著重算
+document.fonts && document.fonts.ready.then(layout);
+
+let last = performance.now();
+function loop() {
+  const now = performance.now(), dt = Math.min(100, now - last); last = now;
+  if (!frozen) {
+    if (mode === "tour") { if (started && !paused()) tourT = (tourT + dt) % tour.cycle; }
+    else maybeResume(now);
+  }
+  draw(now);
+  requestAnimationFrame(loop);
+}
+layout(); draw(performance.now()); requestAnimationFrame(loop);
+
+// ── 首頁版即時更新（SPEC「首頁版即時更新」）：每 60 秒抓同資料夾的 live.json，收到新的就原地換，不重新載入、不打斷輪播 ──
+// 固定網址加 cache:"no-cache"：瀏覽器帶 If-None-Match，沒變就是 304。抓不到或檔案壞掉就留著烤在頁面裡的資料。
+// 收不收：schema 1、同一個 epoch、seq 變大、22 個代碼不重複且對得上、字串欄位都在；poll_s 只認收下的檔（0 是停止開關）。
+// 過期看 published_at：迴圈停了 Pages 照樣回 200 或 304，看有沒有抓到檔判斷不出來
+const LIVE = { url: "live.json", every: ((D.poll_s > 0 ? D.poll_s : 60) * 1000), seq: D.seq || 0, epoch: D.epoch || "", pub: (D.published_at || 0) * 1000,
+  fails: 0, stopped: D.poll_s === 0, timer: 0, applied: 0, rejected: [] };
+const dtimeEl = $(".dtime");
+function liveWhy(n) {
+  if (!n || n.schema !== 1) return "schema";
+  if (n.epoch !== LIVE.epoch) return "epoch";
+  if (!(n.seq > LIVE.seq)) return "seq";
+  if (!Array.isArray(n.counties) || n.counties.length !== D.counties.length || new Set(n.counties.map(c => c && c.code)).size !== D.counties.length
+    || n.counties.some(c => !c || !C[c.code] || !Array.isArray(c.cands))) return "codes";
+  if (!n.aria || [n.legend_home, n.src, n.table, n.dtime].some(s => typeof s !== "string")) return "fields";
+  return "";
+}
+async function poll() {
+  clearTimeout(LIVE.timer);
+  if (LIVE.stopped || LIVE.busy) return;   // 切回分頁時上一次還在抓：不另開一條輪詢
+  LIVE.busy = true;
+  if (!document.hidden) {   // 分頁藏起來不抓，切回來馬上抓一次
+    try {
+      const r = await fetch(LIVE.url, { cache: "no-cache" });
+      if (!r.ok) throw new Error(r.status);
+      const n = await r.json();
+      LIVE.fails = 0;
+      const why = liveWhy(n);
+      if (!why) {
+        try { applyLive(n); } catch (e) { LIVE.rejected.push("apply:" + e.message); }
+        LIVE.seq = n.seq;   // 套用失敗也記下這個序號，不會每分鐘重試同一份壞檔
+        if (n.poll_s === 0) LIVE.stopped = true;
+        else if (n.poll_s > 0) LIVE.every = n.poll_s * 1000;
+      } else if (why !== "seq") LIVE.rejected.push(why);
+    } catch (e) { LIVE.fails++; }
+  }
+  LIVE.busy = false;
+  stale();
+  clearTimeout(LIVE.timer);
+  if (!LIVE.stopped) LIVE.timer = setTimeout(poll, LIVE.every * Math.min(5, 1 + LIVE.fails) * (0.9 + Math.random() * 0.2));   // 失敗就拉長，最多 5 倍
+}
+function applyLive(n) {   // 原地換掉每縣的資料物件（輪播、點擊、小地圖拿的是同一批物件），再換顏色、報讀文字、圖例、出處、表格
+  const from = {}, pct = c => (c.status === "counting" || c.status === "called") && c.stations ? opened(c) : null;
+  n.counties.forEach(cardHTML);   // 先把每張卡片試算一次：哪一縣的資料壞了就在這裡丟錯，還沒改到任何東西
+  for (const c of n.counties) {
+    const o = C[c.code], bbox = o.bbox;
+    const f = { c: Object.fromEntries(o.cands.map(p => [p.name, [p.votes, p.pct]])), s: pct(o) ?? 0, r: pct(o) == null ? 0 : o.stations.reported };
+    if (JSON.stringify(o.cands.map(p => [p.name, p.votes, p.pct])) !== JSON.stringify(c.cands.map(p => [p.name, p.votes, p.pct])) || pct(o) !== pct(c)) from[c.code] = f;
+    for (const k of Object.keys(o)) delete o[k];
+    Object.assign(o, c, { bbox });
+    HTML[c.code] = cardHTML(o);
+  }
+  document.querySelectorAll("#counties .cty").forEach(g => { const c = C[g.dataset.code];
+    g.setAttribute("class", `cty g-${c.group}`); g.setAttribute("aria-label", n.aria[c.code] || c.name); });
+  document.querySelectorAll(".isle").forEach(el => { const c = C[el.dataset.code], p = el.querySelector(".lf path");
+    el.setAttribute("aria-label", n.aria[c.code] || c.name); p.setAttribute("class", `g-${c.group}`);
+    p.style.fill = c.group === "pend" ? "url(#hatchI)" : "";   // layout() 寫過行內斜線，換色時要清掉，不然開完了還是斜線
+  });
+  const set = (sel, h) => { const el = $(sel); if (el) el.innerHTML = h; };
+  set(".legend", n.legend_home); set(".src span", n.src); set("table.sr tbody", n.table);
+  D.dtime = n.dtime; LIVE.pub = (n.published_at || 0) * 1000; LIVE.applied++;
+  if (Object.keys(from).length) ANIM = { t0: performance.now(), from };
+  shown = undefined; liftCode = null; liftKey = "";   // 資訊卡與浮起的板子照新資料重畫（板面顏色在 liftCode 換時才設）
+}
+// 資訊卡的票數、得票率、已開所數從舊值走到新值，1.5 秒後停在真的數字；減少動態時直接換。兩次更新之間不內插、不外推
+function countUp(now) {
+  const u = RM.matches ? 1 : clamp((now - ANIM.t0) / 1500), e = easeOut(u), f = shown != null && ANIM.from[shown];
+  if (f) {
+    const c = C[shown], at = (a, b) => u >= 1 ? b : a + (b - a) * e;
+    cardIn.querySelectorAll("li").forEach((li, i) => { const p = c.cands[i], o = p && (f.c[p.name] || [0, 0]), v = li.querySelector(".v"), pc = li.querySelector(".pc");
+      if (!p || !v || !pc) return;
+      v.textContent = fmt(Math.round(at(o[0], p.votes))); pc.textContent = at(o[1], p.pct).toFixed(2) + "%"; });
+    const sn = cardIn.querySelector(".sn");
+    if (sn && c.stations) sn.textContent = `${fmt(Math.round(at(f.r, c.stations.reported)))}／${fmt(c.stations.total)} 所`;
+  }
+  if (u >= 1) ANIM = null;
+}
+function stale() {   // 開票開始後、還沒全部開完，迴圈超過 20 分鐘沒發新版：資料時間那行變紅、加「更新中斷」（手機框只放得下這麼短）
+  const all = D.counties.every(c => c.status === "final" || c.status === "postponed"), begun = D.counties.some(c => c.status !== "pending" && c.status !== "postponed");
+  const late = !LIVE.stopped && begun && !all && LIVE.pub > 0 && Date.now() - LIVE.pub > (window.__STALE_MS || 20 * 60000);
+  document.documentElement.classList.toggle("stale", late);
+  const t = late ? (D.dtime || "") + "（更新中斷）" : D.dtime;
+  if (dtimeEl.textContent !== t) dtimeEl.textContent = t;
+  dtimeEl.hidden = !t;
+}
+if (HOME) {
+  stale();
+  if (LIVE.epoch && !LIVE.stopped && !/[?&]nolive\b/.test(location.search)) {
+    if (window.__POLL_MS) LIVE.every = window.__POLL_MS;   // 測試用：縮短輪詢
+    LIVE.timer = setTimeout(poll, 1000 + Math.random() * 2000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && !LIVE.stopped) poll(); });
+    setInterval(stale, 30000);   // 沒有新檔進來，過期也要自己出現
+  }
+  window.__live = LIVE;
+}
+
+if (DEV) {   // 開發用：?dev 才有，逐幀錄影與截圖用
+  window.__tour = {
+    get cycle() { return tour.cycle; }, get segs() { return tour.S.map(s => ({ t0: s.t0, dur: s.dur, dip: s.dip, card: s.ev.length ? s.ev.at(-1)[1] : s.cardFrom })); },
+    seek(ms) { frozen = true; mode = "tour"; tourT = ((ms % tour.cycle) + tour.cycle) % tour.cycle; draw(performance.now()); },
+  };
+  window.__dev = { select(code) { frozen = true; go(code, true); draw(performance.now()); }, cams: () => cams };
+}
+</script>
+</body>
+</html>
