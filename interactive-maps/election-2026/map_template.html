@@ -208,12 +208,12 @@
     .home .isle, .home .isle svg{ width:54px } .home .isle svg{ height:44px } .home .isle[data-code="09020"] svg{ height:30px }
     .home .isle span{ font-size:10px; margin-top:2px }
   }
-  /* 手機的 16:9 框（高 300 以下）：卡片只列前兩名、下面寫還有幾位 */
+  /* 手機的 16:9 框（高 300 以下）：候選人放得下幾位就列幾位，放不下的寫還有幾位（JS 的 fitCard() 量） */
   @media (max-height:300px){
     .home .card{ padding-top:6px }
     .home .card h2{ font-size:14px } .home .card .st{ font-size:11px; margin-top:1px } .home .card ol{ margin-top:5px }
     .home .card li{ font-size:11.5px; line-height:1.4; column-gap:5px; grid-template-columns:16px minmax(0,1fr) auto auto }
-    .home .card li + li{ margin-top:4px } .home .card li:nth-child(n+3){ display:none }
+    .home .card li + li{ margin-top:4px }
     .home .bd{ width:16px; height:16px; font-size:10.5px; border-radius:4px }
     .home .live{ font-size:10.5px; padding:0 6px 0 5px; margin-left:5px; vertical-align:1px }
     .home .tag, .home .tgl{ font-size:10.5px } .home .tag{ padding:1px 7px }
@@ -295,7 +295,7 @@ function cardHTML(c) {
     `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? STAMP : ""}<span class="sr">（${p.party}）</span></span>` +
     `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span>` +
     (p.elected && c.tags ? `<span class="tg"><span class="tgl">環境政見：</span>${c.tags.map(g => `<span class="tag t-${g.k}">${g.t}</span>`).join('<span class="sr">、</span>')}</span>` : "") + "</li>").join("") + "</ol>" +
-    (c.cands.length > 2 ? `<p class="more">另有 ${c.cands.length - 2} 位候選人</p>` : "");   // 首頁版手機框只列前兩名時才顯示
+    (c.cands.length > 2 ? `<p class="more">另有 ${c.cands.length - 2} 位候選人</p>` : "");   // 首頁版手機框放不下全部時才顯示，人數由 fitCard() 改
   if (c.note) h += `<p class="note">${c.note}</p>`;
   return h;
 }
@@ -364,6 +364,7 @@ function layout() {
   Object.assign(svg.style, { left: -O.ml + "px", top: -O.mt - mwT + "px", width: W + O.ml + O.mr + "px", height: H + O.mt + "px",
     transformOrigin: `${O.x + O.ml}px ${O.y + O.mt}px` });
   lastTr = null;
+  if (HOME) shown = undefined;   // 框的大小或字型變了：卡片重畫，fitCard() 重算放得下幾位
   cams = { pano: fit(D.pano, { l: 0, t: hdrB, r: HOME ? mapR : W, b: H - ftrH }, land ? 0.02 : 0.025, 0) };   // 首頁版的右欄一直在，全景也只用左邊
   const panoH = D.pano[3] - D.pano[1];   // 台灣（含澎湖）外框的高
   for (const c of D.counties) {
@@ -516,12 +517,30 @@ function renderLift(L, k) {
   sk.style.display = cv.style.display = motion ? "" : "none"; sh.style.display = motion && !isl ? "" : "none";
   if (motion) { sk.style.opacity = sh.style.opacity = L.v; sh.setAttribute("transform", `translate(0 ${(SH_OFF * L.v / k).toFixed(2)})`); }
 }
+// 首頁版手機框（高 300 以下）：候選人放得下幾位就列幾位，放不下的寫「另有 N 位候選人」（11-27 改，原本只列前兩名）。
+// 至少列兩位；點金門、連江時小地圖留在右欄底部，卡片要停在它上面，兩位加那行還放不下就不寫那行
+const SHORT = matchMedia("(max-height:300px)");
+function fitCard() {
+  const more = cardIn.querySelector(".more");
+  if (!HOME || !SHORT.matches || !more) return;
+  card.style.transform = "";   // 進場的位移不算進去量（renderCard 接著會再設）
+  const lis = [...cardIn.querySelectorAll("li")];
+  const lim = Math.min(card.parentNode.getBoundingClientRect().bottom, ISLE.has(shown) ? isles.getBoundingClientRect().top - 6 : Infinity);
+  const over = () => cardIn.getBoundingClientRect().bottom > lim + 0.5;
+  more.style.display = "none";
+  if (!over()) return;
+  more.style.display = "";
+  let n = lis.length;
+  while (n > 2 && over()) lis[--n].style.display = "none";
+  more.textContent = `另有 ${lis.length - n} 位候選人`;
+  if (over()) more.style.display = "none";
+}
 function renderCard(cur, prev, el) {
   let show = cur, op = 1, ty = 0, inOp = 1;
   if (cur == null) { if (prev != null && el < 150) { show = prev; op = 1 - easeOut(el / 150); } else show = null; }
   else if (prev == null) { const p = easeOut(clamp(el / 200)); op = p; ty = RM.matches ? 0 : 8 * (1 - p); }
   else if (prev !== cur) inOp = easeOut(clamp(el / 180));
-  if (show !== shown) { shown = show; card.hidden = show == null; if (show) { cardIn.innerHTML = HTML[show]; card.scrollTop = 0; } }
+  if (show !== shown) { shown = show; card.hidden = show == null; if (show) { cardIn.innerHTML = HTML[show]; card.scrollTop = 0; fitCard(); } }
   card.style.opacity = op; card.style.transform = ty ? `translateY(${ty.toFixed(2)}px)` : ""; cardIn.style.opacity = inOp;
   if (curCard !== cur) {   // 外緣跟資訊卡同一刻換
     curCard = cur;
