@@ -316,7 +316,7 @@ def main():
         for k in ("09007", "09020"))
 
     groups = [c["group"] for c in res.values()]
-    title = f"{year} 縣市長選舉結果"
+    title = f"{year}九合一縣市長政黨版圖"   # 11-27 編輯定的大標
     live = any(c["status"] in ("counting", "called", "pending") for c in res.values())
     # 跨午夜要比完整的日期時間，最後才取 HH:MM（11-29 00:15 比 11-28 23:50 新）
     times = sorted(c["updated"] for c in res.values() if c["updated"])
