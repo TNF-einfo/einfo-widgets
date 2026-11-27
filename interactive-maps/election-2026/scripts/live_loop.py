@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from collections import Counter
 from datetime import datetime, timedelta
 from html import escape
@@ -78,7 +79,8 @@ def blank(code, name):
 
 
 def overrides(path):
-    """data/overrides.csv → {代碼: {action: 那列}}；讀不了就當沒有（記警告），不擋整輪"""
+    """data/overrides.csv → {代碼: {action: 那列}}；讀不了回傳 None（記警告），run_round 沿用上一輪讀到的
+    （11-27：原本當成沒有，延後的縣會被改回未開票發出去）"""
     out, msgs = {}, []
     if path.exists():
         try:
@@ -89,7 +91,7 @@ def overrides(path):
                 else:
                     msgs.append(f"overrides.csv：{r['code']} 的 action「{act}」不認得（只有 postponed、reset、force）")
         except Exception as e:
-            msgs.append(f"overrides.csv 讀不了（{e}），這輪不套用")
+            return None, msgs + [f"overrides.csv 讀不了（{e}），沿用上一輪讀到的"]
     return out, msgs
 
 
@@ -109,6 +111,10 @@ def run_round(a, state, s, say):
         fl.write_csv(csv_p, fl.MAYOR_COLS, [{**blank(c, n), **{k: v for k, v in tpl.get(c, {}).items() if k in fl.MAYOR_COLS and v}} for c, n in sorted(names.items())])
     rows = fl.read_csv(csv_p)
     ov, msgs = overrides(a.overrides)
+    if ov is None:   # 檔案這輪讀不了（存檔到一半、編碼不對）：照上一輪的設定，延後與 force 不會被拿掉
+        ov = s.get("ov_last", {})
+    else:
+        s["ov_last"] = ov
     for m in msgs:
         say(m)
 
@@ -323,9 +329,10 @@ def publish(a, msg, s, say):
 
 
 def status_page(a, state, s, res, alerts):
-    rows = fl.read_csv(state / "results.csv") if (state / "results.csv").exists() else {}
+    src = next((p for p in (state / "publish.csv", state / "results.csv") if p.exists()), None)   # 表上是發出去的狀態（force、提早 ◎ 擋下後的樣子），不是中選會原樣（11-27）
+    rows = fl.read_csv(src) if src else {}
     names = fl.counties()
-    ov, _ = overrides(a.overrides)
+    ov = overrides(a.overrides)[0] or {}
     st = res.get("status") or {}
     lines = [f"第 {s['round']} 輪　{datetime.now():%H:%M:%S}　{a.epoch}{'　乾跑（不推）' if a.dry_run else ''}",
              "發佈的狀態：" + "、".join(f"{k} {v}" for k, v in sorted(st.items())),
@@ -334,7 +341,7 @@ def status_page(a, state, s, res, alerts):
              "開完前打 ◎、等 declared.csv：" + ("、".join(res.get("held") or []) or "沒有"),
              "overrides.csv：" + ("；".join(f"{names.get(c, c)} {k} {v['candidate'] or v['note']}".strip() for c, d in ov.items() for k, v in d.items()) or "沒有"),
              f"這輪抓取 {res.get('timing', {}).get('fetch', '—')} 秒，沒更新 {res.get('failed', '—')} 縣，跳過（已開完）{res.get('skipped', '—')} 縣", "",
-             "縣市　狀態　已送／應送　資料時間"]
+             "縣市　發佈的狀態　已送／應送　資料時間"]
     lines += [f"{r['county']}　{r['status']}　{r.get('stations_reported') or 0}／{r.get('stations_total') or 0}　{r.get('updated') or ''}" for r in rows.values()]
     lines += ["", "最近 10 則警告："] + alerts[-10:]
     page = ('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="30"><title>開票迴圈狀態</title>'
@@ -355,7 +362,7 @@ def one(a):
         try:
             res = run_round(a, state, s, msgs.append)
         except Exception as e:   # 一輪壞掉不留半套狀態：記下來，下一輪照常
-            msgs.append(f"這輪出錯：{type(e).__name__}: {e}")
+            msgs.append(f"這輪出錯：{type(e).__name__}: {e}｜" + traceback.format_exc(limit=-3).replace("\n", " "))   # 附最後三層的位置，當晚查得到（11-27）
             res = {"published": False}
         new = [m for m in msgs if m not in s["last_msgs"]]   # 跟上一輪一樣的警告不重複寫進 alerts.log
         s["last_msgs"] = msgs
@@ -523,6 +530,11 @@ def selftest(keep=None):
     a.overrides.write_text("code,action,candidate,note\n10020,postponed,,選舉延後（測試）\n", encoding="utf-8")
     r, c = at("20:45")
     assert c["10020"]["status"] == "postponed" and c["10020"]["note"] == "選舉延後（測試）", c["10020"]
+    good = a.overrides.read_bytes()   # overrides.csv 這輪讀不了（編碼解不開）：延後照舊，不改回未開票
+    a.overrides.write_bytes(b"code,action\n\x81\x00\xff\n")
+    r, c = at("20:45")
+    assert c["10020"]["status"] == "postponed" and "沿用上一輪讀到的" in alerts(r), (c["10020"], alerts(r))
+    a.overrides.write_bytes(good)
     # force：找一個還在開的縣，把第二名當成宣布當選的人照發（落後也發，由人決定）；名字不在前兩名就不套用
     r, c = at("21:00")
     code = next(k for k, x in sorted(c.items()) if x["status"] == "counting" and k not in fc.SPECIAL and k not in (fc.EARLY, fc.TIE))
