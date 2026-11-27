@@ -140,7 +140,7 @@
 - 只進不退：跟上一輪比，資料時間（完整日期時間）變舊、已送變少、應送變了（上一輪是未開票或應送是 0 時照收）、狀態退回（未開票、開票中、當選已確定、開完）、票數全部歸 0、當選人換人，這輪都不採用。票數變少但資料時間較新、已送沒少，當成中選會更正照收並印警告。
   例外：上一輪是「當選已確定」（中選會開完前打 ◎，或 `declared.csv` 標的）而還沒開完時，資料時間沒變舊、已送沒變少，就准退回開票中或換當選人，◎ 被拿掉、`declared.csv` 刪掉或改人都不會卡住（11-27：原本只放行 `declared.csv` 裡那個人，其他情況那縣會凍結到開完）。開完照舊不准退。
 - 當選記號：註記欄整格是「◎」或「當選」，或格裡圖片的 alt 是這兩個字才算；姓名格尾巴的 ◎ 從姓名拿掉、算當選。部分比對不算，開票初期頁面上別處的「當選」字樣不會變成假當選。已送等於應送卻沒有任何註記，印「錯誤：」，先當開票中。
-- 當選人要是最高票（並列最高可以）。◎ 打在非最高票的人身上，這頁不採用。`declared.csv` 的人不是目前最高票就先不標、照開票中更新；上一輪是他的 called、這輪他落後，也照收，不會卡住。
+- 當選人要是最高票（並列最高可以）。◎ 打在非最高票的人身上，這頁不採用。`declared.csv` 的人不是目前唯一的最高票（還沒有票、同票、落後）就先不標、照開票中更新（11-27：原本 0 票、同票也標）；上一輪是他的 called、這輪他落後，也照收，不會卡住。
 - 開完時註記是「？」（同票待抽籤）或「＜」（未達最低當選票數）：`final`、沒有當選人，note 寫「同票，抽籤決定」或「未達最低當選票數」。地圖畫斜線，圖例寫「尚無當選人」，資訊卡寫原因。手動 CSV 也可以這樣填：`final`、winner 留空、note 寫原因；沒寫 note 照樣報錯。
 - 頁面上找不到「已送/應送」或「資料更新時間」，或表裡沒有候選人，這縣不採用。全形的／與：、西元或民國年（`115/11/28`）、上午與下午都認得；表頭比資料列多一欄也讀得到。
 - 第一輪還沒有 CSV：缺的縣市先補 `data/results_2026_template.csv` 的未開票列，CSV 一定有 22 列。
@@ -423,7 +423,7 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 | `dtime` | 首頁版的「資料時間 HH:MM」（22 縣最新的那筆），全部未開票時是空字串 |
 | `fast_url` | 快車道網址（11-27），空字串是讀者不打快車道；頁面只認收下的檔 |
 
-首頁版也烤進同一組 `epoch`、`seq`、`published_at`、`poll_s`（`--epoch`、`--seq`、`--poll-s`，沒給就是投票日、現在、60 秒）。`--live-json` 只能配 `--home`。
+首頁版也烤進同一組 `epoch`、`seq`、`published_at`、`poll_s`（`--epoch`、`--seq`、`--poll-s`，沒給就是投票日、現在、20 秒）。`--live-json` 只能配 `--home`。
 首頁版的字型另收 `data/candidates_2026.csv`（2026 全部候選人）與 `data/tags.csv` 的字：10:00 發的全是未開票，名字晚上才從 `live.json` 進來；產生器寫的註記、出處、報讀文字（同票抽籤、同額競選、未達最低當選票數等，`LATE_TEXT`）也一起收（11-27）。`overrides.csv` 的 note 是自由填，少見的字可能換成系統字型。
 出處列：還沒有縣市開票寫「日期 尚未開票」，有縣市開了、還沒全部開完寫「日期 開票中，資料時間 HH:MM」，全部開完寫「日期 開票結果」（11-27：原本全部未開票時寫成「開票結果」）；首頁版的資料時間也等有縣市開票才出現。`--test-banner` 在頁面頂端加紅色「測試資料，非真實結果」與 noindex，彩排用。
 
@@ -434,7 +434,7 @@ Google 給的是可變字型，四個字重同一個檔；Windows 上的 Playwri
 - 數字：正在顯示的資訊卡，票數、得票率、進度條從舊值走到新值，1.5 秒（`cubic-bezier(0.23, 1, 0.32, 1)`），最後停在真的數字，跟直接用新資料產生的卡片逐字相同；減少動態時直接換。兩次更新之間不內插、不外推。
 - 「已開 X／Y 所」換成一條小進度條（56px），後面只留時間；報讀器照念所數。「開票中」標示的圓點 2 秒一次輕輕閃，減少動態時不動。
 - 資料時間：寬框在圖例下面一行小字；寬 620 以下放在按鈕左邊的空位，不佔卡片與小地圖的高，出卡時也看得到（360×203 到 1080×608 量過，跟圖例、按鈕、小地圖都不重疊）。
-- 過期：開票開始後（有縣市不是未開票）、還沒全部開完，`published_at` 超過 20 分鐘，資料時間那行變紅、後面加「（更新中斷）」，新的一版進來就恢復。迴圈停了 Pages 照樣回 200 或 304，所以看 `published_at`；迴圈 15 分鐘沒變也推一次心跳，開票前的空檔不會誤報。
+- 過期：開票開始後（有縣市不是未開票）、還沒全部開完，`published_at` 超過 20 分鐘，資料時間那行變紅、後面加「（更新中斷）」，新的一版進來就恢復。迴圈停了 Pages 照樣回 200 或 304，所以看 `published_at`；迴圈 15 分鐘沒變也推一次心跳，開票前的空檔不會誤報。迴圈活著、但這輪要抓的縣一個都沒抓到（中選會整個擋掉、斷網）就不推心跳，讀者照樣會看到更新中斷。頁面打開時等第一次輪詢完才判：頁面本身可能是 CDN 快取了 10 分鐘的舊版，先判會閃一下（11-27）。
 - 測試用：網址加 `?nolive` 不輪詢；`window.__POLL_MS`、`window.__STALE_MS` 改輪詢間隔與過期門檻；`window.__live` 看收了幾份、拒收原因。
 
 迴圈（`scripts/live_loop.py`，在 election-2026 資料夾跑）：
@@ -453,7 +453,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 | `--out-dir` | election-2026 資料夾（乾跑是 `<state>/out/`） | 首頁版與 `live.json` 寫到哪；不在 git repo 裡只能配 `--dry-run` |
 | `--home-name` | `election-2026-home.html` | 彩排用 `index.html` |
 | `--article` | 關 | 文章版也一起重產、一起推 |
-| `--poll-s` | 不給（頁面用 60） | 讀者多久抓一次；`300` 減量，`0` 停止開關 |
+| `--poll-s` | 不給（頁面用 20） | 讀者多久抓一次；`300` 減量，`0` 停止開關 |
 | `--heartbeat-min` | 15 | 資料沒變也隔多久推一次 |
 | `--state-dir` | `preview/realtime/state/<epoch>/`（乾跑另用 `<epoch>-dryrun/`，乾跑記下的雜湊不會擋掉之後真的那一輪） | 狀態、紀錄、原始頁 |
 | `--declared`、`--overrides` | `data/declared.csv`、`data/overrides.csv` | 人工介入的兩個檔 |
@@ -468,19 +468,20 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 3. `fetch_live.web()` 抓 22 頁、一縣一縣合併（規則見「開票當晚」的開票夜防呆），原始頁存 `<state>/raw/HHMMSS/`。
 4. 資料時間比這台電腦晚 5 分鐘以上的縣不收，沿用上一輪。
 5. 要發佈的那份（`<state>/publish.csv`；`<state>/results.csv` 留中選會的原樣）：開完前的 ◎（`called`）要當選人列在 `declared.csv` 才發，不然照開票中發、寫警告；`final` 自動發；`force` 照人寫的發。
-6. 轉 JSON（整份檢查），跟上次發佈的資料比雜湊（不算 `seq` 與時間），有變或該推心跳才 `build_map.py` 產生首頁版與 `live.json`（`--article` 加文章版），資料另存 `<state>/history/publish_<seq>.json`。
+6. 轉 JSON（整份檢查），跟上次發佈的資料比雜湊（不算 `seq` 與時間；算進 `map_template.html`、`build_map.py`、`data/tags.csv` 的內容，開完後改標籤或修模板下一輪就發），有變或該推心跳才 `build_map.py` 產生首頁版與 `live.json`（`--article` 加文章版），資料另存 `<state>/history/publish_<seq>.json`。
 7. 有 `--fast-dir` 就先把 `live.json` 換進快車道資料夾（沒發佈的輪也比一次，不一樣就補）。git：只 `add`、`commit` 那幾個檔（`git commit -- 路徑`，別人 stage 的不會帶進去），訊息 `chore(election-2026): update live results to HH:MM`（心跳加 `(heartbeat)`）；不在 `main` 不推；上一輪 rebase 做到一半被砍就先 `rebase --abort`，git 被砍留下放超過一分鐘的 `index.lock` 就先清掉（11-27）；每個 git 指令 30 秒逾時；push 被拒就 `pull --rebase -X theirs --autostash` 再推一次（遠端也改了這幾個檔時，這台新產生的那版勝出），還是失敗就留著下一輪再推。人工推正式檔之前要先停排程。
 8. 紀錄：`<state>/rounds.jsonl` 一輪一行（秒數、抓到幾縣、警告、有沒有發佈、git 結果）；`<state>/alerts.log` 只寫跟上一輪不同的警告；`<state>/status.html` 每 30 秒自己重新整理，手機經 Tailscale 開 `http://100.69.83.122:8792/election-2026/preview/realtime/state/2026-11-28/status.html`。
 
 人工介入的兩個檔（UTF-8 或 Excel 的 ANSI 都讀得了，代碼被吃掉的 0 會補回來），改了下一輪就生效：
-- `data/declared.csv`（`code,candidate`）：已宣布當選的人。中選會還沒打 ◎ 時照規格標成當選（他要是最高票）；中選會開完前就打 ◎ 的，當選人要在這裡才發。
+- `data/declared.csv`（`code,candidate`）：已宣布當選的人。當選消息只認中選會的 ◎ 與 @gassao1998 告知的，不看電視台。中選會還沒打 ◎ 時照規格標成當選（他要是唯一的最高票）；中選會開完前就打 ◎ 的，當選人要在這裡才發。一輪只讀一次，讀不了沿用上一輪讀到的（11-27）。
+- 兩個人工檔剛存檔（不到 2 秒）就等滿 2 秒再讀：記事本、VS Code 存檔是先清空再寫，撞上會讀到空檔（11-27）。
 - `data/overrides.csv`（`code,action,candidate,note`）：
   - `postponed`：這縣標成選舉延後，`note` 寫在資訊卡上（沒寫就只有狀態列的「選舉延後」，11-27 起不再自動補同一句），抓到什麼都不蓋；拿掉這列就回未開票、重新抓。
   - `reset`：合併判斷錯了、那縣卡住時用，下一輪抓到什麼就收什麼，同一列只用一次（要再用一次就把 `note` 改成別的字，例如現在時間）；這輪抓不到就留到下一輪。
   - `force`：`candidate` 寫的人照當選發（還在開是 `called`、開完是 `final`），落後也發，由人決定；名字不在得票前兩名就不套用、寫警告。
 
 工作排程器：`scripts/live_loop_task.ps1` 登記每 30 秒叫一次 `live_loop.py --once`（兩個觸發各每分鐘、錯開 30 秒；11-27 從 2 分鐘縮）（`pythonw`、跑 12 小時、上一輪沒跑完就不另開、一輪超過 10 分鐘砍掉、只在登入時跑）。這支只在人跑的時候登記，程式不會自己登記。
-- 登記：`powershell -ExecutionPolicy Bypass -File scripts\live_loop_task.ps1 -Prefix <網址前綴> -Extra '--article'`（文章版一起推；彩排改成 `-Epoch rehearsal3 -Extra '--out-dir rehearsal --home-name index.html --date 2026-11-27 --test-banner --article'`）。`-Extra` 每次重新登記都要寫全，漏了 `--article` 文章版就停在上一版。
+- 登記：`powershell -ExecutionPolicy Bypass -File scripts\live_loop_task.ps1 -Prefix <網址前綴> -Extra '--article'`（文章版一起推；彩排改成 `-Epoch rehearsal3 -Extra '--out-dir rehearsal --home-name index.html --date 2026-11-27 --test-banner --article'`）。`-Extra` 每次重新登記都要寫全，漏了 `--article` 文章版就停在上一版。開票夜有快車道，寫成 `-Extra '--article --fast-dir preview/realtime/fast --fast-url https://node.taile10df2.ts.net/live.json --poll-s 20'`（見〈快車道〉）。
 - 暫停與恢復：`Disable-ScheduledTask -TaskName einfo-election-live-loop`、`Enable-ScheduledTask …`；刪掉：同一支加 `-Uninstall`。
 
 開票夜操作：
@@ -506,6 +507,11 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
     照時間順序、參數寫全的值班指令清單在本機 `preview/review_2026-11-27/值班指令_2026-11-28.md`。
 
 11-27 第二輪審查一起改的程式（核實報告同一個資料夾的 `verify_round2.md`）：所有黨名都認「台」「臺」兩種寫法，簡稱與徽章也照認；抓網頁時就把 `@碼位@` 的罕用字轉回來；`overrides.csv` 這輪讀不了就沿用上一輪讀到的（延後、force 不會被拿掉）；`status.html` 的縣市表改顯示發出去的狀態；一輪出錯時 `alerts.log` 附最後三層的位置。
+
+11-27 第三輪審查一起改的程式（報告與核實在 `preview/review_2026-11-27/`）：
+- 迴圈與抓取：宣布當選的人要是唯一的最高票（0 票、同票都不標）；`declared.csv` 一輪只讀一次、讀不了沿用上一輪；兩個人工檔剛存檔就等滿 2 秒再讀；`force` 用數字判斷開完，中選會開完並打 ◎ 給別人時不再套用；`overrides.csv` 代碼不是 22 縣之一會警告。
+- 發佈：這輪要抓的縣都沒抓到就不推心跳；雜湊算進模板、`build_map.py`、`tags.csv`；快車道換檔出錯不擋 push；決定發佈就先存 `state.json`；`build_map.py` 成功時印的警告（例如當選人姓名對不到 `tags.csv`）也寫進 `alerts.log`。`build_map.py` 的政黨代碼一律當字串比，「同票，抽籤決定」只在開完時自動補；首頁版放大鈕連到文章版時帶 `?v=<seq>`，每版換網址，手機另開不吃 10 分鐘的快取。
+- 頁面：首頁版第一次輪詢完才判過期；讀者端失敗退避不超過 2 分鐘或一般間隔；再點已浮起的縣會先清掉還在放下的板子；`contextmenu` 只在滑鼠時解除按住；點六都後捏、拖，放手照一般規則等 2.5 秒；先排下一幀再畫；`:focus-visible` 在舊 iOS 丟錯時當成不是鍵盤。公投版補上同樣幾項，加上再點已浮起的縣不重抬、`.frame` 改 100% 高。
 頁面：文章版頁尾讓點擊穿過去給地圖（按鈕照常）；補 `Array.prototype.at`（iOS 15.3 以前）；`.frame` 改 100% 高（iPhone Safari 的 100vh 會被工具列蓋）；按鈕、連結、卡片的鍵盤焦點框改深色；同一縣因新資料重畫時卡片不捲回頂端；再點已經浮起的縣不會閃；Mac 右鍵不會讓輪播卡住。公投的深色外緣底下墊白邊，最深的紫、褐上也看得到。
 
 週五彩排（在 `rehearsal/`，`epoch` 是 `rehearsal`，正式頁不收；push 由人跑）：
@@ -514,7 +520,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 3. 正式跑：`python -I scripts/live_loop.py --prefix http://127.0.0.1:8799/zh-TW/TC --epoch rehearsal --date 2026-11-27 --out-dir rehearsal --home-name index.html --test-banner`（終端機二開著跑，第一輪就換掉 `rehearsal/index.html` 原型那頁並推上去），或用 `live_loop_task.ps1` 的彩排參數登記排程，試一次重開機後排程會不會接回來。狀態在 `preview/realtime/state/rehearsal/status.html`。
 4. 讀者端：手機用行動網路開 `https://tnf-einfo.github.io/einfo-widgets/interactive-maps/election-2026/rehearsal/index.html`，電腦開同一頁，記每次 push 到畫面變的時間（方案 T1、T2）。
 5. 壞資料照假中選會的時段出現（選舉時鐘；4 倍速時，實際經過的時間是選舉時鐘經過的四分之一，18:00 是開始後 30 分鐘）：宜蘭 18:00–18:40 回 404、臺中 19:30–19:50 舊頁、基隆 20:00–20:20 資料時間在未來、新北 20:30–20:50 全 0，都要在 `alerts.log` 看到、地圖不倒退。屏東開到七成就打 ◎：要出「等 declared.csv」的警告、照開票中發，寫進 `data/declared.csv` 後下一輪發當選。連江開完同票：斜線、「同票，抽籤決定」。
-6. 人工介入：`data/overrides.csv` 加 `10020,postponed,,選舉延後（彩排）` 看嘉義市變延後；臺中舊頁那段加一列 `66000,reset,,` 看它照收一次。彩排完把 `data/declared.csv`、`data/overrides.csv` 刪掉，免得帶進開票夜。
+6. 人工介入：`data/overrides.csv` 加 `10020,postponed,,選舉延後（彩排）` 看嘉義市變延後；臺中舊頁那段加一列 `66000,reset,,` 看它照收一次。彩排完把 `data/declared.csv`、`data/overrides.csv` 清回只剩表頭，免得帶進開票夜（第 10 點：表頭要留著）。
 7. 迴圈掛掉（方案 T4）：停掉終端機二 20 分鐘，頁面的資料時間變紅加「（更新中斷）」，迴圈回來後消失。
 8. 停止開關（方案 T6）：帶 `--poll-s 300` 跑一輪確認變慢，再照第 7 點發 `--poll-s 0` 確認不再抓。
 9. 收尾：終端機一 Ctrl+C 停假中選會、刪排程；`rehearsal/` 留不留照方案待決 6。
@@ -550,7 +556,7 @@ python -I scripts/live_loop.py selftest [--keep 資料夾]               # 假�
 3. 確認：第一輪發佈後，手機用行動網路開 `https://node.taile10df2.ts.net/live.json`，`seq` 跟 `status.html` 的最近發佈一樣；電腦開 Pages 上的首頁版，Console 打 `__live.from` 是 `fast`。
 4. 關快車道：重新登記排程，`-Extra` 拿掉 `--fast-url`（`--fast-dir` 留著），下一輪發出 `fast_url` 空字串，開著的頁面在一輪內停用；過兩三分鐘再 `tailscale funnel reset`、停伺服器。急的時候直接 `tailscale funnel reset` 也行：關掉後公開網址連不上、要等 4 秒逾時，讀者每輪多等這 4 秒，連三次後 5 分鐘只抓 Pages（11-27 關掉後實測是逾時）。這台的網路被塞住、指令下不進去時，到 Tailscale 後台 Access controls 把 `funnel` 那段 nodeAttrs 拿掉存檔，入口就不再轉過來。
 5. 電腦重開機後：伺服器要自己再開（排程不管它），Funnel 設定還在；沒開的這段讀者照樣有 Pages。
-6. 收尾：全部開完、照上面「開票夜操作」第 7 點發過 `--poll-s 0`（要帶 `--fast-dir`，快車道上的檔才會一起換）之後，`tailscale funnel reset`（`tailscale funnel status` 回 `No serve config`），停伺服器；後台的 `funnel` nodeAttrs 之後不用就收回。
+6. 收尾：全部開完、照上面「開票夜操作」第 7 點發過 `--poll-s 0`（要帶 `--fast-dir`，快車道上的檔才會一起換）之後，等 2 到 3 分鐘、Pages 與快車道上的 `live.json` 都是 `poll_s: 0` 再 `tailscale funnel reset`（太早關，Pages 部署完之前來抓的讀者會拿到上一版、停不下來）（`tailscale funnel status` 回 `No serve config`），停伺服器；後台的 `funnel` nodeAttrs 之後不用就收回。
 
 ### 鏡頭輪播
 
