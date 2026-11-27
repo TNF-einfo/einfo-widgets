@@ -8,7 +8,8 @@
 選項：--epoch（頁面只收同一個 epoch，預設 2026-11-28，彩排用 rehearsal）、--date（投票日）、--out-dir（產出放哪，預設 election-2026 資料夾；
 repo 外面只准 --dry-run）、--home-name（彩排用 index.html）、--article（文章版也一起重產、一起推，預設不做）、--poll-s（讀者多久抓一次，0＝停止開關）、
 --heartbeat-min（沒變也隔多久推一次，免得頁面以為迴圈停了，預設 15）、--state-dir（預設 preview/realtime/state/<epoch>/）、
---test-banner（彩排：頁面加「測試資料」紅條與 noindex）。
+--test-banner（彩排：頁面加「測試資料」紅條與 noindex）、--fast-dir 與 --fast-url（快車道，見 scripts/fast_server.py；乾跑時 --fast-dir 改放
+<state>/fast/，不碰正在給讀者的那個資料夾）。
 人工介入：data/declared.csv（宣布當選，開完前的 ◎ 要列在這裡才發）、data/overrides.csv（code,action,candidate,note；action 是
 postponed、reset、force）。狀態看 <state>/status.html（Tailscale 預覽伺服器 :8792 打得開），警告在 <state>/alerts.log。
 """
@@ -195,7 +196,7 @@ def run_round(a, state, s, say):
 
     # 資料有變才發；沒變但上次發佈超過 heartbeat 分鐘、還沒全部開完，也發一次（頁面看 published_at 判斷迴圈還活著）
     data = json.loads(pub_json.read_text(encoding="utf-8"))["counties"]
-    h = hashlib.sha256(json.dumps([data, a.epoch, a.poll_s, a.article, a.test_banner],ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    h = hashlib.sha256(json.dumps([data, a.epoch, a.poll_s, a.article, a.test_banner, a.fast_url],ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     done = all(c["status"] in ("final", "postponed") for c in data)
     beat = h == s["hash"] and not done and time.time() - s["pub_ts"] >= a.heartbeat_min * 60
     res = {"timing": timing, "failed": failed, "skipped": len(skip), "held": held, "published": False,
@@ -216,6 +217,10 @@ def run_round(a, state, s, say):
             n = len(list((a.keep / "rounds").glob("live_r*.json"))) + 1
             shutil.copy(a.out_dir / a.home_name, a.keep / "rounds" / f"home_r{n}.html")
             shutil.copy(a.out_dir / "live.json", a.keep / "rounds" / f"live_r{n}.json")
+    if a.fast_dir and (a.out_dir / "live.json").exists():   # push 之前；每輪都對一次，上一輪換檔失敗或資料夾被清掉，這輪補上
+        fast = a.fast_dir / "live.json"
+        if not fast.exists() or fast.read_bytes() != (a.out_dir / "live.json").read_bytes():
+            fast_copy(a.out_dir / "live.json", a.fast_dir, say)
     if not a.dry_run and s["unpushed"]:
         t = time.time()
         latest = max((c.get("updated", "") for c in json.loads(pub_json.read_text(encoding="utf-8"))["counties"]), default="")
@@ -232,7 +237,7 @@ def outputs(a):
 def build(a, data, seq, say):
     py = [PY, "-I", str(HERE / "build_map.py"), "--data", str(data)] + (["--test-banner"] if a.test_banner else [])
     jobs = [py + ["--home", "--out", str(a.out_dir / a.home_name), "--live-json", str(a.out_dir / "live.json"), "--epoch", a.epoch, "--seq", str(seq)]
-            + (["--poll-s", str(a.poll_s)] if a.poll_s is not None else [])]
+            + (["--poll-s", str(a.poll_s)] if a.poll_s is not None else []) + (["--fast-url", a.fast_url] if a.fast_url is not None else [])]
     if a.article:
         jobs.append(py + ["--out", str(a.out_dir / ARTICLE)])
     a.out_dir.mkdir(parents=True, exist_ok=True)
@@ -242,6 +247,22 @@ def build(a, data, seq, say):
             say(f"build_map.py 失敗，這輪不發佈：{r.stderr.strip()[-800:]}")
             return None
     return outputs(a)
+
+
+def fast_copy(src, fast_dir, say):
+    """快車道：push 之前先把 live.json 換進 fast_server 的資料夾，讀者不用等 Pages 部署。
+    先寫暫存檔再換名，讀者不會讀到寫一半的檔；Windows 上伺服器剛好在讀時換名會被擋，等一下再試。換不成只寫警告，下一輪再換，Pages 那條照常。"""
+    fast_dir.mkdir(parents=True, exist_ok=True)
+    tmp = fast_dir / "live.json.tmp"
+    shutil.copyfile(src, tmp)
+    for _ in range(20):
+        try:
+            os.replace(tmp, fast_dir / "live.json")
+            return True
+        except PermissionError:
+            time.sleep(0.05)
+    say(f"快車道：{fast_dir / 'live.json'} 換不過去（一直被讀），這輪只有 Pages 有新資料")
+    return False
 
 
 def git(*args, cwd, timeout=30):
@@ -367,10 +388,14 @@ def parse(argv=None):
     ap.add_argument("--overrides", type=Path, default=fl.DATA / "overrides.csv")
     ap.add_argument("--keep", type=Path, help="selftest：把每輪的頁面與 live.json 留在這個資料夾")
     ap.add_argument("--test-banner", action="store_true", help="頁面加「測試資料，非真實結果」與 noindex（彩排用）")
+    ap.add_argument("--fast-dir", type=Path, help="快車道：每次發佈先把 live.json 換進這個資料夾（scripts/fast_server.py 給 Funnel 用）")
+    ap.add_argument("--fast-url", help="快車道：烤進首頁版的網址（Funnel 上的 live.json）；給空字串就關掉讀者端的快車道")
     a = ap.parse_args(argv)
     # 乾跑另用一份狀態、產出放狀態資料夾裡：不動正式檔，也不讓乾跑記下的雜湊擋掉之後真的那一輪
     a.state_dir = (a.state_dir or HERE / "preview/realtime/state" / (a.epoch + ("-dryrun" if a.dry_run else ""))).resolve()
     a.out_dir = (a.out_dir or (a.state_dir / "out" if a.dry_run else HERE)).resolve()
+    if a.dry_run and a.fast_dir:   # 快車道資料夾是讀者直接讀的：乾跑不換進去
+        a.fast_dir = a.state_dir / "fast"
     if a.cmd != "selftest":
         if not a.prefix:
             ap.error("要給 --prefix（開票頁片段網址去掉 17 碼區域碼，2022 年是 https://www.cec.gov.tw/zh-TW/TC）")
@@ -511,6 +536,17 @@ def selftest(keep=None):
     assert "測試資料，非真實結果" in (a.out_dir / "election-2026-home.html").read_text(encoding="utf-8")
     assert c["09007"]["note"] == "同票，抽籤決定" and not any(p["elected"] for p in c["09007"]["cands"])
     assert (a.out_dir / ARTICLE).exists() and (a.out_dir / "election-2026-home.html").exists()
+    # 快車道：給了 --fast-url 就算資料沒變也重發一版；live.json 換進快車道資料夾、內容一樣，首頁版與 live.json 都帶那個網址
+    r, c = at("23:59", fast_dir=tmp / "fast", fast_url="https://fast.example/live.json")
+    fast = (tmp / "fast" / "live.json").read_text(encoding="utf-8")
+    assert r["published"] and fast == (a.out_dir / "live.json").read_text(encoding="utf-8"), "快車道的 live.json 要跟這輪發的一樣"
+    assert json.loads(fast)["fast_url"] == "https://fast.example/live.json" and "fast.example" in (a.out_dir / "election-2026-home.html").read_text(encoding="utf-8")
+    assert not (tmp / "fast" / "live.json.tmp").exists(), "暫存檔要換名換掉"
+    (tmp / "fast" / "live.json").unlink()   # 快車道的檔不見了（或上一輪沒換成）：資料沒變也要補上
+    r, c = at("23:59")
+    assert not r["published"] and (tmp / "fast" / "live.json").read_text(encoding="utf-8") == fast, "沒發佈的輪也要把快車道補齊"
+    assert parse(argv + ["--fast-dir", str(tmp / "real-fast")]).fast_dir == a.state_dir / "fast", "乾跑不能換進給讀者的資料夾"
+    a.fast_dir = a.fast_url = None
     # 鎖：另一個程序拿著鎖的時候，這輪不跑
     with locked(a.state_dir) as ok:
         assert ok

@@ -236,7 +236,8 @@ def main():
     ap.add_argument("--live-json", help="首頁版：另寫輪詢用的 live.json（內容就是頁面烤進去的那包資料）")
     ap.add_argument("--epoch", help="首頁版：這一晚的名字，頁面只收同一個 epoch 的 live.json（預設是投票日；彩排用 rehearsal）")
     ap.add_argument("--seq", type=int, help="首頁版：發佈序號（預設現在的 Unix 秒數），也是 published_at")
-    ap.add_argument("--poll-s", type=int, help="首頁版：讀者多久抓一次 live.json（預設 60）；0 是停止開關")
+    ap.add_argument("--poll-s", type=int, help="首頁版：讀者多久抓一次 live.json（預設 20）；0 是停止開關")
+    ap.add_argument("--fast-url", help="首頁版：快車道的 live.json 網址（Funnel 上這台電腦給的），頁面先抓這裡、抓不到退回 Pages；不給或空字串就不用")
     ap.add_argument("--test-banner", action="store_true", help="頁面頂端加紅色「測試資料，非真實結果」、不讓搜尋引擎收錄（彩排用）")
     a = ap.parse_args()
     if a.live_json and not a.home:
@@ -340,7 +341,7 @@ def main():
     extra = ""
     if a.home:   # 首頁版會輪詢：頁面與 live.json 烤同一組 epoch、seq、published_at（SPEC「首頁版即時更新」）
         seq = a.seq or int(time.time())
-        data.update(epoch=a.epoch or date, seq=seq, published_at=seq, poll_s=a.poll_s)
+        data.update(epoch=a.epoch or date, seq=seq, published_at=seq, poll_s=a.poll_s, fast_url=a.fast_url or "")
         # 首頁版的資料時間：圖例下面那行小字；全部未開票時是空的
         data["dtime"] = f"資料時間 {times[-1][11:16]}" if times else ""
         # 字型另收 2026 全部候選人與標籤：10:00 發的全是未開票，名字晚上才從 live.json 進來
@@ -368,7 +369,7 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
     if a.live_json:   # 輪詢用的那包：就是烤進頁面的資料，加上頁面要換的字串；顏色、標籤、註記都在這裡算好，頁面只換上去
-        live = {"schema": 1, **{k: data[k] for k in ("epoch", "seq", "poll_s", "published_at", "counties", "dtime")},
+        live = {"schema": 1, **{k: data[k] for k in ("epoch", "seq", "poll_s", "published_at", "counties", "dtime", "fast_url")},
                 "aria": {k: aria(c) for k, c in res.items()}, "legend": legend_of(False), "legend_home": legend_of(True),
                 "src": src, "table": table}
         Path(a.live_json).write_text(json.dumps(live, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")

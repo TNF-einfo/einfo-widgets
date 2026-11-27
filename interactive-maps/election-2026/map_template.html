@@ -770,8 +770,11 @@ layout(); draw(performance.now()); requestAnimationFrame(loop);
 // 固定網址加 cache:"no-cache"：瀏覽器帶 If-None-Match，沒變就是 304。抓不到或檔案壞掉就留著烤在頁面裡的資料。
 // 收不收：schema 1、同一個 epoch、seq 變大、22 個代碼不重複且對得上、字串欄位都在；poll_s 只認收下的檔（0 是停止開關）。
 // 過期看 published_at：迴圈停了 Pages 照樣回 200 或 304，看有沒有抓到檔判斷不出來
+// 快車道（11-27）：fast 是 Funnel 上這台電腦直接給的 live.json，不用等 Pages 部署；先抓它，抓不到、逾時、給錯 epoch 或比手上的舊就退回 Pages，
+// 連三次不行（Pages 那輪抓得到才算，讀者自己斷網不算）先停 5 分鐘只抓 Pages；每 3 輪兩邊一起抓、核對一次，用比較新的那份。
+// 迴圈改發 fast_url 空字串就整條關掉
 const LIVE = { url: "live.json", every: ((D.poll_s > 0 ? D.poll_s : 20) * 1000), seq: D.seq || 0, epoch: D.epoch || "", pub: (D.published_at || 0) * 1000,
-  fails: 0, stopped: D.poll_s === 0, timer: 0, applied: 0, rejected: [] };
+  fails: 0, stopped: D.poll_s === 0, timer: 0, applied: 0, rejected: [], fast: D.fast_url || "", fastFails: 0, fastOff: 0, polls: 0, from: "" };
 const dtimeEl = $(".dtime");
 function liveWhy(n) {
   if (!n || n.schema !== 1) return "schema";
@@ -782,20 +785,43 @@ function liveWhy(n) {
   if (!n.aria || [n.legend_home, n.src, n.table, n.dtime].some(s => typeof s !== "string")) return "fields";
   return "";
 }
+async function getLive(url, ms) {   // 逾時就放棄，快車道卡住時不拖住這一輪
+  const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
+  try {
+    const r = await fetch(url, { cache: "no-cache", signal: c.signal });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
 async function poll() {
   clearTimeout(LIVE.timer);
   if (LIVE.stopped || LIVE.busy) return;   // 切回分頁時上一次還在抓：不另開一條輪詢
   LIVE.busy = true;
   if (!document.hidden) {   // 分頁藏起來不抓，切回來馬上抓一次
     try {
-      const r = await fetch(LIVE.url, { cache: "no-cache" });
-      if (!r.ok) throw new Error(r.status);
-      const n = await r.json();
+      const k = LIVE.polls++, pg = k % 3 === 0 ? getLive(LIVE.url, 15000) : null;
+      if (pg) pg.catch(() => {});   // 還沒 await 前先失敗也不算未處理的錯
+      let n = null, from = "", fastBad = false;
+      if (LIVE.fast && Date.now() >= LIVE.fastOff) {
+        try {
+          const f = await getLive(LIVE.fast, 4000), w = liveWhy(f);
+          if (w && (w !== "seq" || !(f.seq >= LIVE.seq))) throw new Error(w);   // 別的 epoch、壞檔，或比手上的還舊（快車道卡住）：當成抓不到
+          n = f; from = "fast"; LIVE.fastFails = 0;
+        } catch (e) { fastBad = true; }
+      }
+      if (!n || pg) {
+        try {
+          const m = await (pg || getLive(LIVE.url, 15000));
+          if (fastBad && ++LIVE.fastFails >= 3) { LIVE.fastOff = Date.now() + 300000; LIVE.fastFails = 0; }
+          if (!n || (!liveWhy(m) && m.seq > n.seq)) { n = m; from = "pages"; }   // Pages 那份壞了或別的 epoch，不蓋掉快車道的好資料
+        } catch (e) { if (!n) throw e; }
+      }
       LIVE.fails = 0;
       const why = liveWhy(n);
       if (!why) {
         try { applyLive(n); } catch (e) { LIVE.rejected.push("apply:" + e.message); }
-        LIVE.seq = n.seq;   // 套用失敗也記下這個序號，不會每分鐘重試同一份壞檔
+        LIVE.seq = n.seq; LIVE.from = from;   // 套用失敗也記下這個序號，不會每輪重試同一份壞檔
+        if (typeof n.fast_url === "string") LIVE.fast = n.fast_url;
         if (n.poll_s === 0) LIVE.stopped = true;
         else if (n.poll_s > 0) LIVE.every = n.poll_s * 1000;
       } else if (why !== "seq") LIVE.rejected.push(why);
