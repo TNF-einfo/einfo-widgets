@@ -1,7 +1,8 @@
 # Deploy GitHub Pages through Actions (2026-11-26), replacing the branch build.
 # Why: the branch build has a soft limit of 10 builds per hour; election night pushes every few minutes.
-# Jekyll still runs, so the served site is the same as the branch build (folder READMEs keep rendering).
-# Roll back: set the Pages source back to "Deploy from a branch" (main, /) in the repo settings, then delete this file.
+# No Jekyll since 2026-11-27: the files are uploaded as they are, which saves about 15 s per deploy (image pull + build).
+# Folder READMEs no longer render as pages; every map, data and script file is served byte for byte as before.
+# Roll back: put the jekyll-build-pages step back (source ./, destination ./_site) and drop "path: ." from the upload.
 name: Deploy Pages
 on:
   push:
@@ -23,11 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
-      - uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./
-          destination: ./_site
       - uses: actions/upload-pages-artifact@v5
+        with:
+          path: .   # hidden files (.git, .github, .gitignore) stay out by default
   deploy:
     needs: build
     runs-on: ubuntu-latest
