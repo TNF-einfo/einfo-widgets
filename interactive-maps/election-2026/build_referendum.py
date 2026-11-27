@@ -85,12 +85,12 @@ def ramp_css():
     """圖例色條：每 10 個百分點取一個色，瀏覽器在相鄰兩色之間的 sRGB 漸變就很接近 OKLab"""
     lo, hi = STOPS[0][0], STOPS[-1][0]
     marks = sorted(set(range(lo, hi + 1, 10)) | {m for m, _ in STOPS})   # 每 10 個百分點加上錨點，錨點的色才不會被抹平
-    return "linear-gradient(to right," + ",".join(f"{ramp(m)} {(m - lo) / (hi - lo) * 100:.2f}%" for m in marks) + ")"
+    return "linear-gradient(to left," + ",".join(f"{ramp(m)} {(m - lo) / (hi - lo) * 100:.2f}%" for m in marks) + ")"   # 同意在左：色條從右端（不同意）往左
 
 
 def ramp_ticks():
     lo, hi = STOPS[0][0], STOPS[-1][0]
-    return "".join(f'<b style="left:{(t - lo) / (hi - lo) * 100:.2f}%">{t}{"%" if t else ""}</b>' for t in TICKS)
+    return "".join(f'<b style="left:{(hi - t) / (hi - lo) * 100:.2f}%">{abs(t)}{"%" if t else ""}</b>' for t in TICKS)   # 左右翻過來，兩端的字已說明方向，所以不帶正負號
 
 
 def f(n):
@@ -102,11 +102,11 @@ def p2(x):
 
 
 def bar(agree, disagree, scale, th=None):
-    """不同意對同意的長條（不同意在左）；th＝門檻票數，畫一條刻度（長條的全長取兩者總和與門檻較大的那個，門檻才不會畫出框）"""
-    h = f'<div class="bar" aria-hidden="true"><i class="na" style="width:{disagree / scale * 100:.2f}%"></i><i class="ya" style="width:{agree / scale * 100:.2f}%"></i>'
+    """同意對不同意的長條；th＝門檻票數，畫一條刻度（長條的全長取兩者總和與門檻較大的那個，門檻才不會畫出框）"""
+    h = f'<div class="bar" aria-hidden="true"><i class="ya" style="width:{agree / scale * 100:.2f}%"></i><i class="na" style="width:{disagree / scale * 100:.2f}%"></i>'
     if th is None:
         return h + "</div>"
-    x = max(0, agree + disagree - th) / scale * 100   # 不同意在左、同意在右（對齊圖例）：同意段從右端算起，刻度在右端往左數 th 的位置
+    x = th / scale * 100
     side = f"right:{100 - x:.2f}%" if x >= 50 else f"left:{x:.2f}%"   # 字寫在刻度靠內的那邊，不出框
     return h + f'<b style="left:{x:.2f}%"></b></div><p class="thl"><span style="{side}">門檻 {f(th)} 票</span></p>'
 
