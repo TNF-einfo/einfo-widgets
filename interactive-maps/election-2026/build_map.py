@@ -126,7 +126,8 @@ def load_results(path, party_table, codes, errors):
             if pc is None or str(pc) not in party_table:
                 errors.append(f"{c['name']} {p['name']}：政黨代碼 {pc}（{p['party']}）不在中選會政黨代碼表，不能默默塗灰")
                 bad = True
-        if len(cands) >= 2 and cands[0]["votes"] == cands[1]["votes"] and status in ("called", "final") and not c.get("note"):
+        # 只在開完時補：開票中兩人同票（例如 force 在 0 比 0 時套用）不是抽籤（11-27）
+        if len(cands) >= 2 and cands[0]["votes"] == cands[1]["votes"] and status == "final" and not c.get("note"):
             c["note"] = "同票，抽籤決定"
         winners = [p for p in cands if p.get("elected")]
         # 開完卻沒有當選人（同票待抽籤、未達最低當選票數）要有說明，照樣畫斜線
@@ -257,7 +258,7 @@ def main():
     gj = json.loads(Path(a.counties).read_text(encoding="utf-8"))
     geoms = {f["properties"]["code"]: shape(f["geometry"]) for f in gj["features"]}
     # 2022 的中選會代碼表，加上 2026 才出現的小黨（data/party_codes_2026.json，代碼自訂；不在 GROUP 裡就塗灰）
-    party_table = {p["party_code"] for f in ("data/raw/cec_db/webs_configs_party_colors.json", "data/party_codes_2026.json")
+    party_table = {str(p["party_code"]) for f in ("data/raw/cec_db/webs_configs_party_colors.json", "data/party_codes_2026.json")
                    for p in json.loads((HERE / f).read_text(encoding="utf-8"))}
     errors = []
     res = load_results(a.data, party_table, set(geoms), errors)
@@ -370,8 +371,8 @@ def main():
         # 標題太長時只在「九合一」後面換行，手機直式才不會剩一個「圖」掉到第二行
         "TITLE_H1": f"<span>{year}九合一</span><span>縣市長政黨版圖</span>",
         "LOGO": Path(os.path.relpath(HERE.parent / "assets" / logo, out.parent)).as_posix(),
-        # 首頁版的放大鈕連到文章版（同一份資料夾的正式檔）
-        "FULL": Path(os.path.relpath(DEFAULT_OUT, out.parent)).as_posix(),
+        # 首頁版的放大鈕連到文章版（同一份資料夾的正式檔）；帶發佈序號，手機另開時不吃 CDN 與瀏覽器 10 分鐘的快取（11-27）
+        "FULL": Path(os.path.relpath(DEFAULT_OUT, out.parent)).as_posix() + (f"?v={data['seq']}" if data.get("seq") else ""),
         "LEGEND": legend_of(a.home),
         "ISLES": isles, "DEFS": "".join(defs), "PATHS": "".join(paths), "HITS": "".join(hits),
         "SRC": src, "TABLE": table,
