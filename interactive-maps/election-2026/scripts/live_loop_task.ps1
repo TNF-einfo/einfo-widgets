@@ -13,7 +13,9 @@
 # minimum), the second one 30 s after the first (11-27; before that every 1 or 2 minutes; a round takes about 26 s).
 # If the previous round is still running the new one is skipped, so a slow round falls back to about one a minute
 # (IgnoreNew; the loop also holds a file lock). A round running longer than 10 minutes is killed.
-# Runs only while the user is logged on (git credentials live in the user session); pythonw, so no console window pops up.
+# Runs only while the user is logged on (git credentials live in the user session).
+# Python runs inside a headless console host, so no window pops up: the venv's pythonw.exe is a launcher that starts the
+# console python.exe, which opened a Windows Terminal window every round (11-28).
 param(
   [string]$Prefix,
   [string]$Epoch = "2026-11-28",
@@ -29,9 +31,9 @@ if ($Uninstall) {
 }
 if (-not $Prefix) { throw "Give -Prefix (the CEC fragment URL without the 17-digit area code)" }
 $dir = Split-Path -Parent $PSScriptRoot   # the election-2026 folder
-$py = Join-Path $env:USERPROFILE ".venvs\research-lab\Scripts\pythonw.exe"
+$py = Join-Path $env:USERPROFILE ".venvs\research-lab\Scripts\python.exe"
 $arguments = "-I `"$dir\scripts\live_loop.py`" --once --prefix $Prefix --epoch $Epoch $Extra".Trim()
-$action = New-ScheduledTaskAction -Execute $py -Argument $arguments -WorkingDirectory $dir
+$action = New-ScheduledTaskAction -Execute "$env:WINDIR\System32\conhost.exe" -Argument "--headless `"$py`" $arguments" -WorkingDirectory $dir
 $trigger = @($Start, $Start.AddSeconds(30)) | ForEach-Object {
   New-ScheduledTaskTrigger -Once -At $_ -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration (New-TimeSpan -Hours 12) }
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
