@@ -1,0 +1,236 @@
+{
+ "meta": {
+  "source": "中央選舉委員會開票網站",
+  "from": "referendum22_2026.csv",
+  "generated": "2026-11-28 20:07:54"
+ },
+ "case": {
+  "no": 22,
+  "short": "廢除非核家園",
+  "topic": "你是否支持政府使用「核電」振興經濟，以廢除「非核家園」的能源政策？",
+  "vote_date": "2026-11-28",
+  "electorate": 20003835
+ },
+ "counties": [
+  {
+   "code": "09007",
+   "name": "連江縣",
+   "agree": 2062,
+   "disagree": 384,
+   "valid": 2446,
+   "invalid": 165,
+   "votes_cast": 2611,
+   "electorate": 12078
+  },
+  {
+   "code": "09020",
+   "name": "金門縣",
+   "agree": 34285,
+   "disagree": 8379,
+   "valid": 42664,
+   "invalid": 2568,
+   "votes_cast": 45232,
+   "electorate": 124271
+  },
+  {
+   "code": "10002",
+   "name": "宜蘭縣",
+   "agree": 83685,
+   "disagree": 65373,
+   "valid": 149058,
+   "invalid": 9533,
+   "votes_cast": 158591,
+   "electorate": 388314
+  },
+  {
+   "code": "10004",
+   "name": "新竹縣",
+   "agree": 68453,
+   "disagree": 27796,
+   "valid": 96249,
+   "invalid": 4747,
+   "votes_cast": 100996,
+   "electorate": 493509
+  },
+  {
+   "code": "10005",
+   "name": "苗栗縣",
+   "agree": 153645,
+   "disagree": 63744,
+   "valid": 217389,
+   "invalid": 11844,
+   "votes_cast": 229233,
+   "electorate": 456652
+  },
+  {
+   "code": "10007",
+   "name": "彰化縣",
+   "agree": 217599,
+   "disagree": 116243,
+   "valid": 333842,
+   "invalid": 24146,
+   "votes_cast": 357988,
+   "electorate": 1035570
+  },
+  {
+   "code": "10008",
+   "name": "南投縣",
+   "agree": 107519,
+   "disagree": 52611,
+   "valid": 160130,
+   "invalid": 8640,
+   "votes_cast": 168770,
+   "electorate": 408254
+  },
+  {
+   "code": "10009",
+   "name": "雲林縣",
+   "agree": 130227,
+   "disagree": 82319,
+   "valid": 212546,
+   "invalid": 21248,
+   "votes_cast": 233794,
+   "electorate": 563263
+  },
+  {
+   "code": "10010",
+   "name": "嘉義縣",
+   "agree": 102616,
+   "disagree": 64773,
+   "valid": 167389,
+   "invalid": 17353,
+   "votes_cast": 184742,
+   "electorate": 420411
+  },
+  {
+   "code": "10013",
+   "name": "屏東縣",
+   "agree": 150969,
+   "disagree": 104175,
+   "valid": 255144,
+   "invalid": 19889,
+   "votes_cast": 275033,
+   "electorate": 682412
+  },
+  {
+   "code": "10014",
+   "name": "臺東縣",
+   "agree": 34536,
+   "disagree": 15667,
+   "valid": 50203,
+   "invalid": 3741,
+   "votes_cast": 53944,
+   "electorate": 180320
+  },
+  {
+   "code": "10015",
+   "name": "花蓮縣",
+   "agree": 70355,
+   "disagree": 30035,
+   "valid": 100390,
+   "invalid": 5228,
+   "votes_cast": 105618,
+   "electorate": 270026
+  },
+  {
+   "code": "10016",
+   "name": "澎湖縣",
+   "agree": 21924,
+   "disagree": 13237,
+   "valid": 35161,
+   "invalid": 2764,
+   "votes_cast": 37925,
+   "electorate": 94884
+  },
+  {
+   "code": "10017",
+   "name": "基隆市",
+   "agree": 90854,
+   "disagree": 49079,
+   "valid": 139933,
+   "invalid": 4742,
+   "votes_cast": 144675,
+   "electorate": 317140
+  },
+  {
+   "code": "10018",
+   "name": "新竹市",
+   "agree": 120240,
+   "disagree": 64705,
+   "valid": 184945,
+   "invalid": 6168,
+   "votes_cast": 191113,
+   "electorate": 374369
+  },
+  {
+   "code": "10020",
+   "name": "嘉義市",
+   "agree": 71431,
+   "disagree": 47774,
+   "valid": 119205,
+   "invalid": 5290,
+   "votes_cast": 124495,
+   "electorate": 223089
+  },
+  {
+   "code": "63000",
+   "name": "臺北市",
+   "agree": 804649,
+   "disagree": 498089,
+   "valid": 1302738,
+   "invalid": 45175,
+   "votes_cast": 1347913,
+   "electorate": 2072492
+  },
+  {
+   "code": "64000",
+   "name": "高雄市",
+   "agree": 777828,
+   "disagree": 586581,
+   "valid": 1364409,
+   "invalid": 61454,
+   "votes_cast": 1425863,
+   "electorate": 2352968
+  },
+  {
+   "code": "65000",
+   "name": "新北市",
+   "agree": 1086212,
+   "disagree": 690802,
+   "valid": 1777014,
+   "invalid": 75193,
+   "votes_cast": 1852207,
+   "electorate": 3509429
+  },
+  {
+   "code": "66000",
+   "name": "臺中市",
+   "agree": 848241,
+   "disagree": 502336,
+   "valid": 1350577,
+   "invalid": 55068,
+   "votes_cast": 1405645,
+   "electorate": 2431916
+  },
+  {
+   "code": "67000",
+   "name": "臺南市",
+   "agree": 516898,
+   "disagree": 384222,
+   "valid": 901120,
+   "invalid": 47593,
+   "votes_cast": 948713,
+   "electorate": 1599159
+  },
+  {
+   "code": "68000",
+   "name": "桃園市",
+   "agree": 655694,
+   "disagree": 359730,
+   "valid": 1015424,
+   "invalid": 36709,
+   "votes_cast": 1052133,
+   "electorate": 1993309
+  }
+ ]
+}
