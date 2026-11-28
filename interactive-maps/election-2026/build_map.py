@@ -141,6 +141,9 @@ def load_results(path, party_table, codes, errors):
         group = "pend"
         if status in ("called", "final") and winners and not bad:
             group = GROUP.get(winners[0]["party_code"], "oth")
+        elif status == "counting" and not bad and len(cands) >= 2 and cands[0]["votes"] > cands[1]["votes"]:
+            # 開票中照目前領先的政黨上色，跟當選同色、算進圖例「各陣營領先狀況」的數字（11-28 定）；卡片照樣寫開票中、沒有當選章
+            group = GROUP.get(cands[0].get("party_code"), "oth")
         out[code] = {
             "code": code, "name": c["name"], "six": code in SIX, "status": "error" if bad else status, "group": group,
             "stations": c.get("stations"), "updated": c.get("updated") or "",   # 先留完整時間給出處列比，main() 再裁成 HH:MM

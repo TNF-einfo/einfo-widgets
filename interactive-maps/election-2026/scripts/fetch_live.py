@@ -737,7 +737,7 @@ def selftest():
     r = run("build_map.py", "--data", json_p, "--out", prev / "selftest_counting.html")
     assert r.returncode == 0, r.stderr
     groups = dict(l.split()[0::2] for l in r.stdout.splitlines() if re.match(r"\d{5} ", l))
-    assert groups["63000"] == "pend" and groups["10020"] == "pend" and groups["64000"] == "dpp", groups
+    assert groups["63000"] == "kmt" and groups["10020"] == "pend" and groups["64000"] == "dpp", groups   # 開票中照領先上色（11-28）
     manual = prev / "selftest_manual.csv"
     write_csv(manual, MAYOR_COLS, [{"code": k, "county": c["name"], "status": "final", "winner": 1, "note": "",
                                      **{f"{n}_{f}": p[g] for n, p in zip(("c1", "c2"), c["candidates"][:2])
@@ -748,7 +748,7 @@ def selftest():
     assert all(same(got[k]["candidates"], db[k]["candidates"]) for k in db)
     r = run("build_map.py", "--data", prev / "selftest_manual.json", "--out", prev / "selftest_final.html")
     assert r.returncode == 0, r.stderr
-    print("4 產生器：開票中版本（臺北、嘉義市斜線，高雄已上色）與手動 CSV 的開完版本都出得了圖")
+    print("4 產生器：開票中版本（臺北照領先上色、未開票的嘉義市斜線、高雄已上色）與手動 CSV 的開完版本都出得了圖")
 
     # 5. 公投：手動 CSV（用 2025 第 21 案的數字）→ JSON → 公投地圖；全國加總要跟資料庫一樣
     ref_csv = prev / "selftest_ref.csv"
