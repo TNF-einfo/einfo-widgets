@@ -332,10 +332,12 @@ function cardHTML(c) {
   const st = statusLine(c), live = c.status === "counting" || c.status === "called";
   let h = `<h2>${c.name}${live ? '<span class="live"><i aria-hidden="true"></i>開票中</span>' : ""}</h2>` + (st ? `<p class="st">${st}</p>` : "");
   // 未開票也列候選人與政黨、不印票數（11-28：開票前整張卡只有一行字，圖看起來是空的）；開票後照常印票數
-  if (c.cands.length && c.status !== "postponed") h += "<ol>" + c.cands.map(p =>
+  // 未開票時大家都是 0 票：有環境政見標籤的排前面（同組照號次），手機小框放不下全部時先看到有標籤的人（11-28）
+  const list = c.status === "pending" ? [...c.cands].sort((a, b) => (b.tags ? 1 : 0) - (a.tags ? 1 : 0)) : c.cands;
+  if (c.cands.length && c.status !== "postponed") h += "<ol>" + list.map(p =>
     `<li${p.elected ? ' class="win"' : ""}><i class="bd b-${p.group}" aria-hidden="true">${p.badge}</i><span class="nm"><b>${p.name}</b>${p.elected ? STAMP : ""}<span class="sr">（${p.party}）</span></span>` +
     (c.status === "pending" ? "" : `<span class="v">${fmt(p.votes)}</span><span class="pc">${p.pct.toFixed(2)}%</span>`) +
-    (p.elected && c.tags ? `<span class="tg"><span class="tgl">環境政見：</span>${c.tags.map(g => `<span class="tag t-${g.k}">${g.t}</span>`).join('<span class="sr">、</span>')}</span>` : "") + "</li>").join("") + "</ol>" +
+    (p.tags && p.tags.length ? `<span class="tg"><span class="tgl">環境政見：</span>${p.tags.map(g => `<span class="tag t-${g.k}">${g.t}</span>`).join('<span class="sr">、</span>')}</span>` : "") + "</li>").join("") + "</ol>" +
     (c.cands.length > 2 ? `<p class="more">另有 ${c.cands.length - 2} 位候選人</p>` : "");   // 首頁版手機框放不下全部時才顯示，人數由 fitCard() 改
   if (c.note) h += `<p class="note">${c.note}</p>`;
   return h;

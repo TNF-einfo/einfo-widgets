@@ -53,7 +53,7 @@ def badge(party):
 STATUSES = {"pending", "counting", "called", "final", "postponed"}
 DEFAULT_OUT = HERE / "election-2026.html"
 HOME_OUT = HERE / "election-2026-home.html"   # 首頁「關鍵圖表」的 16:9 版（--home，SPEC「首頁版」）
-TAGS = {"2026": HERE / "data" / "tags.csv"}   # 當選人的環境政見標籤，只有 2026 有；2022 版沒有檔就不顯示
+TAGS = {"2026": HERE / "data" / "tags.csv"}   # 六都候選人的環境政見標籤（有標籤的都顯示），只有 2026 有；2022 版沒有檔就不顯示
 TAG_KEYS = "ygpb"                              # 標籤四色：黃、綠、粉、藍（CSS 的 --tag-y/g/p/b）
 TAG_FIXED = {"防災型都更": "p"}                 # 固定粉色；其餘照 tags.csv 第一次出現的順序輪流配色
 
@@ -194,16 +194,17 @@ def load_tags(path, res, errors):
             if len(ts) > len(fake.get(code, [])):
                 fake[code] = ts
             continue
-        if cand not in names:   # 表裡列全部候選人，只有姓名打錯才報；沒當選的照樣不顯示
+        if cand not in names:   # 表裡列全部候選人，只有姓名打錯才報
             print(f"警告：{c['name']} 的「{cand}」對不到候選人名單（{'、'.join(names)}），這列標籤不顯示", file=sys.stderr)
             continue
-        win = next((p for p in c["cands"] if p["elected"]), None)
-        if win and html.unescape(win["name"]) == cand and ts:
-            c["tags"] = [{"t": html.escape(t), "k": col[t]} for t in ts]
+        # 有標籤的候選人都掛上，開票前、開票中、沒當選都顯示（11-28：原本只掛當選人）
+        p = next(p for p in c["cands"] if html.unescape(p["name"]) == cand)
+        if ts:
+            p["tags"] = [{"t": html.escape(t), "k": col[t]} for t in ts]
     for code, ts in fake.items():
-        c = res[code]
-        if any(p["elected"] for p in c["cands"]):
-            c["tags"] = [{"t": f"測試標籤{'一二三四五六七八'[i]}", "k": col[t]} for i, t in enumerate(ts)]
+        win = next((p for p in res[code]["cands"] if p["elected"]), None)
+        if win:
+            win["tags"] = [{"t": f"測試標籤{'一二三四五六七八'[i]}", "k": col[t]} for i, t in enumerate(ts)]
 
 
 def font_text(page):
