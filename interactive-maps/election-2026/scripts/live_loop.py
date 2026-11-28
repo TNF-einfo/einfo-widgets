@@ -266,10 +266,11 @@ def outputs(a):
 
 def build(a, data, seq, say):
     py = [PY, "-I", str(HERE / "build_map.py"), "--data", str(data)] + (["--test-banner"] if a.test_banner else [])
-    jobs = [py + ["--home", "--out", str(a.out_dir / a.home_name), "--live-json", str(a.out_dir / "live.json"), "--epoch", a.epoch, "--seq", str(seq)]
-            + (["--poll-s", str(a.poll_s)] if a.poll_s is not None else []) + (["--fast-url", a.fast_url] if a.fast_url is not None else [])]
-    if a.article:
-        jobs.append(py + ["--out", str(a.out_dir / ARTICLE)])
+    live = ["--epoch", a.epoch, "--seq", str(seq)] + (["--poll-s", str(a.poll_s)] if a.poll_s is not None else []) \
+        + (["--fast-url", a.fast_url] if a.fast_url is not None else [])
+    jobs = [py + ["--home", "--out", str(a.out_dir / a.home_name), "--live-json", str(a.out_dir / "live.json")] + live]
+    if a.article:   # 文章版也輪詢同一份 live.json（11-28）：烤進同一組 epoch、seq
+        jobs.append(py + ["--out", str(a.out_dir / ARTICLE)] + live)
     a.out_dir.mkdir(parents=True, exist_ok=True)
     for j in jobs:
         r = subprocess.run(j, cwd=HERE, capture_output=True, text=True, encoding="utf-8", timeout=120, creationflags=NOWIN)

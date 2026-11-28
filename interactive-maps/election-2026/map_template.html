@@ -879,11 +879,14 @@ function applyLive(n) {   // 原地換掉每縣的資料物件（輪播、點擊
     p.style.fill = c.group === "pend" ? "url(#hatchI)" : "";   // layout() 寫過行內斜線，換色時要清掉，不然開完了還是斜線
   });
   const set = (sel, h) => { const el = $(sel); if (el) el.innerHTML = h; };
-  set(".legend", n.legend_home); set(".src span", n.src); set("table.sr tbody", n.table);
+  const lg = HOME ? n.legend_home : n.legend_article;   // 舊格式的 live.json 沒有 legend_article：文章版就不換圖例
+  if (typeof lg === "string") set(".legend", lg);
+  set(".src span", n.src); set("table.sr tbody", n.table);
   D.dtime = n.dtime; LIVE.pub = (n.published_at || 0) * 1000; LIVE.applied++;
   fullBtn.href = fullBtn.getAttribute("href").split("?")[0] + "?v=" + n.seq;   // 手機另開的文章版是靜態檔：每版換網址，不吃 10 分鐘的快取（11-27）
   if (Object.keys(from).length) ANIM = { t0: performance.now(), from };
   shown = undefined; liftCode = null; liftKey = "";   // 資訊卡與浮起的板子照新資料重畫（板面顏色在 liftCode 換時才設）
+  if (!HOME) layout();   // 文章版的取景看標題（圖例）、出處列與直式卡片的高，新資料會改到這三個
 }
 // 資訊卡的票數、得票率、已開所數從舊值走到新值，1.5 秒後停在真的數字；減少動態時直接換。兩次更新之間不內插、不外推
 function countUp(now) {
@@ -899,6 +902,7 @@ function countUp(now) {
   if (u >= 1) ANIM = null;
 }
 function stale(first) {   // 開票開始後、還沒全部開完，迴圈超過 20 分鐘沒發新版：資料時間那行變紅、加「更新中斷」（手機框只放得下這麼短）
+  if (!HOME) return;   // 文章版沒有資料時間那行（出處列已寫資料時間），不做過期提示
   const all = D.counties.every(c => c.status === "final" || c.status === "postponed"), begun = D.counties.some(c => c.status !== "pending" && c.status !== "postponed");
   const late = !first && !LIVE.stopped && begun && !all && LIVE.pub > 0 && Date.now() - LIVE.pub > (window.__STALE_MS || 20 * 60000);
   document.documentElement.classList.toggle("stale", late);
@@ -906,7 +910,7 @@ function stale(first) {   // 開票開始後、還沒全部開完，迴圈超過
   if (dtimeEl.textContent !== t) dtimeEl.textContent = t;
   dtimeEl.hidden = !t;
 }
-if (HOME) {
+if (HOME || LIVE.epoch) {   // 文章版有烤 epoch 才輪詢（11-28）；沒有的（2022 版、測試頁）是靜態頁
   const polling = LIVE.epoch && !LIVE.stopped && !/[?&]nolive\b/.test(location.search);
   // 會輪詢就等第一次抓完再判過期：頁面可能是 CDN 快取了 10 分鐘的舊版，一打開就判會先閃一下「更新中斷」（11-27）
   stale(polling);

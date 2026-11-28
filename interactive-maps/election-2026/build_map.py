@@ -247,7 +247,8 @@ def main():
     ap.add_argument("--home", action="store_true",
                     help="首頁版：沒有標題、logo 與最下面那行，圖例、按鈕、卡片在右欄（預設寫 election-2026-home.html）")
     ap.add_argument("--live-json", help="首頁版：另寫輪詢用的 live.json（內容就是頁面烤進去的那包資料）")
-    ap.add_argument("--epoch", help="首頁版：這一晚的名字，頁面只收同一個 epoch 的 live.json（預設是投票日；彩排用 rehearsal）")
+    ap.add_argument("--epoch", help="這一晚的名字，頁面只收同一個 epoch 的 live.json（首頁版預設是投票日；彩排用 rehearsal）；"
+                                    "文章版有給才輪詢，--seq、--poll-s、--fast-url 也一起烤進去")
     ap.add_argument("--seq", type=int, help="首頁版：發佈序號（預設現在的 Unix 秒數），也是 published_at")
     ap.add_argument("--poll-s", type=int, help="首頁版：讀者多久抓一次 live.json（預設 20）；0 是停止開關")
     ap.add_argument("--fast-url", help="首頁版：快車道的 live.json 網址（Funnel 上這台電腦給的），頁面先抓這裡、抓不到退回 Pages；不給或空字串就不用")
@@ -361,11 +362,13 @@ def main():
     src = src_date   # 11-27：出處、縣市界、製圖與免責聲明改寫在文章嵌入區塊的說明欄，圖裡只留開票狀態與資料時間
     data = {"counties": list(res.values()), "pano": pano, "six": SIX, "isles": sorted(ISLES), "date": date}
     extra = ""
-    if a.home:   # 首頁版會輪詢：頁面與 live.json 烤同一組 epoch、seq、published_at（SPEC「首頁版即時更新」）
+    # 首頁版會輪詢：頁面與 live.json 烤同一組 epoch、seq、published_at（SPEC「首頁版即時更新」）；
+    # 文章版有給 --epoch 也輪詢同一份 live.json（11-28），沒給的（2022 版、測試頁）照舊是靜態頁
+    if a.home or a.epoch:
         seq = a.seq or int(time.time())
         data.update(epoch=a.epoch or date, seq=seq, published_at=seq, poll_s=a.poll_s, fast_url=a.fast_url or "")
-        # 首頁版的資料時間：圖例下面那行小字；全部未開票時是空的
-        data["dtime"] = f"資料時間 {times[-1][11:16]}" if times and begun else ""
+        if a.home:   # 首頁版的資料時間：圖例下面那行小字；全部未開票時是空的
+            data["dtime"] = f"資料時間 {times[-1][11:16]}" if times and begun else ""
         # 字型另收 2026 全部候選人與標籤：10:00 發的全是未開票，名字晚上才從 live.json 進來；
         # 產生器自己寫的字（註記、出處、報讀）也只在開票後才出現，一起收，不然晚上那幾個字會換成系統字型（11-27）
         extra = "".join(p.read_text(encoding="utf-8-sig") for p in (HERE / "data/candidates_2026.csv", TAGS["2026"]) if p.exists())
@@ -395,6 +398,7 @@ def main():
     if a.live_json:   # 輪詢用的那包：就是烤進頁面的資料，加上頁面要換的字串；顏色、標籤、註記都在這裡算好，頁面只換上去
         live = {"schema": 1, **{k: data[k] for k in ("epoch", "seq", "poll_s", "published_at", "counties", "dtime", "fast_url")},
                 "aria": {k: aria(c) for k, c in res.items()}, "legend": legend_of(False), "legend_home": legend_of(True),
+                "legend_article": legend_of(False),
                 "src": src, "table": table}
         Path(a.live_json).write_text(json.dumps(live, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")
         print(f"wrote {Path(a.live_json).resolve()}（seq {data['seq']}）")
