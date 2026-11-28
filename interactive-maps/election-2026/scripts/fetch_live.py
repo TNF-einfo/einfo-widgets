@@ -267,18 +267,45 @@ def mayor_row(code, name, cands, stations, updated, declared_name=None):
     return row
 
 
+REF_HEADS = {"agree": "同意票數", "disagree": "不同意票數", "valid": "有效票數", "invalid": "無效票數",
+             "votes_cast": "投票數", "electorate": "投票權人總數"}
+
+
+def parse_ref_split(page, date):
+    """2026 年的公投頁：數字拆成好幾張只有一列的小表。把每張表的「表頭→第一列數字」攤平，表頭整格相等才取，
+    不做部分比對（「已完成投票所投票權人數」不是「投票權人總數」）；重複的表頭取第一個。少一個數字就丟 ValueError"""
+    p = Tables()
+    p.feed(page)
+    flat = {}
+    for t in p.tables:
+        if len(t) >= 2:
+            for h, v in zip(t[0], t[1]):
+                flat.setdefault(h, v)
+    miss = [h for h in REF_HEADS.values() if h not in flat]
+    if miss:
+        raise ValueError(f"小表裡找不到：{'、'.join(miss)}；表頭有：{list(flat)}")
+    return {k: num(flat[h]) for k, h in REF_HEADS.items()}, page_meta(" ".join("".join(p.text).split()), date)[1]
+
+
 def parse_ref(page, county, date):
-    """公投的縣市結果 → 同意、不同意、有效、無效、投票數、投票權人數。2025 年的頁面沒存到，照表頭的字找欄，取「總計」或縣市名那列"""
-    head, rows, text = grid(page, "同意", "不同意")
-    i = {"agree": col(head, "同意", ("不同意", "%", "比")), "disagree": col(head, "不同意", ("%", "比")),
-         "valid": col(head, "有效", ("同意", "%", "比")), "invalid": col(head, "無效"),
-         "votes_cast": col(head, "投票數"), "electorate": col(head, "投票權人", ("%", "比"))}
-    rows = [r for r in rows if len(r) > max(i.values())]
-    norm = lambda s: "".join(s.split()).replace("台", "臺")   # 去掉空白（含全形空白）、台→臺 再比對
-    row = next((r for r in rows if norm(r[0]) in ("總計", "合計", norm(county))), None)
-    if row is None:   # 不退回第一列（那是某個鄉鎮市區，前後一致、檢查抓不到）
-        raise ValueError(f"表裡找不到「總計」「合計」或「{county}」那列，第一欄有：{'、'.join(r[0] for r in rows[:5])}")
-    return {k: num(row[v]) for k, v in i.items()}, page_meta(text, date)[1]
+    """公投的縣市結果 → 同意、不同意、有效、無效、投票數、投票權人數。先照 2025 年的寫法（一張大表，照表頭的字找欄，
+    取「總計」或縣市名那列）；找不到就試 2026 年的多張小表（parse_ref_split）"""
+    try:
+        head, rows, text = grid(page, "同意", "不同意")
+        i = {"agree": col(head, "同意", ("不同意", "%", "比")), "disagree": col(head, "不同意", ("%", "比")),
+             "valid": col(head, "有效", ("同意", "%", "比")), "invalid": col(head, "無效"),
+             "votes_cast": col(head, "投票數"), "electorate": col(head, "投票權人", ("%", "比"))}
+        rows = [r for r in rows if len(r) > max(i.values())]
+        norm = lambda s: "".join(s.split()).replace("台", "臺")   # 去掉空白（含全形空白）、台→臺 再比對
+        row = next((r for r in rows if norm(r[0]) in ("總計", "合計", norm(county))), None)
+        if row is None:   # 不退回第一列（那是某個鄉鎮市區，前後一致、檢查抓不到）
+            raise ValueError(f"表裡找不到「總計」「合計」或「{county}」那列，第一欄有：{'、'.join(r[0] for r in rows[:5])}")
+        return {k: num(row[v]) for k, v in i.items()}, page_meta(text, date)[1]
+    except ValueError as old:
+        try:
+            return parse_ref_split(page, date)
+        except ValueError as new:
+            raise ValueError(f"舊格式：{old}；2026 小表格式：{new}") from None
 
 
 # ── 抓網頁 ──
@@ -735,6 +762,23 @@ def selftest():
     ref_json(web_csv, prev / "selftest_ref_web.json", ref_db["case"])
     print("5 公投：手動 CSV 轉出的地圖全國數字跟資料庫一樣；照猜的表頭做的假頁也抓得完（真的格式當天再對）")
     srv.shutdown()
+
+    # 5b. 2026 的真實公投頁（11-28 16:12 開站時存的，0 票）：數字拆成四張小表。改數字的假頁要讀到改過的數字，
+    #     「已完成投票所投票權人數」不能被當成投票權人總數
+    f1 = (DATA / "raw/cec_live_2026/F1_63000000000000000.html").read_text(encoding="utf-8")
+    v0, up0 = parse_ref(f1, "臺北市", DATE)
+    assert v0 == {"agree": 0, "disagree": 0, "valid": 0, "invalid": 0, "votes_cast": 0, "electorate": 2072492} and up0 == "2026-11-28 16:12:00", (v0, up0)
+    fake_vals = iter(["1,234", "567", "1,801", "10", "1,811", "999", "0.09", "2,072,492", "0.06"])   # 九格依序：四張小表的數字格
+    f1_fake = re.sub(r'(<td class="numeric[^"]*">\s*)[\d,.]+', lambda m: m[1] + next(fake_vals), f1)
+    assert next(fake_vals, None) is None   # 剛好換了九格
+    v1, _ = parse_ref(f1_fake, "臺北市", DATE)
+    assert v1 == {"agree": 1234, "disagree": 567, "valid": 1801, "invalid": 10, "votes_cast": 1811, "electorate": 2072492}, v1
+    try:
+        parse_ref(f1.replace("投票權人總數", "投票權人數"), "臺北市", DATE)
+        raise AssertionError("缺投票權人總數卻沒丟錯")
+    except ValueError:
+        pass
+    print("5b 2026 公投頁（四張小表）：0 票、投票權人總數 2,072,492、資料時間 16:12 讀對，改過的數字照讀，缺欄位就丟錯")
 
     # 6. 2026 年的路：投票日換成 2026，產生器改讀 data/tags.csv，標籤要掛到當選人身上。
     #    票數是假的、政黨一律無黨籍（只看路通不通），只寫到 preview/，不能公開
