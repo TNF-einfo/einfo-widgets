@@ -187,13 +187,19 @@ def parse_mayor(page, date):
         if len(r) <= max(i.values()):
             continue
         c = {k: r[v] for k, v in i.items()}
-        c["mark"] = r[mk] if mk is not None and mk < len(r) else next((x for x in r if x in ("◎", "當選", "？", "＜")), "")
+        # 沒有註記欄：只看姓名、票數、得票率、政黨以外的格子，整格是記號才算（11-28 審查）
+        c["mark"] = r[mk] if mk is not None and mk < len(r) else next(
+            (x for n, x in enumerate(r) if n not in i.values() and x in ("◎", "當選", "？", "＜")), "")
         c["name"] = fix_name(c["name"])   # 中選會寫成 @碼位@ 的罕用字在這裡就轉回來，declared.csv、overrides.csv 打的名字才對得上（11-27）
-        # 姓名格裡的記號（「周春米 ◎」、圖片 alt 轉成的「當選」，前後都算）：從姓名拿掉、算註記；？、＜ 是同票待抽籤、未達最低當選票數（11-28）
-        for m in ("◎", "當選", "？", "＜"):
-            if m in c["name"] and c["name"].replace(m, "").strip():
-                c["name"] = " ".join(c["name"].replace(m, " ").split())
-                c["mark"] = "◎" if m in ("◎", "當選") else (c["mark"] or m)
+        # 姓名格裡的記號：要是用空白隔開的獨立一個詞（「周春米 ◎」、圖片 alt 轉成的「 當選 」）才算，「未當選」、名字裡剛好有的字不算；
+        # ◎ 不會出現在名字裡，黏在頭尾也算（「周春米◎」）。？、＜ 是同票待抽籤、未達最低當選票數（11-28）
+        words = c["name"].split()
+        if len(words) > 1 and any(w in ("◎", "當選", "？", "＜") for w in words):
+            m = next(w for w in words if w in ("◎", "當選", "？", "＜"))
+            c["name"] = " ".join(w for w in words if w not in ("◎", "當選", "？", "＜"))
+            c["mark"] = "◎" if m in ("◎", "當選") else (c["mark"] or m)
+        elif c["name"].strip("◎").strip() and c["name"] != c["name"].strip("◎"):
+            c["name"], c["mark"] = c["name"].strip("◎").strip(), "◎"
         if c["mark"] in ("◎", "當選"):   # 註記格整格就是 ◎ 或「當選」才算，不做部分比對，免得開票初期假當選
             c["mark"] = "◎"
         cands.append(c)
@@ -648,6 +654,12 @@ def selftest():
     assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "？")], c
     c, _, _ = parse_mayor(re.sub(r"(<td>\s*蔣萬安)(\s*</td>)", r"\1 ＜\2", p26), "2026-11-28")   # 未達最低當選票數的 ＜ 在姓名格
     assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "＜")], c
+    c, _, _ = parse_mayor(re.sub(r"(<td>\s*郭璽)(\s*</td>)", r"\1 未當選\2", p26), "2026-11-28")   # 「未當選」不是當選記號（11-28 審查）
+    assert not any(x["mark"] for x in c), c
+    c, _, _ = parse_mayor(re.sub(r"(<td>\s*)郭璽(\s*</td>)", r"\1林當選\2", p26), "2026-11-28")   # 名字裡剛好有「當選」：不拆、不算
+    assert "林當選" in [x["name"] for x in c] and not any(x["mark"] for x in c), c
+    c, _, _ = parse_mayor(re.sub(r"(<td>\s*蔣萬安)(\s*</td>)", r"\1◎\2", p26), "2026-11-28")   # ◎ 黏在姓名後面
+    assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "◎")], c
     ph = (DATA / "raw/cec_live_2026/TC_10016000000000000.html").read_text(encoding="utf-8")   # 澎湖：開票頁寫「台聯黨」
     assert "台聯黨" in party_codes() and mayor_county("10016", mayor_row("10016", "澎湖縣", *parse_mayor(ph, "2026-11-28")), counties(), party_codes(), "2026-11-28")[1] == []
     print("1d 2026 開票頁：沒有註記欄照讀、所數新寫法、◎ 三種位置都認；澎湖「台聯黨」對得到代碼")
