@@ -187,11 +187,14 @@ def parse_mayor(page, date):
         if len(r) <= max(i.values()):
             continue
         c = {k: r[v] for k, v in i.items()}
-        c["mark"] = r[mk] if mk is not None and mk < len(r) else next((x for x in r if x in ("◎", "當選")), "")
+        c["mark"] = r[mk] if mk is not None and mk < len(r) else next((x for x in r if x in ("◎", "當選", "？", "＜")), "")
         c["name"] = fix_name(c["name"])   # 中選會寫成 @碼位@ 的罕用字在這裡就轉回來，declared.csv、overrides.csv 打的名字才對得上（11-27）
-        if c["name"].endswith("◎") and c["name"][:-1].strip():   # 姓名格尾巴的 ◎（「周春米 ◎」）：從姓名拿掉，算當選註記
-            c["name"], c["mark"] = c["name"][:-1].strip(), "◎"
-        elif c["mark"] in ("◎", "當選"):   # 註記格整格就是 ◎ 或「當選」才算，不做部分比對，免得開票初期假當選
+        # 姓名格裡的記號（「周春米 ◎」、圖片 alt 轉成的「當選」，前後都算）：從姓名拿掉、算註記；？、＜ 是同票待抽籤、未達最低當選票數（11-28）
+        for m in ("◎", "當選", "？", "＜"):
+            if m in c["name"] and c["name"].replace(m, "").strip():
+                c["name"] = " ".join(c["name"].replace(m, " ").split())
+                c["mark"] = "◎" if m in ("◎", "當選") else (c["mark"] or m)
+        if c["mark"] in ("◎", "當選"):   # 註記格整格就是 ◎ 或「當選」才算，不做部分比對，免得開票初期假當選
             c["mark"] = "◎"
         cands.append(c)
     if not cands:
@@ -278,7 +281,7 @@ def parse_ref_split(page, date):
     p.feed(page)
     flat = {}
     for t in p.tables:
-        if len(t) >= 2:
+        if len(t) == 2 and len(t[0]) == len(t[1]):   # 只收「一列表頭＋一列數字」的小表：多列的表（鄉鎮市區）不取第一列當全縣（11-28 審查）
             for h, v in zip(t[0], t[1]):
                 flat.setdefault(h, v)
     miss = [h for h in REF_HEADS.values() if h not in flat]
@@ -639,6 +642,12 @@ def selftest():
         assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "◎")], c
     c, _, _ = parse_mayor(re.sub(r"(<td>\s*中國國民黨\s*</td>)", r"\1<td>◎</td>", p26), "2026-11-28")
     assert [x["name"] for x in c if x["mark"]] == ["蔣萬安"], c
+    c, _, _ = parse_mayor(re.sub(r"(<td>\s*)(蔣萬安\s*</td>)", r'\1<img src="x.png" alt="當選">\2', p26), "2026-11-28")   # 「當選」圖片在姓名前：姓名不能髒
+    assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "◎")], c
+    c, _, _ = parse_mayor(re.sub(r"(<td>\s*中國國民黨\s*</td>)", r"\1<td>？</td>", p26), "2026-11-28")   # 同票待抽籤的 ？ 在另一格
+    assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "？")], c
+    c, _, _ = parse_mayor(re.sub(r"(<td>\s*蔣萬安)(\s*</td>)", r"\1 ＜\2", p26), "2026-11-28")   # 未達最低當選票數的 ＜ 在姓名格
+    assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "＜")], c
     ph = (DATA / "raw/cec_live_2026/TC_10016000000000000.html").read_text(encoding="utf-8")   # 澎湖：開票頁寫「台聯黨」
     assert "台聯黨" in party_codes() and mayor_county("10016", mayor_row("10016", "澎湖縣", *parse_mayor(ph, "2026-11-28")), counties(), party_codes(), "2026-11-28")[1] == []
     print("1d 2026 開票頁：沒有註記欄照讀、所數新寫法、◎ 三種位置都認；澎湖「台聯黨」對得到代碼")
@@ -797,10 +806,11 @@ def selftest():
     r = run("build_map.py", "--data", fake.with_suffix(".json"), "--out", prev / "selftest_2026_fake.html")
     assert r.returncode == 0 and "對不到候選人名單" not in r.stderr, r.stderr
     page = (prev / "selftest_2026_fake.html").read_text(encoding="utf-8")
-    want = sum(1 for e in tg if e["tags"].strip())   # 有標籤的候選人都掛（11-28 起不只當選人）；六都兩位都排在 c1、c2
+    # 有標籤的候選人都掛（11-28 起不只當選人；六都兩位都排在 c1、c2），當選人（c1）另在縣市層級留一份給舊頁面
+    want = sum(1 for e in tg if e["tags"].strip()) + len({e["code"].strip() for e in tg if e["tags"].strip()})
     got_t = page.count('"tags":[')
     assert "2026九合一縣市長政黨版圖" in page and got_t == want, (got_t, want)   # 11-27 大標改成編輯定的字
-    print(f"6 2026 年的路：標題換成 2026、改讀 tags.csv，假結果裡有標籤的 {want} 位候選人都掛上了（假資料只在 preview/）")
+    print(f"6 2026 年的路：標題換成 2026、改讀 tags.csv，假結果裡有標籤的候選人都掛上了、當選人另留縣市層級一份（共 {want} 份，假資料只在 preview/）")
     print("自我測試通過，產出都在 preview/selftest_*")
 
 

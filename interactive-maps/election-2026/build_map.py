@@ -201,6 +201,8 @@ def load_tags(path, res, errors):
         p = next(p for p in c["cands"] if html.unescape(p["name"]) == cand)
         if ts:
             p["tags"] = [{"t": html.escape(t), "k": col[t]} for t in ts]
+            if p["elected"]:   # 16:22 前打開、一直沒重新整理的頁面只認縣市層級的當選人標籤：照舊也寫一份
+                c["tags"] = p["tags"]
     for code, ts in fake.items():
         win = next((p for p in res[code]["cands"] if p["elected"]), None)
         if win:
