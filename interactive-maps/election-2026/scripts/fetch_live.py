@@ -170,7 +170,8 @@ def col(head, key, avoid=()):
 def page_meta(text, date):
     """頁面文字 → (已送, 應送)（找不到是 None）、資料時間（找不到是 ''）。全形的／：、西元或民國年、上午／下午都認"""
     text = text.replace("／", "/").replace("：", ":")
-    st = re.search(r"已送\s*/\s*應送\s*:?\s*([\d,]+)\s*/\s*([\d,]+)", text)
+    # 2022 寫「已送/應送: 711/711」，2026 寫「已送投票所數/總投票所數: 0/1790」（11-28 開站時）
+    st = re.search(r"已送[^\d:]{0,16}:?\s*([\d,]+)\s*/\s*([\d,]+)", text)
     up = re.search(r"資料更新時間\s*:?\s*((?:(?:\d{3,4}[-/])?\d{1,2}[-/]\d{1,2}\s*)?(?:[上下]午\s*)?\d{1,2}:\d{2}(?::\d{2})?)", text)
     return (num(st[1]), num(st[2])) if st else None, norm_time(up[1], date) if up else ""
 
@@ -179,12 +180,14 @@ def parse_mayor(page, date):
     """首長候選人得票數（2022 年的 TC）→ 依票數排好的候選人、(已送, 應送)、資料時間。
     找不到候選人、已送／應送或資料時間就丟 ValueError，這縣市沿用上一輪（不要變成 0/0 擋住整份 JSON）"""
     head, rows, text = grid(page, "姓名", "得票數")
-    i = {"mark": col(head, "註記"), "name": col(head, "姓名"), "votes": col(head, "得票數"), "pct": col(head, "得票率"), "party": col(head, "政黨")}
+    i = {"name": col(head, "姓名"), "votes": col(head, "得票數"), "pct": col(head, "得票率"), "party": col(head, "政黨")}
+    mk = next((n for n, h in enumerate(head) if "註記" in h), None)   # 2026 的開票頁沒有註記欄（11-28 開站時）：整列找整格是 ◎ 或「當選」的格子
     cands = []
     for r in rows:
         if len(r) <= max(i.values()):
             continue
         c = {k: r[v] for k, v in i.items()}
+        c["mark"] = r[mk] if mk is not None and mk < len(r) else next((x for x in r if x in ("◎", "當選")), "")
         c["name"] = fix_name(c["name"])   # 中選會寫成 @碼位@ 的罕用字在這裡就轉回來，declared.csv、overrides.csv 打的名字才對得上（11-27）
         if c["name"].endswith("◎") and c["name"][:-1].strip():   # 姓名格尾巴的 ◎（「周春米 ◎」）：從姓名拿掉，算當選註記
             c["name"], c["mark"] = c["name"][:-1].strip(), "◎"
@@ -599,6 +602,19 @@ def selftest():
     assert (r := mayor_row("10013", "屏東縣", even, (300, 711), up, declared_name=even[0]["name"]))["winner"] == "" and r["status"] == "counting", r
     tie = [dict(c, mark="？") for c in cands]
     assert (r := mayor_row("10013", "屏東縣", tie, (711, 711), up))["status"] == "final" and r["winner"] == "" and r["note"] == "同票，抽籤決定", r
+    # 1d. 2026 的真實開票頁（11-28 16:00 開站時存的，0 票）：沒有註記欄、所數寫「已送投票所數/總投票所數」；◎ 在姓名格、另一格或圖片都認
+    p26 = (DATA / "raw/cec_live_2026/TC_63000000000000000.html").read_text(encoding="utf-8")
+    c26, st26, up26 = parse_mayor(p26, "2026-11-28")
+    assert (st26, up26, len(c26)) == ((0, 1790), "2026-11-28 13:11:00", 6) and not any(c["mark"] for c in c26), (st26, up26, c26)
+    assert mayor_row("63000", "臺北市", c26, st26, up26)["status"] == "pending"
+    for sub in (r"\1 ◎\2", r'\1 <img src="x.png" alt="◎">\2'):
+        c, _, _ = parse_mayor(re.sub(r"(<td>\s*蔣萬安)(\s*</td>)", sub, p26), "2026-11-28")
+        assert [(x["name"], x["mark"]) for x in c if x["mark"]] == [("蔣萬安", "◎")], c
+    c, _, _ = parse_mayor(re.sub(r"(<td>\s*中國國民黨\s*</td>)", r"\1<td>◎</td>", p26), "2026-11-28")
+    assert [x["name"] for x in c if x["mark"]] == ["蔣萬安"], c
+    ph = (DATA / "raw/cec_live_2026/TC_10016000000000000.html").read_text(encoding="utf-8")   # 澎湖：開票頁寫「台聯黨」
+    assert "台聯黨" in party_codes() and mayor_county("10016", mayor_row("10016", "澎湖縣", *parse_mayor(ph, "2026-11-28")), counties(), party_codes(), "2026-11-28")[1] == []
+    print("1d 2026 開票頁：沒有註記欄照讀、所數新寫法、◎ 三種位置都認；澎湖「台聯黨」對得到代碼")
     print("1c 防呆：全形所數、民國年與下午的時間照讀，缺所數或時間就不採用；當選只認整格「◎」「當選」或圖片 alt、姓名格的 ◎ 拿掉；"
           "◎ 打在非最高票不採用，宣布當選的人落後先不標；開完同票是沒有當選人的 final")
 

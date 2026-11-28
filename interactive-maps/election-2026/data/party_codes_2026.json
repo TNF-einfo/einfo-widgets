@@ -3,5 +3,6 @@
  {"party_code": "90002", "party_name": "台灣聯盟黨", "color_code": "8E8E8E"},
  {"party_code": "90003", "party_name": "台灣麻將最大黨", "color_code": "8E8E8E"},
  {"party_code": "90004", "party_name": "司法改革黨", "color_code": "8E8E8E"},
- {"party_code": "90005", "party_name": "臺灣SoR無法黨", "color_code": "8E8E8E"}
+ {"party_code": "90005", "party_name": "臺灣SoR無法黨", "color_code": "8E8E8E"},
+ {"party_code": "90002", "party_name": "台聯黨", "color_code": "8E8E8E"}
 ]
